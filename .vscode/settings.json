@@ -5,5 +5,6 @@
   "files.insertFinalNewline": true,
   "eslint.validate": ["javascript", "typescript", "vue"],
   "chat.useAgentsMdFile": true,
-  "chat.useNestedAgentsMdFiles": false
+  "chat.useNestedAgentsMdFiles": false,
+  "java.compile.nullAnalysis.mode": "automatic"
 }

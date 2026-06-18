@@ -7,18 +7,69 @@
 
 ### NodeJS
 node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
 
 ### Logs
 *.log
 *.log.*.gz
+*.log.[0-9]*
+logs/
+log/
+hs_err_pid*
+replay_pid*
 
 ### Temporary files
 *.tmp
 *.bak
+*.swp
+*.swo
+*~
+tmp/
+temp/
+scratch/
+.cache/
+.eslintcache
+.stylelintcache
+.history/
+
+### OS local files
+.DS_Store
+Thumbs.db
+Desktop.ini
 
 ### SQLite databases
 *.sqlite
 *.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+### Test and coverage output
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+cypress/screenshots/
+cypress/videos/
+TEST-*.xml
+junit*.xml
+*.lcov
+lcov.info
+
+### Local environment overrides
+/.env.local
+/.env.*.local
+/komga-webui/.env.local
+/komga-webui/.env.*.local
+docker-compose.override.yml
+docker-compose.local.yml
+
+### Local AI/tool state
+.codex/
+.agents/
 
 ### STS
 .apt_generated
