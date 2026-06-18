@@ -352,6 +352,7 @@ java -version
 - 프론트 lint는 Node 18에서 통과했다.
 - 프론트 build는 아직 통과하지 않았다.
 - 프론트 개발 서버 http://localhost:8093/read-v2/0QQR3NVCQSPTC 앱 HTML HTTP 200을 확인했다.
+- 프론트 개발 서버는 브라우저처럼 Accept: text/html 헤더를 보낼 때 http://localhost:8093/read-v2/0QQR3NVCQSPTC HTTP 200을 확인했다. PowerShell 기본 Accept: */* 요청은 개발 서버 history fallback을 타지 않아 404로 보일 수 있다.
 - SV-200까지는 샘플 CBZ manifest와 page 0/page 1 API HTTP 200을 확인했다.
 - SV-201에서는 개발 계정 Basic Auth 재확인이 HTTP 401로 막혀 authenticated sample API는 미검증이다.
 - SV-202에서는 필터 번들 코드와 프론트 테스트를 확인했고, authenticated sample API는 재검증하지 않았다.
