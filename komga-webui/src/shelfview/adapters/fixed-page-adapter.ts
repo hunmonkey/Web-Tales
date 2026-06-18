@@ -77,8 +77,13 @@ export class FixedPageAdapter implements ReaderAdapter {
   }
 
   getCurrentPageUrl(): string | undefined {
+    return this.getPageUrl(this.currentPageIndex)
+  }
+
+  getPageUrl(pageIndex: number): string | undefined {
     if (!this.manifest || this.getPagesCount() < 1) return undefined
-    return this.resolvePageUrl(this.manifest, this.currentPageIndex)
+    if (!Number.isFinite(pageIndex) || pageIndex < 0 || pageIndex >= this.getPagesCount()) return undefined
+    return this.resolvePageUrl(this.manifest, Math.floor(pageIndex))
   }
 
   getCurrentPageIndex(): number {

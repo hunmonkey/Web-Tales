@@ -19,7 +19,7 @@ Work in order unless an ADR explicitly changes dependencies.
 ## M2 Fixed page reader
 
 - [x] SV-200 FixedPageAdapter
-- [ ] SV-201 Single/double/continuous/LTR/RTL/fit modes
+- [x] SV-201 Single/double/continuous/LTR/RTL/fit modes
 - [ ] SV-202 Content-only CSS filters and presets
 - [ ] SV-203 Keyboard, touch, focus and accessibility
 

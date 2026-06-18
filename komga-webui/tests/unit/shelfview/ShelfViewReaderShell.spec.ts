@@ -103,6 +103,76 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
   })
 
+  it('renders double page spreads and keeps the current location in the spread', async () => {
+    const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 4})
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-reader-page"]').wrappers.map(page => page.attributes('data-page-index'))).toEqual(['0', '1'])
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1-2 / 4')
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-reader-page"]').wrappers.map(page => page.attributes('data-page-index'))).toEqual(['2', '3'])
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3-4 / 4')
+    expect(wrapper.find('[data-testid="shelfview-reader-next"]').attributes('disabled')).toBe('disabled')
+  })
+
+  it('reverses double page image order in RTL mode', async () => {
+    const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 4})
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await wrapper.find('[data-testid="shelfview-reader-direction-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-reader-page"]').wrappers.map(page => page.attributes('data-page-index'))).toEqual(['1', '0'])
+  })
+
+  it('renders all pages in continuous scroll mode', async () => {
+    const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 3})
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-pages"]').classes()).toContain('shelfview-reader-shell__pages--continuous')
+    expect(wrapper.findAll('[data-testid="shelfview-reader-page"]').wrappers.map(page => page.attributes('data-page-index'))).toEqual(['0', '1', '2'])
+  })
+
+  it('cycles page fit classes', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-screen')
+
+    await wrapper.find('[data-testid="shelfview-reader-fit-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-width')
+  })
+
   it('shows an error state when the manifest cannot be opened', async () => {
     const getManifest = jest.fn().mockRejectedValue(new ShelfViewApiError('Unsupported book', 'BAD_REQUEST', 400))
     const wrapper = mountShell({getManifest})

@@ -31,6 +31,8 @@ describe('FixedPageAdapter', () => {
 
     expect(adapter.getCurrentPageIndex()).toBe(0)
     expect(adapter.getCurrentPageUrl()).toBe('page-0')
+    expect(adapter.getPageUrl(2)).toBe('page-2')
+    expect(adapter.getPageUrl(3)).toBeUndefined()
     expect(adapter.getCurrentLocator()).toEqual({
       schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
       kind: 'PAGE',

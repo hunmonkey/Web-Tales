@@ -24,6 +24,49 @@
         class="shelfview-reader-shell__page-controls"
         data-testid="shelfview-reader-page-controls"
       >
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
+              data-testid="shelfview-reader-layout-toggle"
+              v-on="on"
+              @click="cycleReaderLayout"
+            >
+              <v-icon>{{ readerLayoutIcon }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ readerLayoutLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
+              :disabled="!rtlAvailable"
+              data-testid="shelfview-reader-direction-toggle"
+              v-on="on"
+              @click="toggleReadingDirection"
+            >
+              <v-icon>{{ readingDirectionIcon }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ readingDirectionLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
+              data-testid="shelfview-reader-fit-toggle"
+              v-on="on"
+              @click="cyclePageFit"
+            >
+              <v-icon>{{ pageFitIcon }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ pageFitLabel }}</span>
+        </v-tooltip>
+
         <v-btn
           icon
           :disabled="!canGoPrevious"
@@ -38,7 +81,7 @@
           class="shelfview-reader-shell__page-counter"
           data-testid="shelfview-reader-page-counter"
         >
-          {{ currentPageNumber }} / {{ pagesCount }}
+          {{ currentPageLabel }} / {{ pagesCount }}
         </span>
 
         <v-btn
@@ -66,7 +109,10 @@
       </v-tooltip>
     </v-toolbar>
 
-    <main class="shelfview-reader-shell__stage">
+    <main
+      class="shelfview-reader-shell__stage"
+      :class="stageClasses"
+    >
       <v-progress-circular
         v-if="loading"
         indeterminate
@@ -110,14 +156,24 @@
         <p>{{ emptyMessage }}</p>
       </section>
 
-      <img
-        v-else-if="currentPageUrl"
-        class="shelfview-reader-shell__page"
-        :src="currentPageUrl"
-        :alt="`${bookTitle} - page ${currentPageNumber}`"
-        data-testid="shelfview-reader-page"
-        @error="pageImageFailed = true"
-      />
+      <div
+        v-else-if="readerPagesVisible"
+        class="shelfview-reader-shell__pages"
+        :class="readerPagesClasses"
+        data-testid="shelfview-reader-pages"
+      >
+        <img
+          v-for="page in visiblePageSources"
+          :key="`page-${page.pageIndex}`"
+          class="shelfview-reader-shell__page"
+          :class="pageImageClass"
+          :src="page.url"
+          :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
+          :data-page-index="page.pageIndex"
+          data-testid="shelfview-reader-page"
+          @error="pageImageFailed = true"
+        />
+      </div>
     </main>
   </v-container>
 </template>
@@ -134,6 +190,23 @@ import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
 import {FixedPageAdapter} from '@/shelfview/adapters/fixed-page-adapter'
 import {ShelfViewPageLocator} from '@/shelfview/models/shelfview-locator'
+import {
+  SHELFVIEW_FIXED_PAGE_FITS,
+  SHELFVIEW_FIXED_PAGE_LAYOUTS,
+  ShelfViewFixedPageFit,
+  ShelfViewFixedPageLayout,
+  ShelfViewFixedPageReadingDirection,
+  shelfViewCanGoNext,
+  shelfViewCanGoPrevious,
+  shelfViewNextPageIndex,
+  shelfViewPreviousPageIndex,
+  shelfViewVisiblePageIndexes,
+} from '@/shelfview/functions/fixed-page-view'
+
+interface ShelfViewPageSource {
+  pageIndex: number,
+  url: string,
+}
 
 export default Vue.extend({
   name: 'ShelfViewReaderShell',
@@ -149,11 +222,13 @@ export default Vue.extend({
     manifest: undefined as unknown as ShelfViewManifest,
     adapter: undefined as FixedPageAdapter | undefined,
     currentLocator: undefined as ShelfViewPageLocator | undefined,
-    currentPageUrl: undefined as string | undefined,
     context: {} as Context,
     error: undefined as Error | ShelfViewApiError | undefined,
     loading: true,
     pageImageFailed: false,
+    readerLayout: 'SINGLE_PAGE' as ShelfViewFixedPageLayout,
+    readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
+    pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     setupRequestId: 0,
   }),
   async mounted() {
@@ -179,20 +254,127 @@ export default Vue.extend({
     pageControlsVisible(): boolean {
       return !!this.adapter && !this.hasDisplayError && !this.empty && this.pagesCount > 0
     },
+    availableReaderLayouts(): ShelfViewFixedPageLayout[] {
+      const layouts: ShelfViewFixedPageLayout[] = ['SINGLE_PAGE']
+      if (this.manifest?.capabilities.doublePage) layouts.push('DOUBLE_PAGE')
+      if (this.manifest?.capabilities.continuousScroll) layouts.push('CONTINUOUS_SCROLL')
+      return layouts
+    },
     pagesCount(): number {
       return this.adapter?.getPagesCount() || this.manifest?.pageCount || 0
     },
+    currentPageIndex(): number {
+      return this.currentLocator?.page || 0
+    },
     currentPageNumber(): number {
-      return this.currentLocator ? this.currentLocator.page + 1 : 1
+      return this.currentPageIndex + 1
+    },
+    currentPageLabel(): string {
+      const visiblePages = this.visiblePageSources.map(page => page.pageIndex + 1)
+      if (visiblePages.length > 1 && this.readerLayout === 'DOUBLE_PAGE') {
+        return `${Math.min(...visiblePages)}-${Math.max(...visiblePages)}`
+      }
+      return this.currentPageNumber.toString()
     },
     canGoPrevious(): boolean {
-      return this.adapter?.canGoPrevious() || false
+      return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout)
     },
     canGoNext(): boolean {
-      return this.adapter?.canGoNext() || false
+      return !!this.adapter && shelfViewCanGoNext(this.currentPageIndex, this.pagesCount, this.readerLayout)
+    },
+    rtlAvailable(): boolean {
+      return !!this.manifest?.capabilities.rtl
+    },
+    visiblePageSources(): ShelfViewPageSource[] {
+      if (!this.adapter) return []
+
+      return shelfViewVisiblePageIndexes(
+        this.currentPageIndex,
+        this.pagesCount,
+        this.readerLayout,
+        this.readingDirection,
+      )
+        .map(pageIndex => ({
+          pageIndex,
+          url: this.adapter?.getPageUrl(pageIndex),
+        }))
+        .filter((page): page is ShelfViewPageSource => !!page.url)
+    },
+    readerPagesVisible(): boolean {
+      return this.visiblePageSources.length > 0
+    },
+    stageClasses(): object {
+      return {
+        'shelfview-reader-shell__stage--continuous': this.readerLayout === 'CONTINUOUS_SCROLL',
+      }
+    },
+    readerPagesClasses(): object {
+      return {
+        'shelfview-reader-shell__pages--single': this.readerLayout === 'SINGLE_PAGE',
+        'shelfview-reader-shell__pages--double': this.readerLayout === 'DOUBLE_PAGE',
+        'shelfview-reader-shell__pages--continuous': this.readerLayout === 'CONTINUOUS_SCROLL',
+      }
+    },
+    pageImageClass(): object {
+      return {
+        'shelfview-reader-shell__page--fit-screen': this.pageFit === 'SCREEN',
+        'shelfview-reader-shell__page--fit-width': this.pageFit === 'WIDTH',
+        'shelfview-reader-shell__page--fit-height': this.pageFit === 'HEIGHT',
+        'shelfview-reader-shell__page--fit-original': this.pageFit === 'ORIGINAL',
+      }
+    },
+    readerLayoutIcon(): string {
+      switch (this.readerLayout) {
+        case 'DOUBLE_PAGE':
+          return 'mdi-book-open-variant'
+        case 'CONTINUOUS_SCROLL':
+          return 'mdi-view-sequential'
+        default:
+          return 'mdi-page-layout-body'
+      }
+    },
+    readerLayoutLabel(): string {
+      switch (this.readerLayout) {
+        case 'DOUBLE_PAGE':
+          return 'Double page'
+        case 'CONTINUOUS_SCROLL':
+          return 'Continuous scroll'
+        default:
+          return 'Single page'
+      }
+    },
+    readingDirectionIcon(): string {
+      return this.readingDirection === 'RTL' ? 'mdi-format-textdirection-r-to-l' : 'mdi-format-textdirection-l-to-r'
+    },
+    readingDirectionLabel(): string {
+      return this.readingDirection === 'RTL' ? 'Right to left' : 'Left to right'
+    },
+    pageFitIcon(): string {
+      switch (this.pageFit) {
+        case 'WIDTH':
+          return 'mdi-arrow-expand-horizontal'
+        case 'HEIGHT':
+          return 'mdi-arrow-expand-vertical'
+        case 'ORIGINAL':
+          return 'mdi-image-size-select-large'
+        default:
+          return 'mdi-fit-to-screen-outline'
+      }
+    },
+    pageFitLabel(): string {
+      switch (this.pageFit) {
+        case 'WIDTH':
+          return 'Fit width'
+        case 'HEIGHT':
+          return 'Fit height'
+        case 'ORIGINAL':
+          return 'Original size'
+        default:
+          return 'Fit screen'
+      }
     },
     empty(): boolean {
-      return !!this.manifest && !this.currentPageUrl
+      return !!this.manifest && !this.readerPagesVisible
     },
     emptyMessage(): string {
       if (this.manifest?.kind && this.manifest.kind !== 'FIXED_PAGE_SEQUENCE') {
@@ -269,37 +451,62 @@ export default Vue.extend({
       const adapter = new FixedPageAdapter()
       await adapter.open(manifest)
       this.adapter = adapter
+      this.normalizeReaderLayout()
       this.syncAdapterState()
     },
     destroyAdapter() {
       this.adapter?.destroy()
       this.adapter = undefined
       this.currentLocator = undefined
-      this.currentPageUrl = undefined
     },
     syncAdapterState() {
       if (!this.adapter) {
         this.currentLocator = undefined
-        this.currentPageUrl = undefined
         return
       }
 
       this.currentLocator = this.adapter.getCurrentLocator()
-      this.currentPageUrl = this.adapter.getCurrentPageUrl()
     },
     async previousPage() {
       if (!this.adapter) return
 
-      this.pageImageFailed = false
-      await this.adapter.previous()
-      this.syncAdapterState()
+      await this.goToPageIndex(shelfViewPreviousPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout))
     },
     async nextPage() {
       if (!this.adapter) return
 
+      await this.goToPageIndex(shelfViewNextPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout))
+    },
+    async goToPageIndex(pageIndex: number) {
+      if (!this.adapter) return
+
       this.pageImageFailed = false
-      await this.adapter.next()
+      await this.adapter.goTo({
+        ...this.adapter.getCurrentLocator(),
+        page: pageIndex,
+      })
       this.syncAdapterState()
+    },
+    normalizeReaderLayout() {
+      if (!this.availableReaderLayouts.includes(this.readerLayout)) {
+        this.readerLayout = 'SINGLE_PAGE'
+      }
+    },
+    cycleReaderLayout() {
+      const layouts = this.availableReaderLayouts.length > 0 ? this.availableReaderLayouts : SHELFVIEW_FIXED_PAGE_LAYOUTS
+      const currentIndex = layouts.indexOf(this.readerLayout)
+      this.readerLayout = layouts[(currentIndex + 1) % layouts.length]
+      this.syncAdapterState()
+    },
+    toggleReadingDirection() {
+      if (!this.rtlAvailable) return
+
+      this.readingDirection = this.readingDirection === 'RTL' ? 'LTR' : 'RTL'
+      this.syncAdapterState()
+    },
+    cyclePageFit() {
+      const currentIndex = SHELFVIEW_FIXED_PAGE_FITS.indexOf(this.pageFit)
+      this.pageFit = SHELFVIEW_FIXED_PAGE_FITS[(currentIndex + 1) % SHELFVIEW_FIXED_PAGE_FITS.length]
     },
     closeBook() {
       if (this.book) {
@@ -355,14 +562,80 @@ export default Vue.extend({
   display: flex;
   height: 100%;
   justify-content: center;
+  overflow: hidden;
   padding: 56px 16px 16px;
   width: 100%;
 }
 
+.shelfview-reader-shell__stage--continuous {
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+.shelfview-reader-shell__pages {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+
+.shelfview-reader-shell__pages--continuous {
+  flex-direction: column;
+  height: auto;
+  justify-content: flex-start;
+  min-height: 100%;
+}
+
 .shelfview-reader-shell__page {
+  display: block;
+  object-fit: contain;
+}
+
+.shelfview-reader-shell__page--fit-screen {
   max-height: calc(100vh - 72px);
   max-width: 100%;
-  object-fit: contain;
+}
+
+.shelfview-reader-shell__page--fit-width {
+  height: auto;
+  max-width: 100%;
+  width: 100%;
+}
+
+.shelfview-reader-shell__page--fit-height {
+  height: calc(100vh - 72px);
+  max-width: 100%;
+  width: auto;
+}
+
+.shelfview-reader-shell__page--fit-original {
+  height: auto;
+  max-height: none;
+  max-width: none;
+  width: auto;
+}
+
+.shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-screen {
+  max-width: calc(50vw - 24px);
+}
+
+.shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-width {
+  width: calc(50vw - 24px);
+}
+
+.shelfview-reader-shell__pages--continuous .shelfview-reader-shell__page {
+  margin-bottom: 12px;
+}
+
+.shelfview-reader-shell__pages--continuous .shelfview-reader-shell__page--fit-screen,
+.shelfview-reader-shell__pages--continuous .shelfview-reader-shell__page--fit-width {
+  height: auto;
+  max-height: none;
+  max-width: min(100%, 1200px);
+  width: 100%;
 }
 
 .shelfview-reader-shell__status {
@@ -400,6 +673,10 @@ export default Vue.extend({
   .shelfview-reader-shell__page-counter {
     font-size: 13px;
     min-width: 44px;
+  }
+
+  .shelfview-reader-shell__page-controls {
+    gap: 0;
   }
 }
 </style>
