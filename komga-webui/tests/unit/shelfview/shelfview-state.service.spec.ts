@@ -15,15 +15,15 @@ describe('ShelfViewStateService', () => {
   it('fetches and saves reader position', async () => {
     const get = jest.fn().mockResolvedValue({
       status: 200,
-      data: {bookId: 'book-1', locator, progression: 0.5, contentFingerprint: locator.contentFingerprint, updatedAt: '2026-06-18T00:00:00Z'},
+      data: {locator, progression: 0.5, contentFingerprint: locator.contentFingerprint, updatedAt: '2026-06-18T00:00:00Z'},
     })
     const put = jest.fn().mockResolvedValue({
-      data: {bookId: 'book-1', locator, progression: 0.5, contentFingerprint: locator.contentFingerprint, updatedAt: '2026-06-18T00:00:00Z'},
+      data: {locator, progression: 0.5, contentFingerprint: locator.contentFingerprint, updatedAt: '2026-06-18T00:00:00Z'},
     })
     const service = new ShelfViewStateService({get, put} as unknown as AxiosInstance)
 
-    await expect(service.getPosition('book-1')).resolves.toMatchObject({bookId: 'book-1', locator})
-    await expect(service.savePosition('book-1', {locator, progression: 0.5})).resolves.toMatchObject({bookId: 'book-1', locator})
+    await expect(service.getPosition('book-1')).resolves.toMatchObject({locator})
+    await expect(service.savePosition('book-1', {locator, progression: 0.5})).resolves.toMatchObject({locator})
 
     expect(get).toHaveBeenCalledWith('/api/shelfview/v1/books/book-1/position')
     expect(put).toHaveBeenCalledWith('/api/shelfview/v1/books/book-1/position', {locator, progression: 0.5})

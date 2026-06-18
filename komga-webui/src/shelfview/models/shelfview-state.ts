@@ -12,7 +12,6 @@ export type ShelfViewPreferenceFormat =
   | 'FIXED_PAGE_SEQUENCE'
 
 export interface ShelfViewPositionDto {
-  bookId: string,
   locator: ShelfViewLocator,
   progression: number,
   contentFingerprint: string,
