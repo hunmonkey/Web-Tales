@@ -364,6 +364,8 @@ java -version
 - SV-303 커밋 이후 백엔드 25600을 재시작했고, 개발 사용자 인증으로 GET /api/shelfview/v1/preferences?scopeType=GLOBAL&scopeId=GLOBAL&format=FIXED_PAGE_SEQUENCE HTTP 200과 기본 effective settings를 확인했다.
 - SV-304에서는 프론트에서 읽던 위치/책갈피/설정을 불러오고, 위치와 설정을 debounce 저장하며, 탭 종료/pagehide/숨김 전환 때 남은 저장을 flush하게 했다.
 - SV-304 관련 프론트 단위 테스트 9개 파일, 총 57개 테스트와 npm.cmd run lint를 통과했다.
+- SV-304 커밋 이후 프론트 8093과 백엔드 25600 포트 listen을 확인했고, http://localhost:8093/read-v2/0QQR3NVCQSPTC는 Accept: text/html 요청에서 HTTP 200, http://localhost:25600/actuator/health는 HTTP 200을 반환했다.
+- 프론트 개발 번들에는 shelfview-reader-bookmarks-toggle, $shelfViewState, shelfview-state, position, bookmarks, preferences 문자열이 포함됨을 확인했다.
 - 다음 작업은 SV-400 Scanner/domain design spike and ADR이다.
 - 로그인된 브라우저 화면 스크린샷 기반 E2E는 아직 자동화하지 않았다.
 - 전체 목표는 아직 완료되지 않았다.
