@@ -92,6 +92,36 @@
           <template v-slot:activator="{ on }">
             <v-btn
               icon
+              aria-label="Bookmarks"
+              data-testid="shelfview-reader-bookmarks-toggle"
+              v-on="on"
+              @click="bookmarksDrawerOpen = true"
+            >
+              <v-icon>mdi-bookmark-multiple-outline</v-icon>
+            </v-btn>
+          </template>
+          <span>Bookmarks</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
+              aria-label="Add bookmark"
+              data-testid="shelfview-reader-bookmark-add"
+              v-on="on"
+              @click="addBookmarkForCurrentPage"
+            >
+              <v-icon>mdi-bookmark-plus-outline</v-icon>
+            </v-btn>
+          </template>
+          <span>Add bookmark</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
               aria-label="Show keyboard shortcuts"
               data-testid="shelfview-reader-shortcuts-toggle"
               v-on="on"
@@ -130,6 +160,15 @@
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
       </div>
+
+      <span
+        v-if="readerStateNoticeVisible"
+        class="shelfview-reader-shell__sync-status"
+        :class="readerStateNoticeClass"
+        data-testid="shelfview-reader-sync-status"
+      >
+        {{ readerStateMessage }}
+      </span>
 
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
@@ -171,6 +210,7 @@
       aria-describedby="shelfview-reader-shortcut-hint"
       data-testid="shelfview-reader-stage"
       @keydown="onReaderKeydown"
+      @scroll="onReaderStageScroll"
       @touchstart="onReaderTouchStart"
       @touchend="onReaderTouchEnd"
     >
@@ -238,6 +278,74 @@
       </div>
     </main>
 
+    <aside
+      v-if="bookmarksDrawerOpen"
+      class="shelfview-reader-shell__bookmarks-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shelfview-bookmarks-title"
+      data-testid="shelfview-bookmarks-drawer"
+    >
+      <header class="shelfview-reader-shell__bookmarks-header">
+        <h2 id="shelfview-bookmarks-title">Bookmarks</h2>
+        <v-btn
+          icon
+          aria-label="Close bookmarks"
+          data-testid="shelfview-bookmarks-close"
+          @click="closeBookmarksDrawer"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </header>
+
+      <v-btn
+        block
+        color="primary"
+        data-testid="shelfview-bookmarks-add"
+        @click="addBookmarkForCurrentPage"
+      >
+        <v-icon left>mdi-bookmark-plus-outline</v-icon>
+        Save page
+      </v-btn>
+
+      <p
+        v-if="bookmarks.length === 0"
+        class="shelfview-reader-shell__bookmarks-empty"
+        data-testid="shelfview-bookmarks-empty"
+      >
+        No bookmarks
+      </p>
+
+      <ul
+        v-else
+        class="shelfview-reader-shell__bookmarks-list"
+      >
+        <li
+          v-for="bookmark in bookmarks"
+          :key="bookmark.id"
+          class="shelfview-reader-shell__bookmark-row"
+        >
+          <button
+            type="button"
+            class="shelfview-reader-shell__bookmark-link"
+            data-testid="shelfview-bookmark-go"
+            @click="goToBookmark(bookmark)"
+          >
+            {{ bookmarkLabel(bookmark) }}
+          </button>
+          <v-btn
+            icon
+            small
+            aria-label="Delete bookmark"
+            data-testid="shelfview-bookmark-delete"
+            @click="deleteBookmark(bookmark)"
+          >
+            <v-icon small>mdi-delete-outline</v-icon>
+          </v-btn>
+        </li>
+      </ul>
+    </aside>
+
     <section
       v-if="showShortcutHelp"
       class="shelfview-reader-shell__shortcut-dialog"
@@ -279,6 +387,11 @@ import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
 import {FixedPageAdapter} from '@/shelfview/adapters/fixed-page-adapter'
 import {ShelfViewPageLocator} from '@/shelfview/models/shelfview-locator'
 import {
+  ShelfViewBookmarkDto,
+  ShelfViewFixedPagePreferenceSettings,
+  ShelfViewPositionDto,
+} from '@/shelfview/models/shelfview-state'
+import {
   SHELFVIEW_FIXED_PAGE_FITS,
   SHELFVIEW_FIXED_PAGE_LAYOUTS,
   ShelfViewFixedPageFit,
@@ -309,6 +422,18 @@ interface ShelfViewPageSource {
   url: string,
 }
 
+type ShelfViewReaderStateStatus =
+  | 'IDLE'
+  | 'PENDING'
+  | 'SAVING'
+  | 'SAVED'
+  | 'ERROR'
+  | 'OFFLINE'
+
+const SHELFVIEW_FIXED_PAGE_FORMAT = 'FIXED_PAGE_SEQUENCE'
+const POSITION_SAVE_DEBOUNCE_MS = 2000
+const PREFERENCE_SAVE_DEBOUNCE_MS = 600
+
 export default Vue.extend({
   name: 'ShelfViewReaderShell',
   props: {
@@ -332,18 +457,35 @@ export default Vue.extend({
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
     showShortcutHelp: false,
+    bookmarks: [] as ShelfViewBookmarkDto[],
+    bookmarksDrawerOpen: false,
+    readerStateStatus: 'IDLE' as ShelfViewReaderStateStatus,
+    readerStateMessage: '',
+    positionSaveTimer: undefined as number | undefined,
+    preferenceSaveTimer: undefined as number | undefined,
     touchStart: undefined as ShelfViewTouchPoint | undefined,
     setupRequestId: 0,
   }),
   async mounted() {
+    window.addEventListener('online', this.onReaderOnline)
+    window.addEventListener('offline', this.onReaderOffline)
+    window.addEventListener('pagehide', this.onPageHide)
+    document.addEventListener('visibilitychange', this.onVisibilityChange)
     await this.setup(this.bookId)
   },
   beforeDestroy() {
     this.setupRequestId += 1
+    void this.flushReaderState()
+    this.clearReaderStateTimers()
+    window.removeEventListener('online', this.onReaderOnline)
+    window.removeEventListener('offline', this.onReaderOffline)
+    window.removeEventListener('pagehide', this.onPageHide)
+    document.removeEventListener('visibilitychange', this.onVisibilityChange)
     this.destroyAdapter()
   },
   async beforeRouteUpdate(to, from, next) {
     if (to.params.bookId !== from.params.bookId) {
+      await this.flushReaderState()
       await this.setup(to.params.bookId)
     }
     next()
@@ -357,6 +499,15 @@ export default Vue.extend({
     },
     pageControlsVisible(): boolean {
       return !!this.adapter && !this.hasDisplayError && !this.empty && this.pagesCount > 0
+    },
+    readerStateNoticeVisible(): boolean {
+      return this.readerStateStatus !== 'IDLE' && this.readerStateMessage.length > 0
+    },
+    readerStateNoticeClass(): object {
+      return {
+        'shelfview-reader-shell__sync-status--error': this.readerStateStatus === 'ERROR' || this.readerStateStatus === 'OFFLINE',
+        'shelfview-reader-shell__sync-status--saved': this.readerStateStatus === 'SAVED',
+      }
     },
     availableReaderLayouts(): ShelfViewFixedPageLayout[] {
       const layouts: ShelfViewFixedPageLayout[] = ['SINGLE_PAGE']
@@ -543,6 +694,10 @@ export default Vue.extend({
       this.loading = true
       this.error = undefined
       this.manifest = undefined as unknown as ShelfViewManifest
+      this.bookmarks = []
+      this.bookmarksDrawerOpen = false
+      this.clearReaderStateTimers()
+      this.setReaderStateStatus('IDLE', '')
       this.destroyAdapter()
       this.pageImageFailed = false
 
@@ -567,7 +722,10 @@ export default Vue.extend({
         if (requestId !== this.setupRequestId) return
 
         if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE') {
-          await this.openFixedPageManifest(this.manifest)
+          const savedPosition = await this.loadShelfViewState(bookId)
+          if (requestId !== this.setupRequestId) return
+
+          await this.openFixedPageManifest(this.manifest, savedPosition)
         }
         if (requestId !== this.setupRequestId) return
 
@@ -578,13 +736,48 @@ export default Vue.extend({
         if (requestId === this.setupRequestId) this.loading = false
       }
     },
-    async openFixedPageManifest(manifest: ShelfViewManifest) {
+    async loadShelfViewState(bookId: string): Promise<ShelfViewPositionDto | undefined> {
+      try {
+        const [savedPosition, bookmarks, preference] = await Promise.all([
+          this.$shelfViewState.getPosition(bookId),
+          this.$shelfViewState.getBookmarks(bookId),
+          this.$shelfViewState.getPreference({
+            scopeType: 'BOOK',
+            scopeId: bookId,
+            format: SHELFVIEW_FIXED_PAGE_FORMAT,
+          }),
+        ])
+
+        this.bookmarks = bookmarks
+        this.applyPreferenceSettings(preference.effectiveSettings, false)
+        this.setReaderStateStatus('SAVED', 'Restored')
+
+        return savedPosition
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Reader state unavailable')
+        return undefined
+      }
+    },
+    async openFixedPageManifest(
+      manifest: ShelfViewManifest,
+      savedPosition?: ShelfViewPositionDto,
+    ) {
       const adapter = new FixedPageAdapter()
       await adapter.open(manifest)
       this.adapter = adapter
       this.normalizeReaderLayout()
+      await this.restoreSavedPosition(savedPosition)
       this.syncAdapterState()
       this.$nextTick(() => this.focusReaderStage())
+    },
+    async restoreSavedPosition(savedPosition?: ShelfViewPositionDto) {
+      if (!this.adapter || !savedPosition) return
+
+      try {
+        await this.adapter.goTo(savedPosition.locator)
+      } catch (e) {
+        this.setReaderStateStatus('ERROR', 'Saved page unavailable')
+      }
     },
     destroyAdapter() {
       this.adapter?.destroy()
@@ -618,6 +811,7 @@ export default Vue.extend({
         page: pageIndex,
       })
       this.syncAdapterState()
+      this.schedulePositionSave()
     },
     normalizeReaderLayout() {
       if (!this.availableReaderLayouts.includes(this.readerLayout)) {
@@ -629,21 +823,144 @@ export default Vue.extend({
       const currentIndex = layouts.indexOf(this.readerLayout)
       this.readerLayout = layouts[(currentIndex + 1) % layouts.length]
       this.syncAdapterState()
+      this.schedulePreferenceSave()
     },
     toggleReadingDirection() {
       if (!this.rtlAvailable) return
 
       this.readingDirection = this.readingDirection === 'RTL' ? 'LTR' : 'RTL'
       this.syncAdapterState()
+      this.schedulePreferenceSave()
     },
     cyclePageFit() {
       const currentIndex = SHELFVIEW_FIXED_PAGE_FITS.indexOf(this.pageFit)
       this.pageFit = SHELFVIEW_FIXED_PAGE_FITS[(currentIndex + 1) % SHELFVIEW_FIXED_PAGE_FITS.length]
+      this.schedulePreferenceSave()
     },
     cycleImageFilterPreset() {
       if (!this.imageFiltersAvailable) return
 
       this.imageFilterPreset = shelfViewNextImageFilterPreset(this.imageFilterPreset)
+      this.schedulePreferenceSave()
+    },
+    applyPreferenceSettings(
+      settings: ShelfViewFixedPagePreferenceSettings,
+      persist = false,
+    ) {
+      if (settings.layout && this.availableReaderLayouts.includes(settings.layout)) {
+        this.readerLayout = settings.layout
+      }
+      if (settings.readingDirection && (settings.readingDirection === 'LTR' || (settings.readingDirection === 'RTL' && this.rtlAvailable))) {
+        this.readingDirection = settings.readingDirection
+      }
+      if (settings.pageFit && SHELFVIEW_FIXED_PAGE_FITS.includes(settings.pageFit)) {
+        this.pageFit = settings.pageFit
+      }
+      if (settings.imageFilterPreset && this.imageFiltersAvailable) {
+        this.imageFilterPreset = settings.imageFilterPreset
+      }
+      if (!this.imageFiltersAvailable) this.imageFilterPreset = 'ORIGINAL'
+
+      this.normalizeReaderLayout()
+      if (persist) this.schedulePreferenceSave()
+    },
+    currentPreferenceSettings(): ShelfViewFixedPagePreferenceSettings {
+      return {
+        layout: this.readerLayout,
+        readingDirection: this.readingDirection,
+        pageFit: this.pageFit,
+        imageFilterPreset: this.imageFilterPreset,
+      }
+    },
+    schedulePositionSave() {
+      if (!this.adapter || !this.currentLocator) return
+
+      if (this.positionSaveTimer !== undefined) window.clearTimeout(this.positionSaveTimer)
+      this.setReaderStateStatus('PENDING', 'Saving')
+      this.positionSaveTimer = window.setTimeout(() => {
+        void this.flushPositionSave()
+      }, POSITION_SAVE_DEBOUNCE_MS)
+    },
+    schedulePreferenceSave() {
+      if (!this.bookId || !this.manifest || this.manifest.kind !== 'FIXED_PAGE_SEQUENCE') return
+
+      if (this.preferenceSaveTimer !== undefined) window.clearTimeout(this.preferenceSaveTimer)
+      this.setReaderStateStatus('PENDING', 'Saving')
+      this.preferenceSaveTimer = window.setTimeout(() => {
+        void this.flushPreferenceSave()
+      }, PREFERENCE_SAVE_DEBOUNCE_MS)
+    },
+    async flushReaderState() {
+      await Promise.all([
+        this.flushPositionSave(),
+        this.flushPreferenceSave(),
+      ])
+    },
+    async flushPositionSave() {
+      if (this.positionSaveTimer !== undefined) {
+        window.clearTimeout(this.positionSaveTimer)
+        this.positionSaveTimer = undefined
+      }
+      if (!this.adapter || !this.currentLocator) return
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', 'Offline')
+        return
+      }
+
+      try {
+        this.setReaderStateStatus('SAVING', 'Saving')
+        await this.$shelfViewState.savePosition(this.bookId, {
+          locator: this.currentLocator,
+          progression: this.adapter.getProgression(),
+        })
+        this.setReaderStateStatus('SAVED', 'Saved')
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Save failed')
+      }
+    },
+    async flushPreferenceSave() {
+      if (this.preferenceSaveTimer !== undefined) {
+        window.clearTimeout(this.preferenceSaveTimer)
+        this.preferenceSaveTimer = undefined
+      }
+      if (!this.bookId || !this.manifest || this.manifest.kind !== 'FIXED_PAGE_SEQUENCE') return
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', 'Offline')
+        return
+      }
+
+      try {
+        this.setReaderStateStatus('SAVING', 'Saving')
+        await this.$shelfViewState.savePreference({
+          scopeType: 'BOOK',
+          scopeId: this.bookId,
+          format: SHELFVIEW_FIXED_PAGE_FORMAT,
+          settings: this.currentPreferenceSettings(),
+        })
+        this.setReaderStateStatus('SAVED', 'Saved')
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Save failed')
+      }
+    },
+    clearReaderStateTimers() {
+      if (this.positionSaveTimer !== undefined) {
+        window.clearTimeout(this.positionSaveTimer)
+        this.positionSaveTimer = undefined
+      }
+      if (this.preferenceSaveTimer !== undefined) {
+        window.clearTimeout(this.preferenceSaveTimer)
+        this.preferenceSaveTimer = undefined
+      }
+    },
+    setReaderStateStatus(
+      status: ShelfViewReaderStateStatus,
+      message: string,
+    ) {
+      this.readerStateStatus = status
+      this.readerStateMessage = message
+    },
+    browserOffline(): boolean {
+      return typeof navigator !== 'undefined' && navigator.onLine === false
     },
     focusReaderStage() {
       const readerStage = this.$refs.readerStage as HTMLElement | undefined
@@ -652,6 +969,77 @@ export default Vue.extend({
     closeShortcutHelp() {
       this.showShortcutHelp = false
       this.$nextTick(() => this.focusReaderStage())
+    },
+    closeBookmarksDrawer() {
+      this.bookmarksDrawerOpen = false
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    async addBookmarkForCurrentPage() {
+      if (!this.currentLocator) return
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', 'Offline')
+        return
+      }
+
+      try {
+        const bookmark = await this.$shelfViewState.createBookmark(this.bookId, {
+          locator: this.currentLocator,
+          label: `Page ${this.currentPageNumber}`,
+        })
+        this.bookmarks = [
+          ...this.bookmarks.filter(existing => existing.id !== bookmark.id),
+          bookmark,
+        ]
+        this.setReaderStateStatus('SAVED', 'Bookmark saved')
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Bookmark failed')
+      }
+    },
+    async goToBookmark(bookmark: ShelfViewBookmarkDto) {
+      if (!this.adapter) return
+
+      try {
+        await this.adapter.goTo(bookmark.locator)
+        this.syncAdapterState()
+        this.schedulePositionSave()
+        this.closeBookmarksDrawer()
+      } catch (e) {
+        this.setReaderStateStatus('ERROR', 'Bookmark unavailable')
+      }
+    },
+    async deleteBookmark(bookmark: ShelfViewBookmarkDto) {
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', 'Offline')
+        return
+      }
+
+      try {
+        await this.$shelfViewState.deleteBookmark(bookmark.id)
+        this.bookmarks = this.bookmarks.filter(existing => existing.id !== bookmark.id)
+        this.setReaderStateStatus('SAVED', 'Bookmark deleted')
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Bookmark failed')
+      }
+    },
+    bookmarkLabel(bookmark: ShelfViewBookmarkDto): string {
+      if (bookmark.label) return bookmark.label
+      if (bookmark.locator.kind === 'PAGE') return `Page ${bookmark.locator.page + 1}`
+      return 'Bookmark'
+    },
+    onReaderOnline() {
+      if (this.readerStateStatus === 'OFFLINE') {
+        this.setReaderStateStatus('PENDING', 'Saving')
+        void this.flushReaderState()
+      }
+    },
+    onReaderOffline() {
+      this.setReaderStateStatus('OFFLINE', 'Offline')
+    },
+    onVisibilityChange() {
+      if (document.visibilityState === 'hidden') void this.flushReaderState()
+    },
+    onPageHide() {
+      void this.flushReaderState()
     },
     async onReaderKeydown(e: KeyboardEvent) {
       if (e.ctrlKey || e.altKey || e.metaKey) return
@@ -688,6 +1076,43 @@ export default Vue.extend({
       if (e.cancelable) e.preventDefault()
       await this.runReaderInputAction(action)
     },
+    onReaderStageScroll() {
+      if (this.readerLayout !== 'CONTINUOUS_SCROLL' || !this.adapter) return
+
+      const pageIndex = this.nearestContinuousPageIndex()
+      if (pageIndex === undefined || pageIndex === this.currentPageIndex) return
+
+      void this.adapter.goTo({
+        ...this.adapter.getCurrentLocator(),
+        page: pageIndex,
+      })
+      this.syncAdapterState()
+      this.schedulePositionSave()
+    },
+    nearestContinuousPageIndex(): number | undefined {
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return undefined
+
+      const pages = Array.from(readerStage.querySelectorAll<HTMLElement>('[data-page-index]'))
+      if (pages.length === 0) return undefined
+
+      const stageTop = readerStage.getBoundingClientRect().top
+      let closestPageIndex: number | undefined
+      let closestDistance = Number.POSITIVE_INFINITY
+
+      pages.forEach(page => {
+        const pageIndex = Number(page.dataset.pageIndex)
+        if (!Number.isFinite(pageIndex)) return
+
+        const distance = Math.abs(page.getBoundingClientRect().top - stageTop)
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestPageIndex = pageIndex
+        }
+      })
+
+      return closestPageIndex
+    },
     async runReaderInputAction(action: ShelfViewReaderInputAction) {
       switch (action) {
         case 'NEXT':
@@ -707,7 +1132,9 @@ export default Vue.extend({
           break
       }
     },
-    closeBook() {
+    async closeBook() {
+      await this.flushReaderState()
+
       if (this.book) {
         this.$router.push({
           name: this.book.oneshot ? 'browse-oneshot' : 'browse-book',
@@ -754,6 +1181,30 @@ export default Vue.extend({
   font-size: 14px;
   min-width: 56px;
   text-align: center;
+}
+
+.shelfview-reader-shell__sync-status {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 6px;
+  color: #f5f5f5;
+  font-size: 12px;
+  line-height: 1;
+  margin-left: 8px;
+  max-width: 120px;
+  overflow: hidden;
+  padding: 5px 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelfview-reader-shell__sync-status--error {
+  border-color: #ef9a9a;
+  color: #ffcdd2;
+}
+
+.shelfview-reader-shell__sync-status--saved {
+  border-color: #a5d6a7;
+  color: #c8e6c9;
 }
 
 .shelfview-reader-shell__stage {
@@ -874,6 +1325,69 @@ export default Vue.extend({
   margin: 0;
 }
 
+.shelfview-reader-shell__bookmarks-drawer {
+  background: #202020;
+  bottom: 0;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.36);
+  color: #f5f5f5;
+  max-width: min(360px, 92vw);
+  overflow-y: auto;
+  padding: 16px;
+  position: fixed;
+  right: 0;
+  top: 48px;
+  width: 360px;
+  z-index: 3;
+}
+
+.shelfview-reader-shell__bookmarks-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.shelfview-reader-shell__bookmarks-header h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.shelfview-reader-shell__bookmarks-empty {
+  color: #d0d0d0;
+  font-size: 14px;
+  margin: 18px 0 0;
+}
+
+.shelfview-reader-shell__bookmarks-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.shelfview-reader-shell__bookmark-row {
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.shelfview-reader-shell__bookmark-link {
+  background: transparent;
+  border: 0;
+  color: #f5f5f5;
+  cursor: pointer;
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  overflow: hidden;
+  padding: 10px 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .shelfview-reader-shell__shortcut-dialog {
   align-items: center;
   background: rgba(0, 0, 0, 0.72);
@@ -947,6 +1461,11 @@ export default Vue.extend({
 
   .shelfview-reader-shell__page-controls {
     gap: 0;
+  }
+
+  .shelfview-reader-shell__sync-status {
+    max-width: 72px;
+    padding: 5px;
   }
 }
 </style>

@@ -1,10 +1,11 @@
-import {shallowMount} from '@vue/test-utils'
+import {shallowMount, Wrapper} from '@vue/test-utils'
 import Vue from 'vue'
 import ShelfViewReaderShell from '@/shelfview/views/ShelfViewReaderShell.vue'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
 import {BookDto} from '@/types/komga-books'
 import {SeriesDto} from '@/types/komga-series'
+import {SHELFVIEW_LOCATOR_SCHEMA_VERSION, ShelfViewPageLocator} from '@/shelfview/models/shelfview-locator'
 
 jest.mock('@/functions/urls', () => ({
   __esModule: true,
@@ -61,9 +62,23 @@ const manifest: ShelfViewManifest = {
   },
 }
 
+const pageLocator = (page: number): ShelfViewPageLocator => ({
+  schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+  kind: 'PAGE',
+  page,
+  offset: 0,
+  contentFingerprint: manifest.contentFingerprint,
+})
+
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0))
+const mountedWrappers: Wrapper<Vue>[] = []
 
 describe('ShelfViewReaderShell', () => {
+  afterEach(() => {
+    mountedWrappers.splice(0).forEach(wrapper => wrapper.destroy())
+    jest.useRealTimers()
+  })
+
   it('loads the manifest and renders the first fixed page', async () => {
     const getManifest = jest.fn().mockResolvedValue(manifest)
     const wrapper = mountShell({getManifest})
@@ -82,6 +97,51 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('role')).toBe('application')
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('page 1 of 2')
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Page 1 of 2')
+  })
+
+  it('restores saved position, bookmarks and effective settings', async () => {
+    const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 4})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getPosition: jest.fn().mockResolvedValue({
+          bookId: 'book-1',
+          locator: pageLocator(1),
+          progression: 0.5,
+          contentFingerprint: manifest.contentFingerprint,
+          updatedAt: '2026-06-18T00:00:00Z',
+        }),
+        getBookmarks: jest.fn().mockResolvedValue([
+          {id: 'bookmark-1', bookId: 'book-1', locator: pageLocator(1), label: 'Saved page', createdAt: 'now', updatedAt: 'now'},
+        ]),
+        getPreference: jest.fn().mockResolvedValue({
+          scopeType: 'BOOK',
+          scopeId: 'book-1',
+          format: 'FIXED_PAGE_SEQUENCE',
+          effectiveSettings: {
+            layout: 'DOUBLE_PAGE',
+            readingDirection: 'RTL',
+            pageFit: 'WIDTH',
+            imageFilterPreset: 'MONO_COMIC',
+          },
+          sources: [],
+        }),
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-reader-page"]').wrappers.map(page => page.attributes('data-page-index'))).toEqual(['1', '0'])
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1-2 / 4')
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-width')
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-grayscale: 1;')
+
+    await wrapper.find('[data-testid="shelfview-reader-bookmarks-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-bookmarks-drawer"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-bookmark-go"]').text()).toBe('Saved page')
   })
 
   it('moves between fixed pages with adapter controls', async () => {
@@ -208,6 +268,34 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 2')
   })
 
+  it('debounces position saving and flushes pending saves', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const savePosition = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {savePosition},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(savePosition).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('Saving')
+
+    await (wrapper.vm as any).flushPositionSave()
+    await Vue.nextTick()
+
+    expect(savePosition).toHaveBeenCalledTimes(1)
+    expect(savePosition).toHaveBeenCalledWith('book-1', {
+      locator: pageLocator(1),
+      progression: 1,
+    })
+    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('Saved')
+  })
+
   it('renders double page spreads and keeps the current location in the spread', async () => {
     const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 4})
     const wrapper = mountShell({getManifest})
@@ -300,6 +388,57 @@ describe('ShelfViewReaderShell', () => {
     expect(filteredPage.attributes('style')).toContain('--sv-sepia: 0.16;')
   })
 
+  it('creates, opens and deletes bookmarks from the drawer', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const createBookmark = jest.fn().mockResolvedValue({
+      id: 'bookmark-new',
+      bookId: 'book-1',
+      locator: pageLocator(0),
+      label: 'Page 1',
+      createdAt: 'now',
+      updatedAt: 'now',
+    })
+    const deleteBookmark = jest.fn().mockResolvedValue(undefined)
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getBookmarks: jest.fn().mockResolvedValue([
+          {id: 'bookmark-2', bookId: 'book-1', locator: pageLocator(1), label: 'Second page', createdAt: 'now', updatedAt: 'now'},
+        ]),
+        createBookmark,
+        deleteBookmark,
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-bookmarks-toggle"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-bookmark-go"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 2')
+
+    await wrapper.find('[data-testid="shelfview-reader-bookmarks-toggle"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-bookmarks-add"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(createBookmark).toHaveBeenCalledWith('book-1', {
+      locator: pageLocator(1),
+      label: 'Page 2',
+    })
+
+    await wrapper.find('[data-testid="shelfview-bookmark-delete"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(deleteBookmark).toHaveBeenCalledWith('bookmark-2')
+  })
+
   it('disables image filters when the manifest does not advertise support', async () => {
     const getManifest = jest.fn().mockResolvedValue({
       ...manifest,
@@ -340,8 +479,37 @@ describe('ShelfViewReaderShell', () => {
   })
 })
 
-function mountShell({getManifest}: { getManifest: jest.Mock }) {
-  return shallowMount(ShelfViewReaderShell, {
+function mountShell({
+  getManifest,
+  shelfViewState = {},
+}: {
+  getManifest: jest.Mock,
+  shelfViewState?: Record<string, jest.Mock>,
+}) {
+  const stateService = {
+    getPosition: jest.fn().mockResolvedValue(undefined),
+    savePosition: jest.fn().mockResolvedValue({}),
+    getBookmarks: jest.fn().mockResolvedValue([]),
+    createBookmark: jest.fn(),
+    updateBookmark: jest.fn(),
+    deleteBookmark: jest.fn().mockResolvedValue(undefined),
+    getPreference: jest.fn().mockResolvedValue({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'FIXED_PAGE_SEQUENCE',
+      effectiveSettings: {
+        layout: 'SINGLE_PAGE',
+        readingDirection: 'LTR',
+        pageFit: 'SCREEN',
+        imageFilterPreset: 'ORIGINAL',
+      },
+      sources: [],
+    }),
+    savePreference: jest.fn().mockResolvedValue({}),
+    ...shelfViewState,
+  }
+
+  const wrapper = shallowMount(ShelfViewReaderShell, {
     propsData: {
       bookId: 'book-1',
     },
@@ -355,6 +523,7 @@ function mountShell({getManifest}: { getManifest: jest.Mock }) {
       $shelfViewManifest: {
         getManifest,
       },
+      $shelfViewState: stateService,
       $route: {
         query: {},
       },
@@ -374,4 +543,6 @@ function mountShell({getManifest}: { getManifest: jest.Mock }) {
       'v-progress-circular': {template: '<span />'},
     },
   })
+  mountedWrappers.push(wrapper)
+  return wrapper
 }
