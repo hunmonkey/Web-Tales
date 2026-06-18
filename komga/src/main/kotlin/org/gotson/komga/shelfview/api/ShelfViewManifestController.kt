@@ -54,8 +54,8 @@ class ShelfViewManifestController(
       title = book.metadata.title.ifBlank { book.name },
       kind = ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE,
       sourceFormat = sourceFormat(book, mediaType),
-      contentFingerprint = contentFingerprint(book, media),
-      pageCount = pageCount(media),
+      contentFingerprint = shelfViewContentFingerprint(book, media),
+      pageCount = shelfViewPageCount(media),
       pages = ShelfViewPagesDto(endpointTemplate = "/api/v1/books/${book.id}/pages/{page}?zero_based=true"),
       capabilities = fixedPageCapabilities,
     )
@@ -84,18 +84,6 @@ class ShelfViewManifestController(
       KomgaMediaType.PDF -> ShelfViewSourceFormat.PDF
       KomgaMediaType.EPUB -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "EPUB is not supported by ShelfView fixed-page manifest yet")
     }
-
-  private fun contentFingerprint(
-    book: BookDto,
-    media: Media,
-  ): String =
-    if (book.fileHash.isNotBlank()) {
-      "komga-file-hash:${book.fileHash}"
-    } else {
-      "komga-file-state:${book.id}:${book.sizeBytes}:${book.fileLastModified}:${media.lastModifiedDate}:${pageCount(media)}"
-    }
-
-  private fun pageCount(media: Media): Int = media.pageCount.takeIf { it > 0 } ?: media.pages.size
 
   private companion object {
     val fixedPageProfiles = setOf(MediaProfile.DIVINA, MediaProfile.PDF)

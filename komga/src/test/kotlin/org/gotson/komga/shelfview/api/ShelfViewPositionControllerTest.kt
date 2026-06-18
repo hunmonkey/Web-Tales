@@ -1,0 +1,242 @@
+package org.gotson.komga.shelfview.api
+
+import org.gotson.komga.domain.model.Book
+import org.gotson.komga.domain.model.BookPage
+import org.gotson.komga.domain.model.KomgaUser
+import org.gotson.komga.domain.model.Media
+import org.gotson.komga.domain.model.makeBook
+import org.gotson.komga.domain.model.makeLibrary
+import org.gotson.komga.domain.model.makeSeries
+import org.gotson.komga.domain.persistence.BookRepository
+import org.gotson.komga.domain.persistence.KomgaUserRepository
+import org.gotson.komga.domain.persistence.LibraryRepository
+import org.gotson.komga.domain.persistence.MediaRepository
+import org.gotson.komga.domain.persistence.SeriesRepository
+import org.gotson.komga.domain.service.LibraryLifecycle
+import org.gotson.komga.domain.service.SeriesLifecycle
+import org.gotson.komga.interfaces.api.rest.WithMockCustomUser
+import org.gotson.komga.shelfview.domain.ShelfViewReaderPosition
+import org.gotson.komga.shelfview.infrastructure.jooq.ShelfViewReaderStateDao
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.put
+import org.gotson.komga.domain.model.MediaType as KomgaMediaType
+
+@SpringBootTest
+@AutoConfigureMockMvc(printOnlyOnFailure = false)
+class ShelfViewPositionControllerTest(
+  @Autowired private val seriesRepository: SeriesRepository,
+  @Autowired private val seriesLifecycle: SeriesLifecycle,
+  @Autowired private val mediaRepository: MediaRepository,
+  @Autowired private val libraryRepository: LibraryRepository,
+  @Autowired private val libraryLifecycle: LibraryLifecycle,
+  @Autowired private val bookRepository: BookRepository,
+  @Autowired private val userRepository: KomgaUserRepository,
+  @Autowired private val readerStateDao: ShelfViewReaderStateDao,
+  @Autowired private val mockMvc: MockMvc,
+) {
+  private val library = makeLibrary(id = "shelfview-position-library")
+  private val user1 = KomgaUser("shelfview-position-user1@example.org", "", id = USER_1_ID)
+  private val user2 = KomgaUser("shelfview-position-user2@example.org", "", id = USER_2_ID)
+
+  @BeforeAll
+  fun `setup library and users`() {
+    libraryRepository.insert(library)
+    userRepository.insert(user1)
+    userRepository.insert(user2)
+  }
+
+  @AfterEach
+  fun `clear repository`() {
+    readerStateDao.deleteAllPositions()
+    seriesLifecycle.deleteMany(seriesRepository.findAll())
+  }
+
+  @AfterAll
+  fun teardown() {
+    userRepository.delete(USER_1_ID)
+    userRepository.delete(USER_2_ID)
+    libraryRepository.findAll().forEach {
+      libraryLifecycle.deleteLibrary(it)
+    }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given no saved position when getting position then returns no content`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/position")
+      .andExpect {
+        status { isNoContent() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given page locator when saving position then it can be fetched`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/books/${book.id}/position") {
+        contentType = MediaType.APPLICATION_JSON
+        content = pagePositionJson(page = 0, progression = 0.5F)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.locator.schemaVersion") { value(1) }
+        jsonPath("$.locator.kind") { value("PAGE") }
+        jsonPath("$.locator.page") { value(0) }
+        jsonPath("$.locator.offset") { value(0.0) }
+        jsonPath("$.locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.progression") { value(0.5) }
+        jsonPath("$.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.updatedAt") { exists() }
+      }
+
+    mockMvc
+      .put("/api/shelfview/v1/books/${book.id}/position") {
+        contentType = MediaType.APPLICATION_JSON
+        content = pagePositionJson(page = 1, progression = 1.0F)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.locator.page") { value(1) }
+        jsonPath("$.progression") { value(1.0) }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/position")
+      .andExpect {
+        status { isOk() }
+        jsonPath("$.locator.page") { value(1) }
+        jsonPath("$.progression") { value(1.0) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_2_ID)
+  fun `given position saved by one user when another user gets position then returns no content`() {
+    val book = createBookWithMedia()
+    readerStateDao.savePosition(
+      ShelfViewReaderPosition(
+        userId = USER_1_ID,
+        bookId = book.id,
+        locatorJson =
+          """
+          {
+            "schemaVersion": 1,
+            "kind": "PAGE",
+            "page": 0,
+            "offset": 0,
+            "contentFingerprint": "$CONTENT_FINGERPRINT"
+          }
+          """.trimIndent(),
+        progression = 0.5F,
+        contentFingerprint = CONTENT_FINGERPRINT,
+      ),
+    )
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/position")
+      .andExpect {
+        status { isNoContent() }
+      }
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+    strings = [
+      """{"progression":0.5}""",
+      """{"locator":{"schemaVersion":2,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"PAGE","page":-1,"offset":0,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"PAGE","page":2,"offset":0,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":1.5,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"stale"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"TEXT","paragraph":0,"characterOffset":0,"progression":1.5,"normalizationVersion":1,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"UNKNOWN","contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"komga-file-hash:position-hash"},"progression":1.5}""",
+    ],
+  )
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given invalid locator when saving position then returns bad request`(jsonString: String) {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/books/${book.id}/position") {
+        contentType = MediaType.APPLICATION_JSON
+        content = jsonString
+      }.andExpect {
+        status { isBadRequest() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID, sharedAllLibraries = false, sharedLibraries = ["other"])
+  fun `given user without book access when saving position then returns forbidden`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/books/${book.id}/position") {
+        contentType = MediaType.APPLICATION_JSON
+        content = pagePositionJson(page = 0, progression = 0.5F)
+      }.andExpect {
+        status { isForbidden() }
+      }
+  }
+
+  private fun createBookWithMedia(): Book {
+    val createdSeries = seriesLifecycle.createSeries(makeSeries(name = "series", libraryId = library.id))
+    seriesLifecycle.addBooks(createdSeries, listOf(makeBook("Book One.cbz", libraryId = library.id)))
+
+    val book = bookRepository.findAll().first { it.libraryId == library.id }.copy(fileHash = "position-hash")
+    bookRepository.update(book)
+    mediaRepository.findById(book.id).let {
+      mediaRepository.update(
+        it.copy(
+          status = Media.Status.READY,
+          mediaType = KomgaMediaType.ZIP.type,
+          pageCount = 2,
+          pages =
+            listOf(
+              BookPage("001.jpg", "image/jpeg"),
+              BookPage("002.jpg", "image/jpeg"),
+            ),
+        ),
+      )
+    }
+
+    return book
+  }
+
+  private fun pagePositionJson(
+    page: Int,
+    progression: Float,
+  ) = """
+    {
+      "locator": {
+        "schemaVersion": 1,
+        "kind": "PAGE",
+        "page": $page,
+        "offset": 0,
+        "contentFingerprint": "$CONTENT_FINGERPRINT"
+      },
+      "progression": $progression
+    }
+    """.trimIndent()
+
+  private companion object {
+    const val USER_1_ID = "shelfview-position-user-1"
+    const val USER_2_ID = "shelfview-position-user-2"
+    const val CONTENT_FINGERPRINT = "komga-file-hash:position-hash"
+  }
+}
