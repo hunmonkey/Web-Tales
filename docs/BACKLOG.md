@@ -39,6 +39,13 @@ Work in order unless an ADR explicitly changes dependencies.
 - [ ] SV-403 TextReflowAdapter and themes
 - [ ] SV-404 Stable paragraph/character Locator
 
+## M4.5 ZIP internal mixed content
+
+- [ ] SV-450 ZIP internal TXT/JPG/GIF design spike and ADR
+- [ ] SV-451 ZIP internal TXT content and encoding integration
+- [ ] SV-452 ZIP internal JPG/GIF page delivery and validation
+- [ ] SV-453 Mixed ZIP manifest, reader routing and regression tests
+
 ## M5 Image-directory books
 
 - [ ] SV-500 Library setting and `.shelfview-book` domain rule

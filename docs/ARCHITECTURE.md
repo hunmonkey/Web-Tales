@@ -46,6 +46,17 @@ SV-300 uses a forward-only Flyway migration. If a restore is needed before the S
 
 A new reader route is introduced behind a feature flag. The existing reader remains available as fallback until compatibility and recovery have been validated.
 
+## ZIP internal content
+
+Planned ZIP expansion is tracked as SV-450 through SV-453. In addition to the current fixed-page ZIP/CBZ image flow, ShelfView should support ZIP files that contain TXT, JPG and GIF entries.
+
+- Do not send the whole archive to the browser for automatic extraction.
+- Reuse server-side archive inspection and page/content delivery patterns where possible.
+- Keep source archives read-only and do not expose raw server paths or unsafe internal entry names.
+- Validate archive traversal, nested entries, entry count, decompressed size, line length and image dimensions before serving content.
+- Add an ADR before implementation because a mixed TXT/image archive may require a Manifest shape beyond a single `FIXED_PAGE_SEQUENCE` or `TEXT_REFLOW` adapter.
+- Decide GIF behavior in the ADR: preserve animation when safe, or fall back to a static first-frame page if that is safer for the first release.
+
 ## Image directories
 
 MVP requires a `.shelfview-book` marker in the leaf folder. Automatic guessing is out of scope.
