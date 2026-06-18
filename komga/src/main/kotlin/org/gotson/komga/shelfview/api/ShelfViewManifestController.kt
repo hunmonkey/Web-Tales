@@ -3,7 +3,6 @@ package org.gotson.komga.shelfview.api
 import org.apache.commons.io.FilenameUtils
 import org.gotson.komga.domain.model.Media
 import org.gotson.komga.domain.model.MediaProfile
-import org.gotson.komga.domain.model.MediaType as KomgaMediaType
 import org.gotson.komga.domain.persistence.MediaRepository
 import org.gotson.komga.infrastructure.security.KomgaPrincipal
 import org.gotson.komga.interfaces.api.ContentRestrictionChecker
@@ -22,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.gotson.komga.domain.model.MediaType as KomgaMediaType
 
 @RestController
 @RequestMapping("api/shelfview/v1", produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -41,8 +41,9 @@ class ShelfViewManifestController(
     val media = mediaRepository.findByIdOrNull(book.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
     ensureReady(media)
 
-    val mediaType = KomgaMediaType.fromMediaType(media.mediaType)
-      ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
+    val mediaType =
+      KomgaMediaType.fromMediaType(media.mediaType)
+        ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
 
     if (mediaType.profile !in fixedPageProfiles) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Book media type '${media.mediaType}' is not supported by ShelfView fixed-page manifest yet")

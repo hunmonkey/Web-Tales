@@ -38,6 +38,10 @@ The UI must not scatter file-extension checks across components.
 - Add separate ShelfView storage for extended positions, multiple bookmarks and scoped preferences.
 - Never edit existing Flyway migrations.
 
+### ShelfView storage recovery
+
+SV-300 uses a forward-only Flyway migration. If a restore is needed before the ShelfView state APIs are in use, stop the app and restore the SQLite database under `/config` from backup, or drop only the three `SHELFVIEW_*` tables added by the migration when losing ShelfView-only reader state is acceptable. Existing Komga read progress remains in `READ_PROGRESS`.
+
 ## Feature rollout
 
 A new reader route is introduced behind a feature flag. The existing reader remains available as fallback until compatibility and recovery have been validated.

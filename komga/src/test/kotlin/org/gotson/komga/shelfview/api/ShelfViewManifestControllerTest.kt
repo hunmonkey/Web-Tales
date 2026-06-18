@@ -116,24 +116,24 @@ class ShelfViewManifestControllerTest(
   private fun createBookWithMedia(
     mediaType: String,
     bookName: String,
-  ) =
-    makeSeries(name = "series", libraryId = library.id).let { series ->
-      val created = seriesLifecycle.createSeries(series)
-      seriesLifecycle.addBooks(created, listOf(makeBook(bookName, libraryId = library.id)))
+  ) = makeSeries(name = "series", libraryId = library.id).let { series ->
+    val created = seriesLifecycle.createSeries(series)
+    seriesLifecycle.addBooks(created, listOf(makeBook(bookName, libraryId = library.id)))
 
-      bookRepository.findAll().first().also { book ->
-        mediaRepository.findById(book.id).let {
-          mediaRepository.update(
-            it.copy(
-              status = Media.Status.READY,
-              mediaType = mediaType,
-              pages = listOf(
+    bookRepository.findAll().first().also { book ->
+      mediaRepository.findById(book.id).let {
+        mediaRepository.update(
+          it.copy(
+            status = Media.Status.READY,
+            mediaType = mediaType,
+            pages =
+              listOf(
                 BookPage("001.jpg", "image/jpeg", Dimension(800, 1200), fileSize = 1024),
                 BookPage("002.jpg", "image/jpeg", Dimension(800, 1200), fileSize = 2048),
               ),
-            ),
-          )
-        }
+          ),
+        )
       }
     }
+  }
 }

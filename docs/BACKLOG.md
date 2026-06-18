@@ -25,7 +25,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 ## M3 Position, bookmarks and preferences
 
-- [ ] SV-300 New Flyway migration and repositories
+- [x] SV-300 New Flyway migration and repositories
 - [ ] SV-301 Extended position API
 - [ ] SV-302 Multiple bookmark API
 - [ ] SV-303 Scoped preference API
