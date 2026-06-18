@@ -82,6 +82,7 @@ class BookAnalyzer(
         MediaProfile.DIVINA -> analyzeDivina(book, mediaType, analyzeDimensions)
         MediaProfile.PDF -> analyzePdf(book, analyzeDimensions)
         MediaProfile.EPUB -> analyzeEpub(book, analyzeDimensions)
+        MediaProfile.TXT -> analyzeTxt()
       }.copy(mediaType = mediaType.type)
     } catch (ade: AccessDeniedException) {
       logger.error(ade) { "Error while analyzing book: $book" }
@@ -94,6 +95,9 @@ class BookAnalyzer(
       Media(status = Media.Status.ERROR, comment = "ERR_1005")
     }.copy(bookId = book.id)
   }
+
+  // ShelfView TXT (TEXT_REFLOW): native identity only. Real decoding/pagination/Locator live in the ShelfView namespace (ADR-0002).
+  private fun analyzeTxt(): Media = Media(status = Media.Status.READY)
 
   private fun analyzeDivina(
     book: Book,
@@ -269,6 +273,7 @@ class BookAnalyzer(
       MediaProfile.DIVINA -> divinaExtractors[book.media.mediaType]?.getPoster(book)
       MediaProfile.PDF -> pdfExtractor.getPageContentAsImage(book.book.path, 1)
       MediaProfile.EPUB -> epubExtractor.getCover(book.book.path) ?: if (book.media.epubDivinaCompatible) divinaExtractors[MediaType.ZIP.type]?.getPoster(book) else null
+      MediaProfile.TXT -> null
       null -> null
     }
 
@@ -317,6 +322,7 @@ class BookAnalyzer(
         else
           throw MediaUnsupportedException("Epub profile does not support getting page content")
 
+      MediaProfile.TXT -> throw MediaUnsupportedException("Text profile does not support getting page content")
       null -> throw MediaNotReadyException()
     }
   }
@@ -362,7 +368,7 @@ class BookAnalyzer(
     return when (book.media.profile) {
       MediaProfile.DIVINA -> divinaExtractors.getValue(book.media.mediaType!!).getEntryStream(book.book.path, fileName)
       MediaProfile.EPUB -> epubExtractor.getEntryStream(book.book.path, fileName)
-      MediaProfile.PDF, null -> throw MediaUnsupportedException("Extractor does not support extraction of files")
+      MediaProfile.PDF, MediaProfile.TXT, null -> throw MediaUnsupportedException("Extractor does not support extraction of files")
     }
   }
 

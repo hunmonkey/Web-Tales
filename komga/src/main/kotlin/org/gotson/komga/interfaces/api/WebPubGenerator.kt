@@ -288,6 +288,7 @@ class WebPubGenerator(
       MediaProfile.DIVINA -> MEDIATYPE_DIVINA_JSON_VALUE
       MediaProfile.PDF -> MEDIATYPE_WEBPUB_JSON_VALUE
       MediaProfile.EPUB -> MEDIATYPE_WEBPUB_JSON_VALUE
+      MediaProfile.TXT -> MEDIATYPE_WEBPUB_JSON_VALUE
       null -> MEDIATYPE_WEBPUB_JSON_VALUE
     }
 

@@ -145,6 +145,18 @@ class BookAnalyzerTest(
       assertThat(media.mediaType).isEqualTo("application/epub+zip")
       assertThat(media.status).isEqualTo(Media.Status.READY)
     }
+
+    @Test
+    fun `given txt file when analyzing then media status is READY with text-plain profile and no pages`() {
+      val file = ClassPathResource("txt/simple.txt")
+      val book = Book("book", file.url, LocalDateTime.now())
+
+      val media = bookAnalyzer.analyze(book, false)
+
+      assertThat(media.mediaType).isEqualTo("text/plain")
+      assertThat(media.status).isEqualTo(Media.Status.READY)
+      assertThat(media.pageCount).isEqualTo(0)
+    }
   }
 
   @Nested

@@ -520,6 +520,9 @@ export default Vue.extend({
       }, {
         text: this.$t('common.epub').toString(),
         value: 'epub',
+      }, {
+        text: this.$t('common.txt').toString(),
+        value: 'txt',
       }]
     },
 
@@ -632,6 +635,7 @@ export default Vue.extend({
       this.form.scanTypes = []
       if (!library) this.form.scanTypes = ['cbx', 'pdf', 'epub']
       if (library?.scanEpub == true) this.form.scanTypes.splice(0, 0, 'epub')
+      if (library?.scanTxt == true) this.form.scanTypes.splice(0, 0, 'txt')
       if (library?.scanPdf == true) this.form.scanTypes.splice(0, 0, 'pdf')
       if (library?.scanCbx == true) this.form.scanTypes.splice(0, 0, 'cbx')
       this.form.scanDirectoryExclusions = library ? library.scanDirectoryExclusions : ['#recycle', '@eaDir', '@Recycle']
@@ -669,6 +673,7 @@ export default Vue.extend({
           scanCbx: this.form.scanTypes.includes('cbx'),
           scanPdf: this.form.scanTypes.includes('pdf'),
           scanEpub: this.form.scanTypes.includes('epub'),
+          scanTxt: this.form.scanTypes.includes('txt'),
           scanDirectoryExclusions: this.form.scanDirectoryExclusions,
           repairExtensions: this.form.repairExtensions,
           convertToCbz: this.form.convertToCbz,

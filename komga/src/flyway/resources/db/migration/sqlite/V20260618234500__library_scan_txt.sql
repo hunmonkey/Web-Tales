@@ -1,0 +1,2 @@
+ALTER TABLE LIBRARY
+    add column SCAN_TXT boolean NOT NULL DEFAULT 0;

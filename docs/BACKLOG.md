@@ -33,8 +33,8 @@ Work in order unless an ADR explicitly changes dependencies.
 
 ## M4 TXT
 
-- [ ] SV-400 Scanner/domain design spike and ADR
-- [ ] SV-401 TXT scan and analysis
+- [x] SV-400 Scanner/domain design spike and ADR
+- [x] SV-401 TXT scan and analysis
 - [ ] SV-402 TXT content and encoding API
 - [ ] SV-403 TextReflowAdapter and themes
 - [ ] SV-404 Stable paragraph/character Locator

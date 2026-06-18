@@ -83,6 +83,7 @@ class ShelfViewManifestController(
       -> ShelfViewSourceFormat.CBR
       KomgaMediaType.PDF -> ShelfViewSourceFormat.PDF
       KomgaMediaType.EPUB -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "EPUB is not supported by ShelfView fixed-page manifest yet")
+      KomgaMediaType.TXT -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "TXT is handled by the ShelfView text manifest, not the fixed-page manifest")
     }
 
   private companion object {

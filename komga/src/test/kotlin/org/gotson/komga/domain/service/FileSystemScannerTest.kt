@@ -112,6 +112,44 @@ class FileSystemScannerTest {
     }
   }
 
+  @Test
+  fun `given txt files when scanning with scanTxt enabled then they are scanned as books`() {
+    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
+      // given
+      val root = fs.getPath("/root")
+      Files.createDirectory(root)
+
+      val files = listOf("book1.txt", "comic.cbz")
+      files.forEach { Files.createFile(root.resolve(it)) }
+
+      // when
+      val scan = scanner.scanRootFolder(root, scanTxt = true).series
+      val books = scan.getValue(scan.keys.first())
+
+      // then
+      assertThat(books.map { it.name }).containsExactlyInAnyOrder("book1", "comic")
+    }
+  }
+
+  @Test
+  fun `given txt file when scanning with default options then it is ignored`() {
+    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
+      // given
+      val root = fs.getPath("/root")
+      Files.createDirectory(root)
+
+      val files = listOf("book1.txt", "comic.cbz")
+      files.forEach { Files.createFile(root.resolve(it)) }
+
+      // when
+      val scan = scanner.scanRootFolder(root).series
+      val books = scan.getValue(scan.keys.first())
+
+      // then
+      assertThat(books.map { it.name }).containsExactly("comic")
+    }
+  }
+
   @ParameterizedTest
   @MethodSource("libraryScanFileTypesArguments")
   fun `given directory when scanning excluding some files then return a series excluding those files as books`(

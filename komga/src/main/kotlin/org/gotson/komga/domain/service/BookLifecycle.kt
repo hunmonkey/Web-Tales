@@ -533,6 +533,8 @@ class BookLifecycle(
             ),
           )
         }
+
+        MediaProfile.TXT -> throw IllegalArgumentException("Text profile does not support Komga read progress")
       }
 
     readProgressRepository.save(progress)
