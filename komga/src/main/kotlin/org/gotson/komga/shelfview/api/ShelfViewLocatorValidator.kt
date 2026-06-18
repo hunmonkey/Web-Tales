@@ -19,12 +19,24 @@ internal object ShelfViewLocatorValidator {
     expectedContentFingerprint: String,
     pageCount: Int,
   ): ShelfViewValidatedLocator {
-    if (locator == null || !locator.isObject) invalid("locator must be an object")
-
     val normalizedProgression = progression ?: invalid("progression is required")
     if (!normalizedProgression.isFinite() || normalizedProgression < 0F || normalizedProgression > 1F) {
       invalid("progression must be between 0 and 1")
     }
+
+    return validate(
+      locator = locator,
+      expectedContentFingerprint = expectedContentFingerprint,
+      pageCount = pageCount,
+    )
+  }
+
+  fun validate(
+    locator: JsonNode?,
+    expectedContentFingerprint: String,
+    pageCount: Int,
+  ): ShelfViewValidatedLocator {
+    if (locator == null || !locator.isObject) invalid("locator must be an object")
 
     val schemaVersion = locator.requiredInt("schemaVersion")
     if (schemaVersion != SCHEMA_VERSION) invalid("schemaVersion must be $SCHEMA_VERSION")
