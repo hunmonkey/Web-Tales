@@ -1,0 +1,213 @@
+Web-Hanji / ShelfView handoff plan - 2026-06-18
+
+작성 목적
+=========
+다른 AI가 현재 작업을 안전하게 이어받을 수 있도록, 지금까지 확인한 사실과 다음 작업 순서를 정리한다.
+
+사용자 기준
+===========
+- 사용자는 비전공자이므로 어려운 용어를 풀어서 설명한다.
+- 사용자를 항상 "재훈 님"이라고 부른다.
+- 작업은 단계별로 작게 진행한다.
+- 구조나 코드를 바꾸기 전에는 루트의 Rule_Project_Etc.txt를 먼저 읽는다.
+- 개발 작업은 dev 브랜치에서 진행한다.
+- GitHub 최신화 요청 시 main과 dev를 같은 최신 커밋으로 맞춘 뒤 푸시한다.
+- Rule_PW.txt는 비밀 정보 파일이다. 절대 커밋하거나 출력하지 않는다.
+
+최종 목표
+=========
+웹사이트에 접속해서 책이나 그림을 볼 수 있게 한다.
+
+초기 작업 완료 상태
+===================
+1. 프로젝트 폴더와 Plan 폴더 자료를 읽었다.
+   - Plan/Starter 자료도 루트 문서로 반영했다.
+   - 프로젝트 방향은 Komga 1.24.4를 기반으로 ShelfView/Web-Hanji를 만드는 것이다.
+
+2. GitHub hunmonkey/Web-Hanji와 로컬 폴더를 연동했다.
+   - GitHub 저장소는 private로 확인했다.
+   - origin: https://github.com/hunmonkey/Web-Hanji.git
+   - upstream: https://github.com/gotson/komga.git
+   - upstream push URL은 DISABLED로 막았다.
+   - main/dev 브랜치를 만들고 초기 자료와 Komga 1.24.4 기반 코드를 업로드했다.
+   - GitHub Actions workflow 파일은 현재 토큰에 workflow 권한이 없어 제외했다.
+
+현재 Git 상태
+=============
+- 현재 브랜치: dev
+- origin/dev와 origin/main은 ad4c9ca0까지 올라가 있다.
+- 로컬 dev는 7151aa72 커밋 1개가 origin/dev보다 앞서 있다.
+- 7151aa72: Document upstream baseline policy
+- 이 커밋에는 SV-001 문서 정리와 THIRD_PARTY_NOTICES.md 생성이 들어 있다.
+- 아직 7151aa72는 GitHub에 푸시하지 않았다.
+- main 로컬 브랜치도 아직 7151aa72로 맞추지 않았다.
+
+중요 커밋
+=========
+- fded9651 Initial Web-Hanji planning baseline
+- a10d5b41 Merge Komga 1.24.4 base
+- a4640dcc Install ShelfView starter docs at root
+- 7a980580 Document SV-000 repository audit
+- 15d80c63 Exclude upstream workflows from initial private sync
+- ad4c9ca0 Document workflow scope push limitation
+- 7151aa72 Document upstream baseline policy
+
+완료된 백로그
+=============
+- SV-000 Repository audit and code map: 완료
+- SV-001 Base tag, remotes, upstream sync policy, license preservation: 완료
+
+현재 진행 중 백로그
+===================
+- SV-002 Local backend/frontend baseline and test results
+
+SV-002에서 확인한 사실
+======================
+프론트엔드
+----------
+1. 이 프로젝트의 .nvmrc는 Node 18을 요구한다.
+2. 현재 시스템 Node는 v24.15.0, npm은 11.17.0이다.
+3. 시스템 Node 24로 npm install을 실행하면 실패했다.
+   - 원인 1: 일부 패키지가 Node 24를 지원하지 않는다.
+   - 원인 2: 사용자 npm 설정 C:\Users\hunmo\.npmrc에 allow-scripts=opencode-ai가 있어 git 의존성 설치가 막혔다.
+4. 임시 Node 18을 내려받아 사용했다.
+   - 위치: %TEMP%\codex-tools\node-v18.20.8-win-x64
+   - 버전: Node v18.20.8, npm 10.8.2
+5. 빈 npm 설정 파일을 사용해 사용자 npm 설정 영향을 피했다.
+   - 위치: %TEMP%\codex-empty-npmrc
+   - 사용 환경변수: NPM_CONFIG_USERCONFIG=%TEMP%\codex-empty-npmrc
+6. Node 18 + 빈 npm 설정으로 npm install 성공.
+   - 경고: npm audit 기준 취약점 90개가 표시됨.
+   - 당장 설치 실패는 아니지만 나중에 의존성 점검이 필요하다.
+7. npm run lint 성공.
+   - "DONE No lint errors found!" 확인.
+8. npm run build는 아직 성공하지 못했다.
+   - 기본 fork-ts-checker memoryLimit 4096에서는 JavaScript heap out of memory 발생.
+   - 8192로 올려도 out of memory 발생.
+   - 16384로 올리면 메모리 부족은 사라졌지만, 원본 코드 TypeScript 검사 오류 187개가 드러났다.
+   - 대표 오류: TS2589 Type instantiation is excessively deep and possibly infinite.
+   - 예시 파일: komga-webui/src/components/ApiKeyTable.vue
+   - fork-ts-checker.config.js 변경은 원래대로 되돌렸다.
+   - 따라서 프론트 프로덕션 빌드는 현재 "미통과"로 기록해야 한다.
+
+백엔드
+------
+1. 시스템 Java는 26이다.
+2. Java 26으로 .\gradlew.bat :komga:test 실행 시 실패했다.
+   - 오류: Unsupported class file major version 70
+   - 쉽게 말하면 빌드 도구가 Java 26 형식을 읽지 못했다.
+3. 임시 JDK 21을 내려받아 사용했다.
+   - 위치: %TEMP%\codex-tools\jdk-21.0.11+10
+   - 버전: Eclipse Temurin OpenJDK 21.0.11
+4. JDK 21로 .\gradlew.bat :komga:test 실행 성공.
+5. .\gradlew.bat :komga:prepareThymeLeaf 실행을 시작했지만, 사용자가 중단했다.
+   - 중단 후 남아 있던 Web-Hanji 관련 prepareThymeLeaf/node 빌드 프로세스는 종료했다.
+   - prepareThymeLeaf 결과는 아직 검증되지 않았다.
+
+현재 생성된 로컬 작업물
+=======================
+아래 항목은 Git에 커밋하지 않는 로컬 생성물이다.
+- .gradle/
+- build/
+- komga/build/
+- komga-webui/node_modules/
+- Rule_PW.txt
+
+중요 주의사항
+=============
+1. Rule_PW.txt는 절대 출력하거나 커밋하지 않는다.
+2. 기존 Flyway migration 파일은 수정하지 않는다.
+3. upstream Komga에는 push하지 않는다.
+4. GitHub Actions workflow 파일은 현재 토큰 권한 문제 때문에 빠져 있다.
+5. 프론트 빌드 실패는 이번 ShelfView 변경 때문이 아니라, 가져온 Komga 1.24.4 프론트 코드와 현재 TypeScript/Vue 검사 조합에서 드러난 기준선 문제로 보인다.
+6. "책이나 그림 보기" 목표는 아직 완료되지 않았다. 현재는 기반 코드 수입, 문서 정리, 설치/테스트 기준 확인 단계다.
+
+추천 다음 작업
+==============
+1. 현재 상태를 다시 확인한다.
+   git status --short --branch --ignored
+   git log --oneline -5 --decorate
+
+2. SV-002 결과를 docs/AI_PROGRESS.md에 기록한다.
+   기록할 핵심:
+   - Node 24 npm install 실패
+   - 임시 Node 18 npm install 성공
+   - npm run lint 성공
+   - npm run build 실패
+   - Java 26 Gradle 실패
+   - 임시 JDK 21 :komga:test 성공
+   - prepareThymeLeaf는 중단되어 미검증
+
+3. 프론트 빌드 기준을 어떻게 잡을지 결정한다.
+   선택 A: 일단 개발 서버 npm run serve로 화면 접속을 먼저 검증한다.
+   선택 B: TypeScript 빌드 오류를 하나씩 고쳐서 npm run build를 통과시킨다.
+   현재 목표가 "웹사이트에 접속해서 보기"이므로, 먼저 선택 A가 더 빠르다.
+
+4. 백엔드 실행을 JDK 21로 시도한다.
+   PowerShell 예시:
+   $jdk = Join-Path (Join-Path $env:TEMP 'codex-tools') 'jdk-21.0.11+10'
+   $env:JAVA_HOME = $jdk
+   $env:PATH = (Join-Path $jdk 'bin') + ";$env:PATH"
+   .\gradlew.bat :komga:bootRun --args="--spring.profiles.active=dev,noclaim"
+
+5. 다른 PowerShell에서 프론트 개발 서버를 Node 18로 시도한다.
+   PowerShell 예시:
+   $nodeDir = Join-Path (Join-Path $env:TEMP 'codex-tools') 'node-v18.20.8-win-x64'
+   $tmpNpmrc = Join-Path $env:TEMP 'codex-empty-npmrc'
+   $env:PATH = "$nodeDir;$env:PATH"
+   $env:NPM_CONFIG_USERCONFIG = $tmpNpmrc
+   cd D:\GRM-Coding-Dev\Web-Hanji\komga-webui
+   npm run serve
+
+6. 접속 확인
+   - 백엔드 기본 포트: http://localhost:25600
+   - 프론트 개발 서버: http://localhost:8081
+   - dev,noclaim 프로필이면 기본 사용자:
+     - admin@example.org / admin
+     - user@example.org / user
+
+7. 웹사이트 접속이 확인되면 다음 단계로 진행한다.
+   - SV-003: feature flag와 /read-v2/:bookId shell 추가
+   - 기존 reader fallback은 유지한다.
+   - 책/그림 열람은 처음부터 새 기능을 크게 만들지 말고, 기존 Komga reader 경로를 먼저 확인한다.
+
+8. 작업 단위가 정리되면 커밋하고 GitHub에 맞춘다.
+   - dev에 커밋
+   - main을 dev와 같은 커밋으로 맞춤
+   - origin dev/main 푸시
+   - 푸시 후 dev/main/origin/dev/origin/main이 같은 커밋인지 확인
+
+임시 도구 준비 명령
+===================
+Node 18은 이미 받아져 있을 가능성이 높다.
+없으면 다시 받아야 한다.
+
+Node 18 위치:
+%TEMP%\codex-tools\node-v18.20.8-win-x64
+
+JDK 21 위치:
+%TEMP%\codex-tools\jdk-21.0.11+10
+
+프론트 명령 공통 준비:
+$nodeDir = Join-Path (Join-Path $env:TEMP 'codex-tools') 'node-v18.20.8-win-x64'
+$tmpNpmrc = Join-Path $env:TEMP 'codex-empty-npmrc'
+$env:PATH = "$nodeDir;$env:PATH"
+$env:NPM_CONFIG_USERCONFIG = $tmpNpmrc
+node --version
+npm --version
+
+백엔드 명령 공통 준비:
+$jdk = Join-Path (Join-Path $env:TEMP 'codex-tools') 'jdk-21.0.11+10'
+$env:JAVA_HOME = $jdk
+$env:PATH = (Join-Path $jdk 'bin') + ";$env:PATH"
+java -version
+
+마지막으로 확인된 안전한 사실
+=============================
+- Rule_PW.txt는 ignored 상태다.
+- node_modules는 ignored 상태다.
+- 백엔드 테스트는 JDK 21에서 통과했다.
+- 프론트 lint는 Node 18에서 통과했다.
+- 프론트 build는 아직 통과하지 않았다.
+- 웹사이트 실행과 브라우저 접속 검증은 아직 하지 않았다.
+- 전체 목표는 아직 완료되지 않았다.
