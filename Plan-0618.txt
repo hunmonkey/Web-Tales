@@ -67,6 +67,23 @@ Web-Hanji / ShelfView handoff plan - 2026-06-18
    - http://localhost:8093/js/app.js 안에 /api/shelfview/v1/books, $shelfViewManifest, UNSUPPORTED_SCHEMA가 포함됨을 확인했다.
    - 다음 안전한 작업은 SV-102: 리더 셸에서 manifest를 불러오고, loading/error/empty 상태와 기존 페이지 API를 통한 한 페이지 표시를 추가하는 것이다.
 
+8. SV-102는 컴포넌트 테스트와 실제 샘플 CBZ API 검증까지 완료했다.
+   - ShelfViewReaderShell.vue에서 $shelfViewManifest.getManifest(bookId)를 호출한다.
+   - loading/error/empty 상태를 표시한다.
+   - fixed-page manifest의 endpointTemplate으로 첫 페이지 이미지를 표시한다.
+   - 라우트 이동/화면 이탈 중 늦게 도착한 비동기 결과가 화면을 덮어쓰지 않게 request id guard를 추가했다.
+   - shelfview-urls.ts로 manifest endpointTemplate을 실제 API URL로 바꾸는 helper를 추가했다.
+   - ShelfViewReaderShell 컴포넌트 테스트와 URL helper 테스트를 추가했다.
+   - 관련 프론트 단위 테스트 5개 파일, 총 24개 테스트 성공.
+   - npm run lint 성공.
+   - 로컬 ignored 샘플 CBZ: config-dir/sv102-sample-library/Codex SV102 Sample.cbz
+   - 샘플 책 ID 0QQR3NVCQSPTC가 READY, DIVINA, 2페이지로 분석됨을 확인했다.
+   - /api/shelfview/v1/books/0QQR3NVCQSPTC/manifest HTTP 200 확인.
+   - /api/v1/books/0QQR3NVCQSPTC/pages/0?zero_based=true HTTP 200, image/png, 69 bytes 확인.
+   - /read-v2/0QQR3NVCQSPTC는 앱 HTML HTTP 200을 반환했고 read-book-v2.js 번들에 page/error/empty 상태 코드가 포함됨을 확인했다.
+   - 아직 로그인된 브라우저 화면 스크린샷 기반 E2E는 자동화하지 않았다.
+   - 다음 안전한 작업은 SV-200: FixedPageAdapter 시작이다.
+
 사용자 기준
 ===========
 - 사용자는 비전공자이므로 어려운 용어를 풀어서 설명한다.

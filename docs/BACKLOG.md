@@ -14,7 +14,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 - [x] SV-100 Versioned Manifest domain, DTO and one fixed-page response
 - [x] SV-101 TypeScript Manifest model and API service
-- [ ] SV-102 Unified reader loading/error shell and one page display
+- [x] SV-102 Unified reader loading/error shell and one page display
 
 ## M2 Fixed page reader
 
