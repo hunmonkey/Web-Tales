@@ -27,6 +27,22 @@ Web-Hanji / ShelfView handoff plan - 2026-06-18
 3. SV-002 결과는 docs/AI_PROGRESS.md에 기록했고 docs/BACKLOG.md에서 완료 처리했다.
    다음 안전한 작업은 SV-003: 기능 플래그, /read-v2/:bookId shell, 기존 리더 fallback 추가다.
 
+4. SV-003은 로컬 검증까지 완료했다.
+   - VUE_APP_SHELFVIEW_READER 기능 플래그를 추가했다.
+   - /read-v2/:bookId 라우트와 ShelfViewReaderShell.vue 셸을 추가했다.
+   - 기능 플래그가 꺼져 있으면 기존 /book/:bookId/read 리더로 되돌아가게 했다.
+   - EPUB은 기능 플래그가 켜져도 기존 EPUB 리더를 계속 사용한다.
+   - npm run lint 성공.
+   - 새 단위 테스트 2개 파일, 총 14개 테스트 성공.
+   - 기능 플래그를 켠 프론트 개발 서버가 http://localhost:8093/ 에서 HTTP 200으로 응답했다.
+   - /read-v2/test-book-id는 Accept: text/html 요청에서 앱 HTML을 HTTP 200으로 반환했다.
+   - js/app.js에는 /read-v2/:bookId와 read-book-v2가 포함되어 있고, js/read-book-v2.js에는 ShelfViewReaderShell이 포함되어 있음을 확인했다.
+   - 현재 개발 DB에는 라이브러리/책/시리즈가 없어 실제 책 한 권을 새 셸 안에서 여는 검증은 아직 못 했다.
+
+5. SV-003 이후 다음 안전한 작업은 SV-100이다.
+   - /api/shelfview/v1 아래에 버전 있는 manifest 응답을 아주 작게 추가한다.
+   - 실제 책 화면 검증을 위해 작은 로컬 테스트 책 또는 샘플 라이브러리 준비도 필요하다.
+
 사용자 기준
 ===========
 - 사용자는 비전공자이므로 어려운 용어를 풀어서 설명한다.

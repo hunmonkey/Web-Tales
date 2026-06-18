@@ -1,5 +1,8 @@
 import {BookFormat, MediaDto} from '@/types/komga-books'
 import {lowerCase} from 'lodash'
+import {isShelfViewReaderEnabled} from '@/shelfview/feature-flags'
+
+const SHELFVIEW_READER_ROUTE = 'read-book-v2'
 
 export function getBookFormatFromMedia(media: MediaDto): BookFormat {
   switch (media.mediaType) {
@@ -37,11 +40,19 @@ export function getBookFormatFromMediaType(mediaType: string): BookFormat {
   }
 }
 
-export function getBookReadRouteFromMedia(media: MediaDto): string {
+export function getLegacyBookReadRouteFromMedia(media: MediaDto): string {
   switch (lowerCase(media.mediaProfile)) {
     case 'epub':
       return media.epubDivinaCompatible ? 'read-book' : 'read-epub'
     default:
       return 'read-book'
   }
+}
+
+export function getBookReadRouteFromMedia(media: MediaDto): string {
+  if (isShelfViewReaderEnabled() && lowerCase(media.mediaProfile) !== 'epub') {
+    return SHELFVIEW_READER_ROUTE
+  }
+
+  return getLegacyBookReadRouteFromMedia(media)
 }

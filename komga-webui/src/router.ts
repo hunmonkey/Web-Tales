@@ -3,6 +3,7 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import store from './store'
 import {LIBRARIES_ALL, LIBRARY_ROUTE} from '@/types/library'
+import {isShelfViewReaderEnabled} from '@/shelfview/feature-flags'
 
 const qs = require('qs')
 
@@ -27,6 +28,14 @@ const noLibraryNorPinGuard = (to: any, from: any, next: any) => {
   } else if (lStore.getters.getLibrariesPinned.length === 0) {
     next({name: 'no-pins'})
   } else next()
+}
+
+const shelfViewReaderGuard = (to: any, from: any, next: any) => {
+  if (isShelfViewReaderEnabled()) {
+    next()
+  } else {
+    next({name: 'read-book', params: {bookId: to.params.bookId}, query: to.query})
+  }
 }
 
 const getLibraryRoute = (libraryId: string) => {
@@ -286,6 +295,13 @@ const router = new Router({
       props: (route) => ({bookId: route.params.bookId}),
     },
     {
+      path: '/read-v2/:bookId',
+      name: 'read-book-v2',
+      beforeEnter: shelfViewReaderGuard,
+      component: () => import(/* webpackChunkName: "read-book-v2" */ './shelfview/views/ShelfViewReaderShell.vue'),
+      props: (route) => ({bookId: route.params.bookId}),
+    },
+    {
       path: '/book/:bookId/read-epub',
       name: 'read-epub',
       component: () => import(/* webpackChunkName: "read-epub" */ './views/EpubReader.vue'),
@@ -310,7 +326,7 @@ const router = new Router({
 
 router.beforeEach((to, from, next) => {
   // avoid document.title flickering when changing route
-  if (!['read-book', 'read-epub', 'browse-book', 'browse-oneshot', 'browse-series', 'browse-libraries', 'browse-books',
+  if (!['read-book', 'read-book-v2', 'read-epub', 'browse-book', 'browse-oneshot', 'browse-series', 'browse-libraries', 'browse-books',
     'recommended-libraries', 'browse-collection', 'browse-collections', 'browse-readlist', 'browse-readlists'].includes(<string>to.name)
   ) {
     document.title = 'Komga'
