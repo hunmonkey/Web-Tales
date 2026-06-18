@@ -7,7 +7,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 - [x] SV-000 Repository audit and code map
 - [x] SV-001 Base tag, remotes, upstream sync policy, license preservation
-- [ ] SV-002 Local backend/frontend baseline and test results
+- [x] SV-002 Local backend/frontend baseline and test results
 - [ ] SV-003 Feature flag, `/read-v2/:bookId` shell and old-reader fallback
 
 ## M1 Manifest and shell

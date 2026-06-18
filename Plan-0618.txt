@@ -4,6 +4,29 @@ Web-Hanji / ShelfView handoff plan - 2026-06-18
 =========
 다른 AI가 현재 작업을 안전하게 이어받을 수 있도록, 지금까지 확인한 사실과 다음 작업 순서를 정리한다.
 
+이어 진행 업데이트 - 2026-06-18
+===============================
+이 아래의 기존 "현재 Git 상태"와 "SV-002" 설명은 작성 당시 기준이다.
+이후 실제 로컬에서 다음 내용을 추가로 확인했다.
+
+1. 로컬 upstream 원격이 새 클론에는 없어서 다시 설정했다.
+   - origin: https://github.com/hunmonkey/Web-Hanji.git
+   - upstream: https://github.com/gotson/komga.git
+   - upstream push URL: DISABLED
+   - Komga 1.24.4 태그는 9c84690a07aa7dcc5c54b58dd67de3fb8b9deb5d로 확인했다.
+
+2. SV-002는 로컬 기준선 검증까지 완료했다.
+   - Node v18.20.8 + npm 10.8.2로 npm install 성공.
+   - npm run lint 성공.
+   - JDK 21.0.11+10으로 .\gradlew.bat :komga:test 성공.
+   - 백엔드는 기본 실행 시 8080 포트 충돌로 실패했지만, --server.port=25600 지정 후 실행 성공.
+   - 프론트 개발 서버는 실제로 http://localhost:8093/ 에서 열렸다.
+   - 프론트 번들은 http://localhost:25600 백엔드를 바라보도록 실행 환경변수로 맞췄다.
+   - admin@example.org / admin 기본 개발 계정으로 /api/v2/users/me 응답 200을 확인했다.
+
+3. SV-002 결과는 docs/AI_PROGRESS.md에 기록했고 docs/BACKLOG.md에서 완료 처리했다.
+   다음 안전한 작업은 SV-003: 기능 플래그, /read-v2/:bookId shell, 기존 리더 fallback 추가다.
+
 사용자 기준
 ===========
 - 사용자는 비전공자이므로 어려운 용어를 풀어서 설명한다.
