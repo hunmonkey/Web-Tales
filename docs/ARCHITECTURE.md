@@ -53,3 +53,13 @@ MVP requires a `.shelfview-book` marker in the leaf folder. Automatic guessing i
 ## PDF
 
 MVP renders through the existing page delivery path. PDF.js is a later, ADR-backed phase for text layer, search, links and direct PDF rendering.
+
+## TXT
+
+TXT uses a hybrid model decided in [ADR-0002](ADR/ADR-0002-txt-scanning-and-domain-model.md): native scan and identity, isolated analysis and rendering.
+
+- A `.txt` is registered natively as `MediaType.TXT` / `MediaProfile.TXT` so it reuses Komga scanning, identity, permissions and progress.
+- Scanning is gated by a new `scanTxt` library option (default off), with a forward-only Flyway migration adding `LIBRARY.SCAN_TXT`.
+- The native analysis branch is thin: it records minimal metadata (size, encoding candidate, fingerprint) and does not parse pages.
+- All decoding, normalization, pagination, escaping and the paragraph/character Locator live in the ShelfView namespace behind `/api/shelfview/v1/.../text` and the frontend `TextReflowAdapter`.
+- Encoding is auto → utf-8 → euc-kr candidate, overridable and saved per book; `normalizationVersion` versions normalization so saved positions stay restorable.
