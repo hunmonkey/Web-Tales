@@ -173,6 +173,45 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-width')
   })
 
+  it('applies image filter presets only to page content', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const originalPage = wrapper.find('[data-testid="shelfview-reader-page"]')
+    expect(originalPage.classes()).toContain('shelfview-page-content')
+    expect(originalPage.attributes('style')).toContain('--sv-brightness: 1;')
+    expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').classes()).not.toContain('shelfview-page-content')
+
+    await wrapper.find('[data-testid="shelfview-reader-filter-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    const filteredPage = wrapper.find('[data-testid="shelfview-reader-page"]')
+    expect(filteredPage.attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
+    expect(filteredPage.attributes('style')).toContain('--sv-brightness: 0.92;')
+    expect(filteredPage.attributes('style')).toContain('--sv-sepia: 0.16;')
+  })
+
+  it('disables image filters when the manifest does not advertise support', async () => {
+    const getManifest = jest.fn().mockResolvedValue({
+      ...manifest,
+      capabilities: {
+        ...manifest.capabilities,
+        imageFilters: false,
+      },
+    })
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-toggle"]').attributes('disabled')).toBe('disabled')
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-brightness: 1;')
+  })
+
   it('shows an error state when the manifest cannot be opened', async () => {
     const getManifest = jest.fn().mockRejectedValue(new ShelfViewApiError('Unsupported book', 'BAD_REQUEST', 400))
     const wrapper = mountShell({getManifest})
@@ -221,7 +260,7 @@ function mountShell({getManifest}: { getManifest: jest.Mock }) {
     },
     stubs: {
       'v-container': {template: '<div><slot /></div>'},
-      'v-toolbar': {template: '<div><slot /></div>'},
+      'v-toolbar': {template: '<div v-bind="$attrs"><slot /></div>'},
       'v-toolbar-title': {template: '<div><slot /></div>'},
       'v-spacer': {template: '<span />'},
       'v-btn': {template: '<button v-bind="$attrs" v-on="$listeners"><slot /></button>'},

@@ -8,6 +8,7 @@
       dense
       elevation="1"
       class="shelfview-reader-shell__toolbar full-width"
+      data-testid="shelfview-reader-toolbar"
     >
       <v-btn
         icon
@@ -65,6 +66,21 @@
             </v-btn>
           </template>
           <span>{{ pageFitLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
+              :disabled="!imageFiltersAvailable"
+              data-testid="shelfview-reader-filter-toggle"
+              v-on="on"
+              @click="cycleImageFilterPreset"
+            >
+              <v-icon>{{ imageFilterPresetIcon }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ imageFilterPresetLabel }}</span>
         </v-tooltip>
 
         <v-btn
@@ -165,8 +181,9 @@
         <img
           v-for="page in visiblePageSources"
           :key="`page-${page.pageIndex}`"
-          class="shelfview-reader-shell__page"
+          class="shelfview-reader-shell__page shelfview-page-content"
           :class="pageImageClass"
+          :style="imageFilterStyle"
           :src="page.url"
           :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
           :data-page-index="page.pageIndex"
@@ -202,6 +219,12 @@ import {
   shelfViewPreviousPageIndex,
   shelfViewVisiblePageIndexes,
 } from '@/shelfview/functions/fixed-page-view'
+import {
+  ShelfViewImageFilterPreset,
+  shelfViewImageFilterPreset,
+  shelfViewImageFilterStyle,
+  shelfViewNextImageFilterPreset,
+} from '@/shelfview/functions/image-filter-presets'
 
 interface ShelfViewPageSource {
   pageIndex: number,
@@ -229,6 +252,7 @@ export default Vue.extend({
     readerLayout: 'SINGLE_PAGE' as ShelfViewFixedPageLayout,
     readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
+    imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
     setupRequestId: 0,
   }),
   async mounted() {
@@ -322,6 +346,18 @@ export default Vue.extend({
         'shelfview-reader-shell__page--fit-height': this.pageFit === 'HEIGHT',
         'shelfview-reader-shell__page--fit-original': this.pageFit === 'ORIGINAL',
       }
+    },
+    imageFiltersAvailable(): boolean {
+      return !!this.manifest?.capabilities.imageFilters
+    },
+    imageFilterStyle(): Record<string, string> {
+      return this.imageFiltersAvailable ? shelfViewImageFilterStyle(this.imageFilterPreset) : shelfViewImageFilterStyle('ORIGINAL')
+    },
+    imageFilterPresetIcon(): string {
+      return shelfViewImageFilterPreset(this.imageFilterPreset).icon
+    },
+    imageFilterPresetLabel(): string {
+      return shelfViewImageFilterPreset(this.imageFilterPreset).label
     },
     readerLayoutIcon(): string {
       switch (this.readerLayout) {
@@ -508,6 +544,11 @@ export default Vue.extend({
       const currentIndex = SHELFVIEW_FIXED_PAGE_FITS.indexOf(this.pageFit)
       this.pageFit = SHELFVIEW_FIXED_PAGE_FITS[(currentIndex + 1) % SHELFVIEW_FIXED_PAGE_FITS.length]
     },
+    cycleImageFilterPreset() {
+      if (!this.imageFiltersAvailable) return
+
+      this.imageFilterPreset = shelfViewNextImageFilterPreset(this.imageFilterPreset)
+    },
     closeBook() {
       if (this.book) {
         this.$router.push({
@@ -592,6 +633,15 @@ export default Vue.extend({
 .shelfview-reader-shell__page {
   display: block;
   object-fit: contain;
+}
+
+.shelfview-page-content {
+  filter:
+    brightness(var(--sv-brightness, 1))
+    contrast(var(--sv-contrast, 1))
+    grayscale(var(--sv-grayscale, 0))
+    sepia(var(--sv-sepia, 0))
+    invert(var(--sv-invert, 0));
 }
 
 .shelfview-reader-shell__page--fit-screen {

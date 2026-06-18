@@ -115,6 +115,20 @@ Web-Hanji / ShelfView handoff plan - 2026-06-18
    - 아직 로그인된 브라우저 화면 스크린샷 기반 E2E는 자동화하지 않았다.
    - 다음 안전한 작업은 SV-202: 콘텐츠 전용 CSS 필터와 프리셋 시작이다.
 
+11. SV-202는 프론트 테스트와 개발 번들 확인까지 완료했다.
+   - 원본, 눈의 피로 감소, 흑백 만화, 저조도, 야간 반전, OLED 텍스트 필터 프리셋을 추가했다.
+   - 밝기, 대비, 흑백, 세피아, 반전 값을 CSS 변수로 적용한다.
+   - 필터는 툴바가 아니라 `shelfview-page-content`가 붙은 페이지 이미지에만 적용된다.
+   - manifest의 imageFilters가 false이면 필터 버튼이 비활성화된다.
+   - 필터를 바꿔도 이미지 src가 그대로 유지됨을 컴포넌트 테스트로 확인했다.
+   - 관련 프론트 단위 테스트 8개 파일, 총 46개 테스트 성공.
+   - npm run lint 성공.
+   - /read-v2/0QQR3NVCQSPTC는 앱 HTML HTTP 200을 반환했다.
+   - read-book-v2.js 번들에 filter toggle, shelfview-page-content, CSS filter 변수 코드가 포함됨을 확인했다.
+   - 백엔드 25600과 프론트 8093 포트가 모두 listen 상태임을 확인했다.
+   - 실제 모바일 기기 성능 측정과 로그인된 브라우저 화면 스크린샷 기반 E2E는 아직 자동화하지 않았다.
+   - 다음 안전한 작업은 SV-203: 키보드, 터치, 포커스, 접근성 시작이다.
+
 사용자 기준
 ===========
 - 사용자는 비전공자이므로 어려운 용어를 풀어서 설명한다.
@@ -323,5 +337,6 @@ java -version
 - 프론트 개발 서버 http://localhost:8093/read-v2/0QQR3NVCQSPTC 앱 HTML HTTP 200을 확인했다.
 - SV-200까지는 샘플 CBZ manifest와 page 0/page 1 API HTTP 200을 확인했다.
 - SV-201에서는 개발 계정 Basic Auth 재확인이 HTTP 401로 막혀 authenticated sample API는 미검증이다.
+- SV-202에서는 필터 번들 코드와 프론트 테스트를 확인했고, authenticated sample API는 재검증하지 않았다.
 - 로그인된 브라우저 화면 스크린샷 기반 E2E는 아직 자동화하지 않았다.
 - 전체 목표는 아직 완료되지 않았다.
