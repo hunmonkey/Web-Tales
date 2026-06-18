@@ -84,6 +84,21 @@ Web-Hanji / ShelfView handoff plan - 2026-06-18
    - 아직 로그인된 브라우저 화면 스크린샷 기반 E2E는 자동화하지 않았다.
    - 다음 안전한 작업은 SV-200: FixedPageAdapter 시작이다.
 
+9. SV-200은 프론트 테스트와 개발 번들 확인까지 완료했다.
+   - fixed-page manifest를 여는 FixedPageAdapter를 추가했다.
+   - next/previous/goTo/current Locator 동작을 추가했다.
+   - 페이지 경계 밖으로 이동하려 하면 첫 페이지 또는 마지막 페이지에 머무르게 했다.
+   - 다음 페이지 프리페치가 페이지 이동 또는 화면 이탈 때 취소되게 했다.
+   - ShelfViewReaderShell.vue에서 어댑터를 사용해 현재 페이지 이미지를 표시한다.
+   - 새 리더 셸에 이전/다음 버튼과 1부터 보이는 페이지 표시를 추가했다.
+   - 관련 프론트 단위 테스트 6개 파일, 총 30개 테스트 성공.
+   - npm run lint 성공.
+   - /read-v2/0QQR3NVCQSPTC는 앱 HTML HTTP 200을 반환했다.
+   - read-book-v2.js 번들에 page controls, next button, page counter, FixedPageAdapter 코드가 포함됨을 확인했다.
+   - 샘플 책 manifest HTTP 200, page 1 API HTTP 200 image/png 69 bytes 확인.
+   - 아직 로그인된 브라우저 화면 스크린샷 기반 E2E는 자동화하지 않았다.
+   - 다음 안전한 작업은 SV-201: 단면/양면/연속/LTR/RTL/fit 모드 시작이다.
+
 사용자 기준
 ===========
 - 사용자는 비전공자이므로 어려운 용어를 풀어서 설명한다.
@@ -289,5 +304,7 @@ java -version
 - 백엔드 테스트는 JDK 21에서 통과했다.
 - 프론트 lint는 Node 18에서 통과했다.
 - 프론트 build는 아직 통과하지 않았다.
-- 웹사이트 실행과 브라우저 접속 검증은 아직 하지 않았다.
+- 프론트 개발 서버 http://localhost:8093/read-v2/0QQR3NVCQSPTC 앱 HTML HTTP 200을 확인했다.
+- 샘플 CBZ manifest와 page 0/page 1 API HTTP 200을 확인했다.
+- 로그인된 브라우저 화면 스크린샷 기반 E2E는 아직 자동화하지 않았다.
 - 전체 목표는 아직 완료되지 않았다.

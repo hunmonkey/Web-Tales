@@ -16,8 +16,41 @@
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
 
-      <v-toolbar-title>{{ bookTitle }}</v-toolbar-title>
+      <v-toolbar-title class="shelfview-reader-shell__title">{{ bookTitle }}</v-toolbar-title>
       <v-spacer/>
+
+      <div
+        v-if="pageControlsVisible"
+        class="shelfview-reader-shell__page-controls"
+        data-testid="shelfview-reader-page-controls"
+      >
+        <v-btn
+          icon
+          :disabled="!canGoPrevious"
+          aria-label="Previous page"
+          data-testid="shelfview-reader-previous"
+          @click="previousPage"
+        >
+          <v-icon>mdi-chevron-left</v-icon>
+        </v-btn>
+
+        <span
+          class="shelfview-reader-shell__page-counter"
+          data-testid="shelfview-reader-page-counter"
+        >
+          {{ currentPageNumber }} / {{ pagesCount }}
+        </span>
+
+        <v-btn
+          icon
+          :disabled="!canGoNext"
+          aria-label="Next page"
+          data-testid="shelfview-reader-next"
+          @click="nextPage"
+        >
+          <v-icon>mdi-chevron-right</v-icon>
+        </v-btn>
+      </div>
 
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
@@ -78,10 +111,10 @@
       </section>
 
       <img
-        v-else-if="firstPageUrl"
+        v-else-if="currentPageUrl"
         class="shelfview-reader-shell__page"
-        :src="firstPageUrl"
-        :alt="`${bookTitle} - page 1`"
+        :src="currentPageUrl"
+        :alt="`${bookTitle} - page ${currentPageNumber}`"
         data-testid="shelfview-reader-page"
         @error="pageImageFailed = true"
       />
@@ -99,7 +132,8 @@ import {getBookTitleCompact} from '@/functions/book-title'
 import {getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
-import {shelfViewPageUrl} from '@/shelfview/functions/shelfview-urls'
+import {FixedPageAdapter} from '@/shelfview/adapters/fixed-page-adapter'
+import {ShelfViewPageLocator} from '@/shelfview/models/shelfview-locator'
 
 export default Vue.extend({
   name: 'ShelfViewReaderShell',
@@ -113,6 +147,9 @@ export default Vue.extend({
     book: undefined as unknown as BookDto,
     series: undefined as unknown as SeriesDto,
     manifest: undefined as unknown as ShelfViewManifest,
+    adapter: undefined as FixedPageAdapter | undefined,
+    currentLocator: undefined as ShelfViewPageLocator | undefined,
+    currentPageUrl: undefined as string | undefined,
     context: {} as Context,
     error: undefined as Error | ShelfViewApiError | undefined,
     loading: true,
@@ -124,6 +161,7 @@ export default Vue.extend({
   },
   beforeDestroy() {
     this.setupRequestId += 1
+    this.destroyAdapter()
   },
   async beforeRouteUpdate(to, from, next) {
     if (to.params.bookId !== from.params.bookId) {
@@ -138,13 +176,23 @@ export default Vue.extend({
       }
       return 'ShelfView'
     },
-    firstPageUrl(): string | undefined {
-      if (!this.manifest) return undefined
-      if (this.manifest.pageCount !== undefined && this.manifest.pageCount < 1) return undefined
-      return shelfViewPageUrl(this.manifest, 0)
+    pageControlsVisible(): boolean {
+      return !!this.adapter && !this.hasDisplayError && !this.empty && this.pagesCount > 0
+    },
+    pagesCount(): number {
+      return this.adapter?.getPagesCount() || this.manifest?.pageCount || 0
+    },
+    currentPageNumber(): number {
+      return this.currentLocator ? this.currentLocator.page + 1 : 1
+    },
+    canGoPrevious(): boolean {
+      return this.adapter?.canGoPrevious() || false
+    },
+    canGoNext(): boolean {
+      return this.adapter?.canGoNext() || false
     },
     empty(): boolean {
-      return !!this.manifest && !this.firstPageUrl
+      return !!this.manifest && !this.currentPageUrl
     },
     emptyMessage(): string {
       if (this.manifest?.kind && this.manifest.kind !== 'FIXED_PAGE_SEQUENCE') {
@@ -182,6 +230,7 @@ export default Vue.extend({
       this.loading = true
       this.error = undefined
       this.manifest = undefined as unknown as ShelfViewManifest
+      this.destroyAdapter()
       this.pageImageFailed = false
 
       this.context = {} as Context
@@ -204,12 +253,53 @@ export default Vue.extend({
         this.manifest = await this.$shelfViewManifest.getManifest(bookId)
         if (requestId !== this.setupRequestId) return
 
+        if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE') {
+          await this.openFixedPageManifest(this.manifest)
+        }
+        if (requestId !== this.setupRequestId) return
+
         document.title = `Komga - ${this.bookTitle}`
       } catch (e) {
         if (requestId === this.setupRequestId) this.error = e
       } finally {
         if (requestId === this.setupRequestId) this.loading = false
       }
+    },
+    async openFixedPageManifest(manifest: ShelfViewManifest) {
+      const adapter = new FixedPageAdapter()
+      await adapter.open(manifest)
+      this.adapter = adapter
+      this.syncAdapterState()
+    },
+    destroyAdapter() {
+      this.adapter?.destroy()
+      this.adapter = undefined
+      this.currentLocator = undefined
+      this.currentPageUrl = undefined
+    },
+    syncAdapterState() {
+      if (!this.adapter) {
+        this.currentLocator = undefined
+        this.currentPageUrl = undefined
+        return
+      }
+
+      this.currentLocator = this.adapter.getCurrentLocator()
+      this.currentPageUrl = this.adapter.getCurrentPageUrl()
+    },
+    async previousPage() {
+      if (!this.adapter) return
+
+      this.pageImageFailed = false
+      await this.adapter.previous()
+      this.syncAdapterState()
+    },
+    async nextPage() {
+      if (!this.adapter) return
+
+      this.pageImageFailed = false
+      await this.adapter.next()
+      this.syncAdapterState()
     },
     closeBook() {
       if (this.book) {
@@ -238,6 +328,26 @@ export default Vue.extend({
   position: fixed;
   top: 0;
   z-index: 2;
+}
+
+.shelfview-reader-shell__title {
+  max-width: min(54vw, 720px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelfview-reader-shell__page-controls {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  margin-right: 4px;
+}
+
+.shelfview-reader-shell__page-counter {
+  font-size: 14px;
+  min-width: 56px;
+  text-align: center;
 }
 
 .shelfview-reader-shell__stage {
@@ -280,5 +390,16 @@ export default Vue.extend({
 
 .full-width {
   width: 100%;
+}
+
+@media (max-width: 600px) {
+  .shelfview-reader-shell__title {
+    max-width: 38vw;
+  }
+
+  .shelfview-reader-shell__page-counter {
+    font-size: 13px;
+    min-width: 44px;
+  }
 }
 </style>

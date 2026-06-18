@@ -75,6 +75,32 @@ describe('ShelfViewReaderShell', () => {
     const page = wrapper.find('[data-testid="shelfview-reader-page"]')
     expect(page.exists()).toBe(true)
     expect(page.attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
+    expect(wrapper.find('[data-testid="shelfview-reader-previous"]').attributes('disabled')).toBe('disabled')
+    expect(wrapper.find('[data-testid="shelfview-reader-next"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('moves between fixed pages with adapter controls', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/1?zero_based=true')
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 2')
+    expect(wrapper.find('[data-testid="shelfview-reader-next"]').attributes('disabled')).toBe('disabled')
+
+    await wrapper.find('[data-testid="shelfview-reader-previous"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
   })
 
   it('shows an error state when the manifest cannot be opened', async () => {
@@ -128,9 +154,9 @@ function mountShell({getManifest}: { getManifest: jest.Mock }) {
       'v-toolbar': {template: '<div><slot /></div>'},
       'v-toolbar-title': {template: '<div><slot /></div>'},
       'v-spacer': {template: '<span />'},
-      'v-btn': {template: '<button><slot /></button>'},
+      'v-btn': {template: '<button v-bind="$attrs" v-on="$listeners"><slot /></button>'},
       'v-icon': {template: '<i><slot /></i>'},
-      'v-tooltip': {template: '<div><slot /></div>'},
+      'v-tooltip': {template: '<div><slot name="activator" :on="{}" /><slot /></div>'},
       'v-progress-circular': {template: '<span />'},
     },
   })
