@@ -78,6 +78,10 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
     expect(wrapper.find('[data-testid="shelfview-reader-previous"]').attributes('disabled')).toBe('disabled')
     expect(wrapper.find('[data-testid="shelfview-reader-next"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('tabindex')).toBe('0')
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('role')).toBe('application')
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('page 1 of 2')
+    expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Page 1 of 2')
   })
 
   it('moves between fixed pages with adapter controls', async () => {
@@ -101,6 +105,107 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
+  })
+
+  it('moves pages with keyboard shortcuts and preserves editable target input', async () => {
+    const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 3})
+    const wrapper = mountShell({getManifest})
+    const preventDefault = jest.fn()
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'ArrowRight',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-stage"]').element,
+      preventDefault,
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
+
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'Home',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-stage"]').element,
+      preventDefault,
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'End',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: document.createElement('input'),
+      preventDefault,
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+  })
+
+  it('opens and closes shortcut help from keyboard and button', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).onReaderKeydown({
+      key: '?',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-stage"]').element,
+      preventDefault: jest.fn(),
+    })
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').attributes('role')).toBe('dialog')
+
+    await wrapper.find('[data-testid="shelfview-reader-shortcuts-close"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').exists()).toBe(false)
+
+    await wrapper.find('[data-testid="shelfview-reader-shortcuts-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').exists()).toBe(true)
+  })
+
+  it('moves pages with horizontal touch swipes', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).onReaderTouchStart({
+      changedTouches: [{clientX: 220, clientY: 100}],
+    })
+    await (wrapper.vm as any).onReaderTouchEnd({
+      changedTouches: [{clientX: 40, clientY: 104}],
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 2')
   })
 
   it('renders double page spreads and keeps the current location in the spread', async () => {

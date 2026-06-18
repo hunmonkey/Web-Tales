@@ -12,6 +12,7 @@
     >
       <v-btn
         icon
+        aria-label="Close reader"
         @click="closeBook"
       >
         <v-icon>mdi-arrow-left</v-icon>
@@ -29,6 +30,7 @@
           <template v-slot:activator="{ on }">
             <v-btn
               icon
+              :aria-label="readerLayoutLabel"
               data-testid="shelfview-reader-layout-toggle"
               v-on="on"
               @click="cycleReaderLayout"
@@ -43,6 +45,7 @@
           <template v-slot:activator="{ on }">
             <v-btn
               icon
+              :aria-label="readingDirectionLabel"
               :disabled="!rtlAvailable"
               data-testid="shelfview-reader-direction-toggle"
               v-on="on"
@@ -58,6 +61,7 @@
           <template v-slot:activator="{ on }">
             <v-btn
               icon
+              :aria-label="pageFitLabel"
               data-testid="shelfview-reader-fit-toggle"
               v-on="on"
               @click="cyclePageFit"
@@ -72,6 +76,7 @@
           <template v-slot:activator="{ on }">
             <v-btn
               icon
+              :aria-label="imageFilterPresetLabel"
               :disabled="!imageFiltersAvailable"
               data-testid="shelfview-reader-filter-toggle"
               v-on="on"
@@ -81,6 +86,21 @@
             </v-btn>
           </template>
           <span>{{ imageFilterPresetLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
+              aria-label="Show keyboard shortcuts"
+              data-testid="shelfview-reader-shortcuts-toggle"
+              v-on="on"
+              @click="showShortcutHelp = true"
+            >
+              <v-icon>mdi-keyboard-outline</v-icon>
+            </v-btn>
+          </template>
+          <span>Shortcuts</span>
         </v-tooltip>
 
         <v-btn
@@ -115,6 +135,7 @@
         <template v-slot:activator="{ on }">
           <v-btn
             icon
+            aria-label="Open legacy reader"
             :to="legacyReaderLocation"
             v-on="on"
           >
@@ -125,9 +146,33 @@
       </v-tooltip>
     </v-toolbar>
 
+    <p
+      id="shelfview-reader-shortcut-hint"
+      class="shelfview-reader-shell__sr-only"
+    >
+      Use arrow keys, Page Up, Page Down, Home, End and touch swipes to navigate. Press question mark for shortcuts.
+    </p>
+
+    <p
+      class="shelfview-reader-shell__sr-only"
+      aria-live="polite"
+      data-testid="shelfview-reader-live-status"
+    >
+      {{ readerLiveStatus }}
+    </p>
+
     <main
+      ref="readerStage"
       class="shelfview-reader-shell__stage"
       :class="stageClasses"
+      tabindex="0"
+      role="application"
+      :aria-label="readerAriaLabel"
+      aria-describedby="shelfview-reader-shortcut-hint"
+      data-testid="shelfview-reader-stage"
+      @keydown="onReaderKeydown"
+      @touchstart="onReaderTouchStart"
+      @touchend="onReaderTouchEnd"
     >
       <v-progress-circular
         v-if="loading"
@@ -192,6 +237,32 @@
         />
       </div>
     </main>
+
+    <section
+      v-if="showShortcutHelp"
+      class="shelfview-reader-shell__shortcut-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shelfview-reader-shortcuts-title"
+      data-testid="shelfview-reader-shortcuts"
+    >
+      <div class="shelfview-reader-shell__shortcut-panel">
+        <h2 id="shelfview-reader-shortcuts-title">Shortcuts</h2>
+        <dl>
+          <template v-for="shortcut in shortcutRows">
+            <dt :key="`${shortcut.keys}-keys`">{{ shortcut.keys }}</dt>
+            <dd :key="`${shortcut.keys}-label`">{{ shortcut.label }}</dd>
+          </template>
+        </dl>
+        <v-btn
+          color="primary"
+          data-testid="shelfview-reader-shortcuts-close"
+          @click="closeShortcutHelp"
+        >
+          Close
+        </v-btn>
+      </div>
+    </section>
   </v-container>
 </template>
 
@@ -225,6 +296,13 @@ import {
   shelfViewImageFilterStyle,
   shelfViewNextImageFilterPreset,
 } from '@/shelfview/functions/image-filter-presets'
+import {
+  ShelfViewReaderInputAction,
+  ShelfViewTouchPoint,
+  shelfViewReaderKeyboardAction,
+  shelfViewShouldIgnoreShortcutTarget,
+  shelfViewTouchAction,
+} from '@/shelfview/functions/reader-input'
 
 interface ShelfViewPageSource {
   pageIndex: number,
@@ -253,6 +331,8 @@ export default Vue.extend({
     readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
+    showShortcutHelp: false,
+    touchStart: undefined as ShelfViewTouchPoint | undefined,
     setupRequestId: 0,
   }),
   async mounted() {
@@ -299,6 +379,21 @@ export default Vue.extend({
         return `${Math.min(...visiblePages)}-${Math.max(...visiblePages)}`
       }
       return this.currentPageNumber.toString()
+    },
+    readerAriaLabel(): string {
+      return `${this.bookTitle} reader, page ${this.currentPageLabel} of ${this.pagesCount}`
+    },
+    readerLiveStatus(): string {
+      return `Page ${this.currentPageLabel} of ${this.pagesCount}`
+    },
+    shortcutRows(): Array<{ keys: string, label: string }> {
+      return [
+        {keys: 'Arrow Left / Arrow Right', label: 'Move pages'},
+        {keys: 'Page Up / Page Down', label: 'Move pages'},
+        {keys: 'Space', label: 'Next page'},
+        {keys: 'Home / End', label: 'First or last page'},
+        {keys: '? / F1', label: 'Show shortcuts'},
+      ]
     },
     canGoPrevious(): boolean {
       return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout)
@@ -489,6 +584,7 @@ export default Vue.extend({
       this.adapter = adapter
       this.normalizeReaderLayout()
       this.syncAdapterState()
+      this.$nextTick(() => this.focusReaderStage())
     },
     destroyAdapter() {
       this.adapter?.destroy()
@@ -549,6 +645,68 @@ export default Vue.extend({
 
       this.imageFilterPreset = shelfViewNextImageFilterPreset(this.imageFilterPreset)
     },
+    focusReaderStage() {
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      readerStage?.focus()
+    },
+    closeShortcutHelp() {
+      this.showShortcutHelp = false
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    async onReaderKeydown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+      if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
+
+      const action = shelfViewReaderKeyboardAction(e.key, this.readingDirection)
+      if (!action) return
+
+      e.preventDefault()
+      await this.runReaderInputAction(action)
+    },
+    onReaderTouchStart(e: TouchEvent) {
+      const touch = e.changedTouches[0]
+      if (!touch) return
+
+      this.touchStart = {
+        x: touch.clientX,
+        y: touch.clientY,
+      }
+    },
+    async onReaderTouchEnd(e: TouchEvent) {
+      const touch = e.changedTouches[0]
+      if (!this.touchStart || !touch) return
+
+      const action = shelfViewTouchAction(
+        this.touchStart,
+        {x: touch.clientX, y: touch.clientY},
+        this.readingDirection,
+      )
+      this.touchStart = undefined
+
+      if (!action) return
+
+      if (e.cancelable) e.preventDefault()
+      await this.runReaderInputAction(action)
+    },
+    async runReaderInputAction(action: ShelfViewReaderInputAction) {
+      switch (action) {
+        case 'NEXT':
+          await this.nextPage()
+          break
+        case 'PREVIOUS':
+          await this.previousPage()
+          break
+        case 'FIRST':
+          await this.goToPageIndex(0)
+          break
+        case 'LAST':
+          await this.goToPageIndex(this.pagesCount - 1)
+          break
+        case 'SHOW_SHORTCUTS':
+          this.showShortcutHelp = true
+          break
+      }
+    },
     closeBook() {
       if (this.book) {
         this.$router.push({
@@ -606,6 +764,11 @@ export default Vue.extend({
   overflow: hidden;
   padding: 56px 16px 16px;
   width: 100%;
+}
+
+.shelfview-reader-shell__stage:focus {
+  outline: 2px solid #90caf9;
+  outline-offset: -6px;
 }
 
 .shelfview-reader-shell__stage--continuous {
@@ -711,8 +874,65 @@ export default Vue.extend({
   margin: 0;
 }
 
+.shelfview-reader-shell__shortcut-dialog {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 16px;
+  position: fixed;
+  z-index: 4;
+}
+
+.shelfview-reader-shell__shortcut-panel {
+  background: #202020;
+  border-radius: 8px;
+  color: #f5f5f5;
+  max-width: 420px;
+  padding: 20px;
+  width: 100%;
+}
+
+.shelfview-reader-shell__shortcut-panel h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 16px;
+}
+
+.shelfview-reader-shell__shortcut-panel dl {
+  display: grid;
+  gap: 8px 16px;
+  grid-template-columns: auto 1fr;
+  margin: 0 0 18px;
+}
+
+.shelfview-reader-shell__shortcut-panel dt {
+  color: #bbdefb;
+  font-weight: 600;
+}
+
+.shelfview-reader-shell__shortcut-panel dd {
+  margin: 0;
+}
+
+.shelfview-reader-shell__sr-only {
+  height: 1px;
+  left: -10000px;
+  overflow: hidden;
+  position: absolute;
+  top: auto;
+  width: 1px;
+}
+
 .full-width {
   width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shelfview-reader-shell * {
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (max-width: 600px) {
