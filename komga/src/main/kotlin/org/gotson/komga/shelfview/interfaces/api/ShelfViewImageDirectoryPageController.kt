@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag

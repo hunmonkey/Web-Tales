@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gotson.komga.domain.model.Book

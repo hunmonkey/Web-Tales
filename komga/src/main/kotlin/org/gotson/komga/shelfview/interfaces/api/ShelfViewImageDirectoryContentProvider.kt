@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import org.apache.commons.io.FilenameUtils
 import org.gotson.komga.domain.model.Dimension

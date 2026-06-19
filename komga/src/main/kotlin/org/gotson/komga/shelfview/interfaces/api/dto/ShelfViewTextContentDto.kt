@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api.dto
+package org.gotson.komga.shelfview.interfaces.api.dto
 
 data class ShelfViewTextContentDto(
   val schemaVersion: Int = 1,

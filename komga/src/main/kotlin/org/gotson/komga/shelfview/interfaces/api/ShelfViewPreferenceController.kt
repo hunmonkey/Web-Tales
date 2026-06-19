@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -14,9 +14,9 @@ import org.gotson.komga.interfaces.api.persistence.SeriesDtoRepository
 import org.gotson.komga.interfaces.api.rest.dto.BookDto
 import org.gotson.komga.interfaces.api.rest.dto.SeriesDto
 import org.gotson.komga.language.toUTC
-import org.gotson.komga.shelfview.api.dto.ShelfViewPreferenceResponseDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewPreferenceUpdateDto
-import org.gotson.komga.shelfview.api.dto.toDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPreferenceResponseDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPreferenceUpdateDto
+import org.gotson.komga.shelfview.interfaces.api.dto.toDto
 import org.gotson.komga.shelfview.domain.ShelfViewReaderPreference
 import org.gotson.komga.shelfview.domain.persistence.ShelfViewReaderPreferenceRepository
 import org.springframework.http.HttpStatus

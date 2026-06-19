@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import jakarta.validation.constraints.Positive

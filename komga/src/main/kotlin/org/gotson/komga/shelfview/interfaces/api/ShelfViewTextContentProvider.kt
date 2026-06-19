@@ -1,8 +1,8 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import jakarta.validation.constraints.Positive
 import org.gotson.komga.domain.model.Book
-import org.gotson.komga.shelfview.api.dto.ShelfViewTextContentDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewTextContentDto
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component

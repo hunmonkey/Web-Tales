@@ -1,21 +1,16 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.apache.commons.io.FilenameUtils
 import org.gotson.komga.domain.model.Media
 import org.gotson.komga.domain.persistence.BookRepository
 import org.gotson.komga.domain.persistence.MediaRepository
-import org.gotson.komga.infrastructure.mediacontainer.ContentDetector
 import org.gotson.komga.infrastructure.security.KomgaPrincipal
-import org.gotson.komga.infrastructure.web.getMediaTypeOrDefault
 import org.gotson.komga.interfaces.api.ContentRestrictionChecker
 import org.gotson.komga.interfaces.api.persistence.BookDtoRepository
-import org.springframework.http.ContentDisposition
-import org.springframework.http.HttpHeaders
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewTextContentDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -23,32 +18,27 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
-import java.nio.charset.StandardCharsets
 import org.gotson.komga.domain.model.MediaType as KomgaMediaType
 
 @RestController
-@RequestMapping("api/shelfview/v1")
+@RequestMapping("api/shelfview/v1", produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(name = "ShelfView")
-class ShelfViewMixedPageController(
+class ShelfViewMixedTextController(
   private val bookDtoRepository: BookDtoRepository,
   private val bookRepository: BookRepository,
   private val mediaRepository: MediaRepository,
   private val contentRestrictionChecker: ContentRestrictionChecker,
   private val zipMixedContentProvider: ShelfViewZipMixedContentProvider,
-  private val contentDetector: ContentDetector,
+  private val textContentProvider: ShelfViewTextContentProvider,
 ) {
-  @Operation(summary = "Get ShelfView page content from a mixed ZIP item")
-  @GetMapping(
-    value = ["books/{bookId}/mixed/{itemId}/pages/{pageNumber}"],
-    produces = [MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE, MediaType.IMAGE_GIF_VALUE, "image/webp"],
-  )
-  fun getMixedPage(
+  @Operation(summary = "Get ShelfView text content from a mixed ZIP item")
+  @GetMapping("books/{bookId}/mixed/{itemId}/text")
+  fun getMixedText(
     @AuthenticationPrincipal principal: KomgaPrincipal,
     @PathVariable bookId: String,
     @PathVariable itemId: String,
-    @PathVariable pageNumber: Int,
-    @RequestParam(name = "zero_based", defaultValue = "false") zeroBasedIndex: Boolean,
-  ): ResponseEntity<ByteArray> {
+    @RequestParam(required = false) encoding: String? = null,
+  ): ShelfViewTextContentDto {
     val bookDto = bookDtoRepository.findByIdOrNull(bookId, principal.user.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
     contentRestrictionChecker.checkContentRestriction(principal.user, bookDto)
 
@@ -60,28 +50,20 @@ class ShelfViewMixedPageController(
 
     val book = bookRepository.findByIdOrNull(bookDto.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
     val bookContentFingerprint = shelfViewContentFingerprint(bookDto, media)
-    val page =
-      zipMixedContentProvider.readPage(
+    val entry =
+      zipMixedContentProvider.readTextEntry(
         path = book.path,
         bookContentFingerprint = bookContentFingerprint,
         itemId = itemId,
-        pageNumber = if (zeroBasedIndex) pageNumber + 1 else pageNumber,
+        maxBytes = textContentProvider.maxBytes(),
       )
 
-    return ResponseEntity
-      .ok()
-      .headers(
-        HttpHeaders().apply {
-          val extension = contentDetector.mediaTypeToExtension(page.mediaType) ?: ".bin"
-          val baseName = FilenameUtils.getBaseName(page.normalizedEntryName).ifBlank { "mixed-item" }
-          contentDisposition =
-            ContentDisposition
-              .builder("inline")
-              .filename("$baseName-${page.pageNumber}$extension", StandardCharsets.UTF_8)
-              .build()
-        },
-      ).contentType(getMediaTypeOrDefault(page.mediaType))
-      .body(page.bytes)
+    return textContentProvider.readBytes(
+      bookId = book.id,
+      contentFingerprint = ShelfViewZipMixedItemIds.itemContentFingerprint(bookContentFingerprint, entry.itemId),
+      bytes = entry.bytes,
+      requestedEncoding = encoding,
+    )
   }
 
   private fun ensureReady(media: Media) {

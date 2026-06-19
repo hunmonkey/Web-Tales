@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import org.gotson.komga.domain.model.Book
 import org.gotson.komga.domain.model.Media

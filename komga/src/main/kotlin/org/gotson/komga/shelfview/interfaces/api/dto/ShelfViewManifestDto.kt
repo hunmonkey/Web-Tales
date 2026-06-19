@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api.dto
+package org.gotson.komga.shelfview.interfaces.api.dto
 
 import org.gotson.komga.shelfview.domain.ShelfViewPublicationKind
 import org.gotson.komga.shelfview.domain.ShelfViewSourceFormat

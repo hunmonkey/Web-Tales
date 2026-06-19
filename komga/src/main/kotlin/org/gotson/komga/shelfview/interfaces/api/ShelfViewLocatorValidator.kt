@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.http.HttpStatus

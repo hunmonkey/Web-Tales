@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import org.apache.commons.io.FilenameUtils
 import org.gotson.komga.domain.model.Media
@@ -10,11 +10,11 @@ import org.gotson.komga.infrastructure.security.KomgaPrincipal
 import org.gotson.komga.interfaces.api.ContentRestrictionChecker
 import org.gotson.komga.interfaces.api.persistence.BookDtoRepository
 import org.gotson.komga.interfaces.api.rest.dto.BookDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewCapabilitiesDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewManifestDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewManifestItemDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewPagesDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewTextDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewCapabilitiesDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewManifestDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewManifestItemDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPagesDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewTextDto
 import org.gotson.komga.shelfview.domain.ShelfViewPublicationKind
 import org.gotson.komga.shelfview.domain.ShelfViewSourceFormat
 import org.springframework.http.HttpStatus

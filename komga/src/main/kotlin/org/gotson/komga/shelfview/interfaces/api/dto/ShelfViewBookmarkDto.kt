@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api.dto
+package org.gotson.komga.shelfview.interfaces.api.dto
 
 import com.fasterxml.jackson.annotation.JsonFormat
 import com.fasterxml.jackson.databind.JsonNode

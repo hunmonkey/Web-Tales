@@ -1,4 +1,4 @@
-package org.gotson.komga.shelfview.api
+package org.gotson.komga.shelfview.interfaces.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.swagger.v3.oas.annotations.Operation
@@ -15,9 +15,9 @@ import org.gotson.komga.infrastructure.security.KomgaPrincipal
 import org.gotson.komga.interfaces.api.ContentRestrictionChecker
 import org.gotson.komga.interfaces.api.persistence.BookDtoRepository
 import org.gotson.komga.interfaces.api.rest.dto.BookDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewPositionDto
-import org.gotson.komga.shelfview.api.dto.ShelfViewPositionUpdateDto
-import org.gotson.komga.shelfview.api.dto.toDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPositionDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPositionUpdateDto
+import org.gotson.komga.shelfview.interfaces.api.dto.toDto
 import org.gotson.komga.shelfview.domain.ShelfViewReaderPosition
 import org.gotson.komga.shelfview.domain.persistence.ShelfViewReaderPositionRepository
 import org.springframework.http.HttpStatus
