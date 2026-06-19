@@ -310,7 +310,7 @@
         >
           mdi-book-open-blank-variant
         </v-icon>
-        <h2>ShelfView</h2>
+        <h2>Tales</h2>
         <p>{{ emptyMessage }}</p>
       </section>
 
@@ -587,7 +587,7 @@ export default Vue.extend({
       if (this.book && this.series) {
         return getBookTitleCompact(this.book.metadata.title, this.series.metadata.title, this.book.oneshot ? undefined : this.book.metadata.number)
       }
-      return 'ShelfView'
+      return 'Tales'
     },
     pageControlsVisible(): boolean {
       return !!this.adapter && !this.hasDisplayError && !this.empty && this.pagesCount > 0
@@ -835,7 +835,7 @@ export default Vue.extend({
           case 'UNAVAILABLE':
             return 'Connection interrupted'
           case 'UNSUPPORTED_SCHEMA':
-            return 'ShelfView needs an update'
+            return 'Tales needs an update'
           default:
             return this.errorLooksEncodingRelated(this.error)
               ? 'Text encoding could not be read'
@@ -855,26 +855,26 @@ export default Vue.extend({
           case 'NOT_FOUND':
             return 'The file, page, or archive entry is no longer available. If the file was moved, rescan the library and try again.'
           case 'PAYLOAD_TOO_LARGE':
-            return 'The text is over ShelfView limits for file size or line length. Try a smaller source file, or open the old reader if this format supports it.'
+            return 'The text is over Tales limits for file size or line length. Try a smaller source file, or open the old reader if this format supports it.'
           case 'UNAVAILABLE':
             return this.browserOffline()
               ? 'Your browser is offline. Reconnect and try again.'
               : 'The server did not answer. Check the connection and try again.'
           case 'UNSUPPORTED_SCHEMA':
-            return 'This saved ShelfView response uses a newer format than this web app understands.'
+            return 'This saved Tales response uses a newer format than this web app understands.'
           default:
             if (this.errorLooksEncodingRelated(this.error)) {
-              return 'ShelfView could not decode this text automatically. Try UTF-8 or EUC-KR and then retry.'
+              return 'Tales could not decode this text automatically. Try UTF-8 or EUC-KR and then retry.'
             }
             if (this.error.code === 'BAD_REQUEST') {
-              return 'This book is not supported by the ShelfView reader yet, or the file needs to be analyzed again.'
+              return 'This book is not supported by the Tales reader yet, or the file needs to be analyzed again.'
             }
         }
       }
       if (this.error instanceof Error && this.error.message.toLowerCase().includes('different book version')) {
-        return 'The book changed while ShelfView was opening it. Try again after the library finishes rescanning.'
+        return 'The book changed while Tales was opening it. Try again after the library finishes rescanning.'
       }
-      return this.error?.message || 'ShelfView could not load this book.'
+      return this.error?.message || 'Tales could not load this book.'
     },
     legacyReaderLocation(): RawLocation {
       return {
@@ -935,7 +935,7 @@ export default Vue.extend({
         }
         if (requestId !== this.setupRequestId) return
 
-        document.title = `Komga - ${this.bookTitle}`
+        document.title = `Tales - ${this.bookTitle}`
       } catch (e) {
         if (requestId === this.setupRequestId) this.error = e
       } finally {

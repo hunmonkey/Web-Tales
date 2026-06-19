@@ -1,17 +1,17 @@
 services:
-  shelfview:
-    image: ghcr.io/YOUR_GITHUB_ACCOUNT/shelfview:0.1.0
-    container_name: shelfview
+  tales:
+    image: ghcr.io/YOUR_GITHUB_ACCOUNT/web-tales:0.1.0
+    container_name: tales
     user: "${PUID:-99}:${PGID:-100}"
     environment:
       TZ: "${TZ:-Asia/Seoul}"
       # Adjust after measuring on your server.
       JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:--Xms256m -Xmx2g}"
     ports:
-      - "${SHELFVIEW_PORT:-25600}:25600"
+      - "${TALES_PORT:-25600}:25600"
     volumes:
-      - /mnt/user/appdata/shelfview/config:/config
-      - /mnt/user/appdata/shelfview/cache:/cache
+      - /mnt/user/appdata/tales/config:/config
+      - /mnt/user/appdata/tales/cache:/cache
       - /mnt/user/media/books:/data:ro
     restart: unless-stopped
     security_opt:

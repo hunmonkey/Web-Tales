@@ -5,7 +5,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 ## Project closure
 
-Owner decision on 2026-06-19: the implemented ShelfView/Web-Hanji feature set is
+Owner decision on 2026-06-19: the implemented ShelfView/Web-Tales feature set is
 enough for the current project. Remaining release-hardening checklist items are
 closed as "not pursued for now" rather than treated as active development work.
 

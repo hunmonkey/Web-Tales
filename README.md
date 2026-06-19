@@ -1,62 +1,36 @@
-[![Open Collective backers and sponsors](https://img.shields.io/opencollective/all/komga?label=OpenCollective%20Sponsors&color=success)](https://opencollective.com/komga) [![GitHub Sponsors](https://img.shields.io/github/sponsors/gotson?label=Github%20Sponsors&color=success)](https://github.com/sponsors/gotson)
-[![Discord](https://img.shields.io/discord/678794935368941569?label=Discord&color=blue)](https://discord.gg/TdRpkDu)
+# Tales
 
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/gotson/komga/tests.yml?branch=master)](https://github.com/gotson/komga/actions?query=workflow%3ATests+branch%3Amaster)
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/gotson/komga?color=blue&label=download&sort=semver)](https://github.com/gotson/komga/releases) [![GitHub all releases](https://img.shields.io/github/downloads/gotson/komga/total?color=blue&label=github%20downloads)](https://github.com/gotson/komga/releases)
-[![Docker Pulls](https://img.shields.io/docker/pulls/gotson/komga)](https://hub.docker.com/r/gotson/komga)
+Tales is a self-hosted web reader for comics, books, PDFs, text files and image
+archives.
 
-[![Translation status](https://hosted.weblate.org/widgets/komga/-/webui/svg-badge.svg)](https://hosted.weblate.org/engage/komga/)
-
-# ![app icon](./.github/readme-images/app-icon.png) Komga
-
-Komga is a media server for your comics, mangas, BDs, magazines and eBooks.
-
-#### Chat on [Discord](https://discord.gg/TdRpkDu)
+It is designed for a private library server: upload or mount your own media,
+manage libraries and users, and read from a browser on desktop, tablet or phone.
 
 ## Features
 
-- Browse libraries, series and books via a responsive web UI that works on desktop, tablets and phones
-- Organize your library with collections and read lists
-- Edit metadata for your series and books
-- Import embedded metadata automatically
-- Webreader with multiple reading modes
-- Manage multiple users, with per-library access control, age restrictions, and labels restrictions
-- Offers a REST API, many community tools and scripts can interact with Komga
-- OPDS v1 and v2 support
-- Kobo Sync with your Kobo eReader
-- KOReader Sync
-- Download book files, whole series, or read lists
-- Duplicate files detection
-- Duplicate pages detection and removal
-- Import books from outside your libraries directly into your series folder
-- Import ComicRack `cbl` read lists
+- Responsive web reader for desktop and mobile browsers.
+- Library, series, book, collection and reading-list management.
+- PDF, TXT, ZIP/CBZ and image-folder reader support.
+- Multi-user access with per-library permissions.
+- Docker-friendly deployment for home servers and Unraid.
+- Original media mounted read-only for safer library operation.
 
-## Installation
+## Repository
 
-Refer to the [website](https://komga.org/docs/category/installation) for instructions.
+- GitHub repository: `hunmonkey/Web-Tales`
+- Development branch: `dev`
+- Production branch: `main`
 
-## Documentation
+## Development
 
-Head over to our [website](https://komga.org) for more information.
+See [DEVELOPING.md](./DEVELOPING.md) for local development setup.
 
-## Develop in Komga
+## Deployment
 
-Check the [development guidelines](./DEVELOPING.md).
+See [docs/UNRAID_DEPLOYMENT.md](./docs/UNRAID_DEPLOYMENT.md) for the Unraid
+deployment guide.
 
-## Translation
+## License And Notices
 
-[![Translation status](https://hosted.weblate.org/widgets/komga/-/webui/horizontal-auto.svg)](https://hosted.weblate.org/engage/komga/)
-
-## Powered by
-
-[![Jetbrains_logo](./.github/readme-images/jetbrains.svg)](https://www.jetbrains.com/?from=Komga)
-
-Thanks to [JetBrains](https://www.jetbrains.com/?from=Komga) for providing the development environment that helps us develop Komga.
-
-[![Chromatic logo](https://user-images.githubusercontent.com/321738/84662277-e3db4f80-af1b-11ea-88f5-91d67a5e59f6.png)](https://www.chromatic.com)
-
-Thanks to [Chromatic](https://www.chromatic.com/) for providing the visual testing platform that helps us review UI changes and catch visual regressions.
-
-## Credits
-
-The Komga icon is based on an icon made by [Freepik](https://www.freepik.com/home) from www.flaticon.com
+Tales is distributed under the MIT License. Third-party notices and required
+attribution are recorded in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

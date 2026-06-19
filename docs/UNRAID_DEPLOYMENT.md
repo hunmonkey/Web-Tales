@@ -1,18 +1,18 @@
-# ShelfView on Unraid — Install, Backup, Upgrade and Rollback (SV-702)
+# Tales on Unraid — Install, Backup, Upgrade and Rollback (SV-702)
 
-This guide covers running the ShelfView / Web-Hanji container on Unraid. It targets
+This guide covers running the Tales / Web-Tales container on Unraid. It targets
 the image produced by SV-701: server port `25600`, a `/config` volume, non-root
 runtime (UID/GID `1000`), an `/actuator/health` health check, and
 `org.opencontainers.image.version` / `.revision` labels.
 
-> The original media library must be mounted **read-only**. ShelfView never writes
+> The original media library must be mounted **read-only**. Tales never writes
 > to source media.
 
 ## 1. Volumes and permissions
 
 | Container path | Purpose | Mode | Suggested Unraid host path |
 | --- | --- | --- | --- |
-| `/config` | App data: SQLite DB, thumbnails, settings | read-write | `/mnt/user/appdata/shelfview` |
+| `/config` | App data: SQLite DB, thumbnails, settings | read-write | `/mnt/user/appdata/tales` |
 | `/data` (or your own) | Book library (CBZ/ZIP/PDF/TXT/image folders) | **read-only** | `/mnt/user/media/books` |
 
 Permissions:
@@ -20,7 +20,7 @@ Permissions:
 - The container runs as **UID/GID 1000** (non-root). The `/config` host directory
   must be writable by `1000`. On Unraid the default owner is `nobody:users`
   (`99:100`), so either:
-  1. `chown -R 1000:1000 /mnt/user/appdata/shelfview`, or
+  1. `chown -R 1000:1000 /mnt/user/appdata/tales`, or
   2. set the share/dir permissions so `1000` can read/write.
 - Mount the media share **read-only** (`:ro`) in the Unraid template so source
   files cannot be modified.
@@ -39,9 +39,9 @@ Permissions:
 
 ```bash
 docker run -d \
-  --name shelfview \
+  --name tales \
   -p 25600:25600 \
-  -v /mnt/user/appdata/shelfview:/config \
+  -v /mnt/user/appdata/tales:/config \
   -v /mnt/user/media/books:/data:ro \
   --restart unless-stopped \
   <your-image>:<version-or-sha>
@@ -63,7 +63,7 @@ together with the image (see §5).
 
 ## 4. Reverse proxy
 
-ShelfView already sets `server.forward-headers-strategy: framework`, so it honours
+Tales already sets `server.forward-headers-strategy: framework`, so it honours
 `X-Forwarded-*` headers from a proxy.
 
 - **Nginx Proxy Manager / SWAG**: proxy `https://reader.example.com` →
@@ -119,9 +119,9 @@ docker image inspect <your-image>:<tag> \
 
 ## 6. Log collection
 
-- **Live logs**: `docker logs -f shelfview`, or the Unraid Docker tab → container
+- **Live logs**: `docker logs -f tales`, or the Unraid Docker tab → container
   → *Logs*.
-- Komga/ShelfView writes application logs to stdout (captured by Docker) and, for
+- Tales writes application logs to stdout (captured by Docker) and, for
   deeper diagnostics, under `/config` (e.g. `logback`/Spring log output if enabled).
 - Do not enable verbose logging of request bodies or credentials; per project
   security rules, tokens, raw content and full media paths must not be logged.

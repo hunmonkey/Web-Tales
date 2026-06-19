@@ -8,7 +8,7 @@ logging:
       clean-history-on-start: true
       max-file-size: 10MB
   file:
-    name: \${komga.config-dir}/logs/komga.log
+    name: \${komga.config-dir}/logs/tales.log
   level:
     org.apache.activemq.audit: WARN
     org.apache.fontbox.cff.Type1CharString: ERROR

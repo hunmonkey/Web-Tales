@@ -1,14 +1,14 @@
 # Third-Party Notices
 
 This file records the distribution license, runtime dependencies, and any directly
-incorporated third-party source for the ShelfView / Web-Hanji fork.
+incorporated third-party source for Tales / Web-Tales.
 
 ## Distribution license (SV-802, confirmed)
 
-- ShelfView is distributed under the **MIT License** (see `LICENSE`).
+- Tales is distributed under the **MIT License** (see `LICENSE`).
 - The original Komga `LICENSE` and copyright (`Copyright (c) 2019 Gauthier
   Roebroeck`) are preserved unchanged.
-- All ShelfView-original code (`org.gotson.komga.shelfview`,
+- All Tales-original code (`org.gotson.komga.shelfview`,
   `komga-webui/src/shelfview`, `komga/docker/render-shelfview-dockerfile.sh`, CI
   workflow, docs) is contributed under the same MIT terms.
 - No GPL/AGPL code is included, so MIT carries no copyleft obligation. Revisiting
@@ -17,21 +17,21 @@ incorporated third-party source for the ShelfView / Web-Hanji fork.
 
 ## Dependency audit (vs base tag `1.24.4`)
 
-ShelfView added **no new runtime dependencies**. Verified by diffing the
+Tales added **no new runtime dependencies**. Verified by diffing the
 dependency manifests against the base tag — all unchanged (0 changed lines):
 
 - `gradle/libs.versions.toml`
 - `build.gradle.kts`, `komga/build.gradle.kts`
 - `komga-webui/package.json`, `komga-webui/package-lock.json`
 
-ShelfView features are built entirely on dependencies already shipped by Komga
+Tales features are built entirely on dependencies already shipped by Komga
 `1.24.4`, whose licenses are tracked by Komga's own dependency set.
 
 | Component | Version/Commit | License | Use | Source copied? | Notice/action |
 |---|---|---|---|---|---|
 | Komga | 1.24.4 / 9c84690a07aa7dcc5c54b58dd67de3fb8b9deb5d | MIT | Fork foundation | Yes, full fork | Preserve `LICENSE` and original copyright |
 
-### Existing Komga runtime libraries reused by ShelfView (no version change)
+### Existing runtime libraries reused by Tales (no version change)
 
 Listed for transparency; all were already present in Komga `1.24.4` and are not new
 to this fork:
@@ -42,11 +42,11 @@ to this fork:
 - Caffeine (Apache-2.0) — bounded temp PDF-page cache.
 - `net.greypanther.natsort` natural-order comparator — natural sort of entries
   (existing Komga dependency; license tracked upstream).
-- axios, Vue 2, vue-router (frontend) — reused for the ShelfView reader services.
+- axios, Vue 2, vue-router (frontend) — reused for the Tales reader services.
 
 ## Directly incorporated source
 
-- **None.** ShelfView source imports only existing Komga infrastructure and
+- **None.** Tales source imports only existing base infrastructure and
   standard JDK/Kotlin/Vue APIs (frontend third-party imports are limited to
   `axios`, `vue`, `vue-router`). No third-party source files were copied into the
   codebase, and no AI-generated code was identified as mirroring a specific
