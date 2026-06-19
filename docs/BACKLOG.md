@@ -3,6 +3,12 @@
 The detailed acceptance criteria are in `SHELFVIEW_MASTER_DEVELOPMENT_PLAN.md`.
 Work in order unless an ADR explicitly changes dependencies.
 
+## Project closure
+
+Owner decision on 2026-06-19: the implemented ShelfView/Web-Hanji feature set is
+enough for the current project. Remaining release-hardening checklist items are
+closed as "not pursued for now" rather than treated as active development work.
+
 ## M0 Foundation
 
 - [x] SV-000 Repository audit and code map
@@ -57,7 +63,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 - [x] SV-600 Existing Komga progress compatibility
 - [x] SV-601 Corrupt/missing/network/encoding recovery UX
-- [ ] SV-602 Desktop browser validation
+- [x] SV-602 Desktop browser validation closed by owner; Chrome/Edge automation exists, Firefox manual gate is not pursued for now
 
 ## M7 Operations
 
@@ -68,11 +74,11 @@ Work in order unless an ADR explicitly changes dependencies.
 ## M8 Release
 
 - [x] SV-800 Threat model
-- [ ] SV-801 Performance baseline (methodology documented in `docs/PERFORMANCE_BASELINE.md`; measurements + owner targets pending a real run)
+- [x] SV-801 Performance baseline closed by owner; detailed measurements and owner targets are not pursued for now
 - [x] SV-802 Dependency/license/notice audit
-- [ ] SV-803 v1.0 release candidate
+- [x] SV-803 v1.0 release candidate closed by owner; live Unraid build/deploy verification is the final acceptance point for now
 
-## Later, not MVP
+## Deferred after closure
 
 - [ ] PDF.js text layer, search and document links
 - [ ] WebGL sharpening, background cleanup and adaptive monochrome
