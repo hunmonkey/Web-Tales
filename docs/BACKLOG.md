@@ -62,7 +62,7 @@ Work in order unless an ADR explicitly changes dependencies.
 ## M7 Operations
 
 - [x] SV-700 CI checks (workflow added; first GitHub Actions run validates it live)
-- [ ] SV-701 Versioned multi-arch Docker image
+- [x] SV-701 Versioned multi-arch Docker image (render script + CI build; live image build validated on GitHub Actions)
 - [ ] SV-702 Unraid install, backup, upgrade and rollback guide
 
 ## M8 Release

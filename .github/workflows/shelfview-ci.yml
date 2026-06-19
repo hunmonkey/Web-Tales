@@ -89,12 +89,14 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
   docker-build:
-    name: Docker image build (amd64 smoke)
+    name: Docker image (version, non-root, health check)
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.docker == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
@@ -104,7 +106,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Build boot jar
         run: ./gradlew :komga:bootJar
-      - name: Stage jar and render Dockerfile from template
+      - name: Stage jar and render hardened Dockerfile
+        id: render
         run: |
           set -euo pipefail
           jar="$(ls komga/build/libs/komga-*.jar | grep -v -- '-plain.jar' | head -n1)"
@@ -115,15 +118,36 @@ jobs:
           echo "Using boot jar: $jar"
           mkdir -p komga/docker/assembly
           cp "$jar" komga/docker/assembly/
-          sed "s|{{distributionArtifactFile}}|$(basename "$jar")|g" \
-            komga/docker/Dockerfile.tpl > komga/docker/Dockerfile
+          bash komga/docker/render-shelfview-dockerfile.sh \
+            komga/docker/Dockerfile.tpl "$(basename "$jar")" komga/docker/Dockerfile
+          echo "version=$(git describe --tags --always --dirty)" >> "$GITHUB_OUTPUT"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build image (amd64, no push)
+      - name: Build image - amd64 (priority, loaded)
         uses: docker/build-push-action@v6
         with:
           context: komga/docker
           file: komga/docker/Dockerfile
           platforms: linux/amd64
           push: false
+          load: true
           tags: shelfview:ci
+          build-args: |
+            SHELFVIEW_VERSION=${{ steps.render.outputs.version }}
+            SHELFVIEW_REVISION=${{ github.sha }}
+      - name: Inspect image labels
+        run: docker image inspect shelfview:ci --format '{{json .Config.Labels}}'
+      - name: Validate image - arm64 (build only)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: komga/docker
+          file: komga/docker/Dockerfile
+          platforms: linux/arm64
+          push: false
+          tags: shelfview:ci-arm64
+          build-args: |
+            SHELFVIEW_VERSION=${{ steps.render.outputs.version }}
+            SHELFVIEW_REVISION=${{ github.sha }}
