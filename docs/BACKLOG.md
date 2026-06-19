@@ -68,7 +68,7 @@ Work in order unless an ADR explicitly changes dependencies.
 ## M8 Release
 
 - [x] SV-800 Threat model
-- [ ] SV-801 Performance baseline
+- [ ] SV-801 Performance baseline (methodology documented in `docs/PERFORMANCE_BASELINE.md`; measurements + owner targets pending a real run)
 - [x] SV-802 Dependency/license/notice audit
 - [ ] SV-803 v1.0 release candidate
 
