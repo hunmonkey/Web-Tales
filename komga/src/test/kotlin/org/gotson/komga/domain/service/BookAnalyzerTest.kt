@@ -14,6 +14,7 @@ import org.gotson.komga.domain.model.MediaExtensionEpub
 import org.gotson.komga.domain.model.MediaType
 import org.gotson.komga.domain.model.makeBook
 import org.gotson.komga.infrastructure.configuration.KomgaProperties
+import org.gotson.komga.infrastructure.mediacontainer.ContentDetector
 import org.gotson.komga.infrastructure.mediacontainer.epub.EpubExtractor
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Nested
@@ -45,6 +46,9 @@ class BookAnalyzerTest(
 
   @SpykBean
   private lateinit var epubExtractor: EpubExtractor
+
+  @SpykBean
+  private lateinit var contentDetector: ContentDetector
 
   @AfterEach
   fun afterEach() {
@@ -156,6 +160,22 @@ class BookAnalyzerTest(
     fun `given txt file when analyzing then media status is READY with text-plain profile and no pages`() {
       val file = ClassPathResource("txt/simple.txt")
       val book = Book("book", file.url, LocalDateTime.now())
+
+      val media = bookAnalyzer.analyze(book, false)
+
+      assertThat(media.mediaType).isEqualTo("text/plain")
+      assertThat(media.status).isEqualTo(Media.Status.READY)
+      assertThat(media.pageCount).isEqualTo(0)
+    }
+
+    @Test
+    fun `given txt file detected as octet-stream when analyzing then media status is READY with text-plain profile`(
+      @TempDir directory: Path,
+    ) {
+      val file = directory.resolve("목항 01권.txt")
+      Files.writeString(file, "첫 문장")
+      val book = Book("book", file.toUri().toURL(), LocalDateTime.now())
+      every { contentDetector.detectMediaType(file) } returns "application/octet-stream"
 
       val media = bookAnalyzer.analyze(book, false)
 

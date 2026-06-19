@@ -78,7 +78,9 @@ class BookAnalyzer(
         } else {
           contentDetector.detectMediaType(book.path).let {
             logger.info { "Detected media type: $it" }
-            MediaType.fromMediaType(it) ?: return Media(mediaType = it, status = Media.Status.UNSUPPORTED, comment = "ERR_1001", bookId = book.id)
+            MediaType.fromMediaType(it)
+              ?: book.path.shelfViewTextMediaTypeFallback()
+              ?: return Media(mediaType = it, status = Media.Status.UNSUPPORTED, comment = "ERR_1001", bookId = book.id)
           }
         }
 
@@ -497,6 +499,14 @@ class BookAnalyzer(
   }
 
   private fun Path.isShelfViewImageDirectoryBook(): Boolean = Files.isDirectory(this) && Files.isRegularFile(resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER))
+
+  private fun Path.shelfViewTextMediaTypeFallback(): MediaType? =
+    if (extension.equals(MediaType.TXT.fileExtension, ignoreCase = true)) {
+      logger.info { "Treating TXT file with unsupported detected media type as ${MediaType.TXT.type}" }
+      MediaType.TXT
+    } else {
+      null
+    }
 
   private companion object {
     val imageDirectoryPageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
