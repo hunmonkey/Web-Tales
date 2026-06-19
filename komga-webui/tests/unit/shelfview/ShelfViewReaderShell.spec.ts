@@ -582,6 +582,12 @@ describe('ShelfViewReaderShell', () => {
             readingDirection: 'RTL',
             pageFit: 'WIDTH',
             imageFilterPreset: 'MONO_COMIC',
+            fixedPageScale: 125,
+            fixedPageGap: 24,
+            fixedPageMargin: 32,
+            fixedPageBackground: 'PAPER',
+            fixedPageBrightness: 1.08,
+            fixedPageContrast: 1.12,
           },
           sources: [],
         }),
@@ -595,12 +601,89 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1-2 / 4')
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-width')
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-grayscale: 1;')
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-brightness: 1.08;')
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-scale: 1.25;')
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-background: #f4ecd9;')
 
     await wrapper.find('[data-testid="shelfview-reader-bookmarks-toggle"]').trigger('click')
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-bookmarks-drawer"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-bookmark-go"]').text()).toBe('Saved page')
+  })
+
+  it('applies and saves fixed page display settings', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const savePreference = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getPreference: jest.fn().mockResolvedValue({
+          scopeType: 'BOOK',
+          scopeId: 'book-1',
+          format: 'FIXED_PAGE_SEQUENCE',
+          effectiveSettings: {
+            layout: 'SINGLE_PAGE',
+            readingDirection: 'LTR',
+            pageFit: 'SCREEN',
+            imageFilterPreset: 'ORIGINAL',
+            fixedPageScale: 130,
+            fixedPageGap: 18,
+            fixedPageMargin: 28,
+            fixedPageBackground: 'GRAY',
+            fixedPageBrightness: 1.06,
+            fixedPageContrast: 1.14,
+          },
+          sources: [],
+        }),
+        savePreference,
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-fixed-settings-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-scale: 1.3;')
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-gap: 18px;')
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-brightness: 1.06;')
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-contrast: 1.14;')
+
+    await wrapper.find('[data-testid="shelfview-reader-fixed-settings-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-fixed-settings"]').exists()).toBe(true)
+
+    await wrapper.setData({
+      fixedPageScale: 145,
+      fixedPageGap: 28,
+      fixedPageMargin: 44,
+      fixedPageBackground: 'WHITE',
+      fixedPageBrightness: 1.12,
+      fixedPageContrast: 1.2,
+    })
+    const vm = wrapper.vm as any
+    vm.onFixedPageDisplaySettingChanged()
+    await Vue.nextTick()
+    await vm.flushPreferenceSave()
+
+    expect(savePreference).toHaveBeenCalledWith({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'FIXED_PAGE_SEQUENCE',
+      settings: expect.objectContaining({
+        layout: 'SINGLE_PAGE',
+        readingDirection: 'LTR',
+        pageFit: 'SCREEN',
+        imageFilterPreset: 'ORIGINAL',
+        fixedPageScale: 145,
+        fixedPageGap: 28,
+        fixedPageMargin: 44,
+        fixedPageBackground: 'WHITE',
+        fixedPageBrightness: 1.12,
+        fixedPageContrast: 1.2,
+      }),
+    })
   })
 
   it('moves between fixed pages with adapter controls', async () => {
@@ -1062,6 +1145,12 @@ function mountShell({
         readingDirection: 'LTR',
         pageFit: 'SCREEN',
         imageFilterPreset: 'ORIGINAL',
+        fixedPageScale: 100,
+        fixedPageGap: 12,
+        fixedPageMargin: 16,
+        fixedPageBackground: 'DARK',
+        fixedPageBrightness: 1,
+        fixedPageContrast: 1,
       },
       sources: [],
     }),

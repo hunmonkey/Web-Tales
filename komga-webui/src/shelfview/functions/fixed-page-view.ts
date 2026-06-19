@@ -13,6 +13,18 @@ export type ShelfViewFixedPageFit =
   | 'HEIGHT'
   | 'ORIGINAL'
 
+export type ShelfViewFixedPageBackground =
+  | 'BLACK'
+  | 'DARK'
+  | 'GRAY'
+  | 'PAPER'
+  | 'WHITE'
+
+export interface ShelfViewFixedPageBackgroundOption {
+  id: ShelfViewFixedPageBackground,
+  cssValue: string,
+}
+
 export const SHELFVIEW_FIXED_PAGE_LAYOUTS: ShelfViewFixedPageLayout[] = [
   'SINGLE_PAGE',
   'DOUBLE_PAGE',
@@ -25,6 +37,20 @@ export const SHELFVIEW_FIXED_PAGE_FITS: ShelfViewFixedPageFit[] = [
   'HEIGHT',
   'ORIGINAL',
 ]
+
+export const SHELFVIEW_FIXED_PAGE_BACKGROUNDS: ShelfViewFixedPageBackgroundOption[] = [
+  {id: 'BLACK', cssValue: '#000000'},
+  {id: 'DARK', cssValue: '#111111'},
+  {id: 'GRAY', cssValue: '#2b2f36'},
+  {id: 'PAPER', cssValue: '#f4ecd9'},
+  {id: 'WHITE', cssValue: '#ffffff'},
+]
+
+export function shelfViewFixedPageBackground(
+  background: ShelfViewFixedPageBackground,
+): ShelfViewFixedPageBackgroundOption {
+  return SHELFVIEW_FIXED_PAGE_BACKGROUNDS.find(option => option.id === background) || SHELFVIEW_FIXED_PAGE_BACKGROUNDS[1]
+}
 
 export function shelfViewVisiblePageIndexes(
   currentPageIndex: number,

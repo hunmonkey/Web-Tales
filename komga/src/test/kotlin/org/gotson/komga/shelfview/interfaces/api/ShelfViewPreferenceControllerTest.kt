@@ -139,6 +139,61 @@ class ShelfViewPreferenceControllerTest(
 
   @Test
   @WithMockCustomUser(id = USER_1_ID)
+  fun `given fixed page preference when saving then display settings are validated and returned`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content =
+          preferenceJson(
+            "BOOK",
+            book.id,
+            """
+            {
+              "layout":"CONTINUOUS_SCROLL",
+              "readingDirection":"RTL",
+              "pageFit":"WIDTH",
+              "imageFilterPreset":"MONO_COMIC",
+              "fixedPageScale":125,
+              "fixedPageGap":24,
+              "fixedPageMargin":32,
+              "fixedPageBackground":"PAPER",
+              "fixedPageBrightness":1.08,
+              "fixedPageContrast":1.18
+            }
+            """.trimIndent(),
+          )
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.format") { value(FORMAT) }
+        jsonPath("$.settings.fixedPageScale") { value(125) }
+        jsonPath("$.settings.fixedPageGap") { value(24) }
+        jsonPath("$.settings.fixedPageMargin") { value(32) }
+        jsonPath("$.settings.fixedPageBackground") { value("PAPER") }
+        jsonPath("$.settings.fixedPageBrightness") { value(1.08) }
+        jsonPath("$.settings.fixedPageContrast") { value(1.18) }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "BOOK")
+        param("scopeId", book.id)
+        param("format", FORMAT)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.effectiveSettings.layout") { value("CONTINUOUS_SCROLL") }
+        jsonPath("$.effectiveSettings.fixedPageScale") { value(125) }
+        jsonPath("$.effectiveSettings.fixedPageGap") { value(24) }
+        jsonPath("$.effectiveSettings.fixedPageMargin") { value(32) }
+        jsonPath("$.effectiveSettings.fixedPageBackground") { value("PAPER") }
+        jsonPath("$.effectiveSettings.fixedPageBrightness") { value(1.08) }
+        jsonPath("$.effectiveSettings.fixedPageContrast") { value(1.18) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
   fun `given text reflow preference when saving then text settings are validated and returned`() {
     val book = createBookWithMedia()
 
@@ -240,6 +295,12 @@ class ShelfViewPreferenceControllerTest(
         jsonPath("$.effectiveSettings.readingDirection") { value("LTR") }
         jsonPath("$.effectiveSettings.pageFit") { value("SCREEN") }
         jsonPath("$.effectiveSettings.imageFilterPreset") { value("ORIGINAL") }
+        jsonPath("$.effectiveSettings.fixedPageScale") { value(100) }
+        jsonPath("$.effectiveSettings.fixedPageGap") { value(12) }
+        jsonPath("$.effectiveSettings.fixedPageMargin") { value(16) }
+        jsonPath("$.effectiveSettings.fixedPageBackground") { value("DARK") }
+        jsonPath("$.effectiveSettings.fixedPageBrightness") { value(1.0) }
+        jsonPath("$.effectiveSettings.fixedPageContrast") { value(1.0) }
       }
   }
 
@@ -253,6 +314,9 @@ class ShelfViewPreferenceControllerTest(
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"unknown":"value"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"layout":"BAD"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"pageFit":3}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageScale":220}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageBackground":"BLUE"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageBrightness":1.8}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"imageFilterPreset":"ORIGINAL"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textFontSize":99}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textTheme":"BAD"}}""",

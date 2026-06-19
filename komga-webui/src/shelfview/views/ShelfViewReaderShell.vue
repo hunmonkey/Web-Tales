@@ -78,6 +78,22 @@
             <v-btn
               v-if="fixedPageControlsVisible"
               icon
+              :aria-label="$t('shelfview_reader.fixed_settings')"
+              data-testid="shelfview-reader-fixed-settings-toggle"
+              v-on="on"
+              @click="openFixedPageSettings"
+            >
+              <v-icon>mdi-tune-variant</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ $t('shelfview_reader.fixed_settings') }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              v-if="fixedPageControlsVisible"
+              icon
               :aria-label="readingDirectionLabel"
               :disabled="!rtlAvailable"
               data-testid="shelfview-reader-direction-toggle"
@@ -239,6 +255,7 @@
       ref="readerStage"
       class="shelfview-reader-shell__stage"
       :class="[stageClasses, textStageThemeClass]"
+      :style="readerStageStyle"
       tabindex="0"
       role="application"
       :aria-label="readerAriaLabel"
@@ -439,7 +456,137 @@
     </aside>
 
     <aside
-      v-if="textSettingsOpen"
+      v-if="fixedPageSettingsOpen && fixedPageControlsVisible"
+      class="shelfview-reader-shell__text-settings"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shelfview-fixed-settings-title"
+      data-testid="shelfview-reader-fixed-settings"
+    >
+      <header class="shelfview-reader-shell__text-settings-header">
+        <h2 id="shelfview-fixed-settings-title">{{ $t('shelfview_reader.fixed_settings') }}</h2>
+        <v-btn
+          icon
+          :aria-label="$t('shelfview_reader.fixed_settings_close')"
+          data-testid="shelfview-reader-fixed-settings-close"
+          @click="closeFixedPageSettings"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </header>
+
+      <div class="shelfview-reader-shell__text-settings-body">
+        <v-select
+          v-model="fixedPageBackground"
+          :items="fixedPageBackgroundOptions"
+          item-text="text"
+          item-value="value"
+          dense
+          outlined
+          hide-details
+          :label="$t('shelfview_reader.background')"
+          data-testid="shelfview-reader-fixed-background"
+          @change="onFixedPageDisplaySettingChanged"
+        />
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-fixed-page-scale">
+            {{ $t('shelfview_reader.page_scale') }}
+            <span>{{ fixedPageScale }}%</span>
+          </label>
+          <v-slider
+            id="shelfview-fixed-page-scale"
+            v-model.number="fixedPageScale"
+            min="80"
+            max="180"
+            step="5"
+            hide-details
+            data-testid="shelfview-reader-fixed-scale"
+            @input="onFixedPageDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-fixed-page-margin">
+            {{ $t('shelfview_reader.margin') }}
+            <span>{{ fixedPageMargin }}px</span>
+          </label>
+          <v-slider
+            id="shelfview-fixed-page-margin"
+            v-model.number="fixedPageMargin"
+            min="0"
+            max="96"
+            step="4"
+            hide-details
+            data-testid="shelfview-reader-fixed-margin"
+            @input="onFixedPageDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-fixed-page-gap">
+            {{ $t('shelfview_reader.page_gap') }}
+            <span>{{ fixedPageGap }}px</span>
+          </label>
+          <v-slider
+            id="shelfview-fixed-page-gap"
+            v-model.number="fixedPageGap"
+            min="0"
+            max="64"
+            step="2"
+            hide-details
+            data-testid="shelfview-reader-fixed-gap"
+            @input="onFixedPageDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-fixed-page-brightness">
+            {{ $t('shelfview_reader.brightness') }}
+            <span>{{ fixedPageBrightness.toFixed(2) }}</span>
+          </label>
+          <v-slider
+            id="shelfview-fixed-page-brightness"
+            v-model.number="fixedPageBrightness"
+            min="0.8"
+            max="1.2"
+            step="0.02"
+            hide-details
+            data-testid="shelfview-reader-fixed-brightness"
+            @input="onFixedPageDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-fixed-page-contrast">
+            {{ $t('shelfview_reader.contrast') }}
+            <span>{{ fixedPageContrast.toFixed(2) }}</span>
+          </label>
+          <v-slider
+            id="shelfview-fixed-page-contrast"
+            v-model.number="fixedPageContrast"
+            min="0.85"
+            max="1.35"
+            step="0.02"
+            hide-details
+            data-testid="shelfview-reader-fixed-contrast"
+            @input="onFixedPageDisplaySettingChanged"
+          />
+        </div>
+
+        <v-btn
+          block
+          color="secondary"
+          data-testid="shelfview-reader-fixed-settings-reset"
+          @click="resetFixedPageDisplaySettings"
+        >
+          {{ $t('shelfview_reader.reset') }}
+        </v-btn>
+      </div>
+    </aside>
+
+    <aside
+      v-if="textSettingsOpen && textControlsVisible"
       class="shelfview-reader-shell__text-settings"
       role="dialog"
       aria-modal="true"
@@ -684,10 +831,13 @@ import {
 } from '@/shelfview/models/shelfview-state'
 import {
   SHELFVIEW_FIXED_PAGE_FITS,
+  SHELFVIEW_FIXED_PAGE_BACKGROUNDS,
   SHELFVIEW_FIXED_PAGE_LAYOUTS,
+  ShelfViewFixedPageBackground,
   ShelfViewFixedPageFit,
   ShelfViewFixedPageLayout,
   ShelfViewFixedPageReadingDirection,
+  shelfViewFixedPageBackground,
   shelfViewCanGoNext,
   shelfViewCanGoPrevious,
   shelfViewNextPageIndex,
@@ -752,6 +902,15 @@ const TEXT_DISPLAY_DEFAULTS = {
   textFontWeight: 400,
 }
 
+const FIXED_PAGE_DISPLAY_DEFAULTS = {
+  fixedPageScale: 100,
+  fixedPageGap: 12,
+  fixedPageMargin: 16,
+  fixedPageBackground: 'DARK' as ShelfViewFixedPageBackground,
+  fixedPageBrightness: 1,
+  fixedPageContrast: 1,
+}
+
 export default Vue.extend({
   name: 'ShelfViewReaderShell',
   props: {
@@ -776,6 +935,12 @@ export default Vue.extend({
     readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
+    fixedPageScale: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageScale,
+    fixedPageGap: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageGap,
+    fixedPageMargin: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageMargin,
+    fixedPageBackground: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBackground,
+    fixedPageBrightness: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBrightness,
+    fixedPageContrast: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageContrast,
     textTheme: TEXT_DISPLAY_DEFAULTS.textTheme,
     textFontFamily: TEXT_DISPLAY_DEFAULTS.textFontFamily,
     textFontSize: TEXT_DISPLAY_DEFAULTS.textFontSize,
@@ -787,6 +952,7 @@ export default Vue.extend({
     textParagraphSpacing: TEXT_DISPLAY_DEFAULTS.textParagraphSpacing,
     textAlign: TEXT_DISPLAY_DEFAULTS.textAlign,
     textFontWeight: TEXT_DISPLAY_DEFAULTS.textFontWeight,
+    fixedPageSettingsOpen: false,
     textSettingsOpen: false,
     showShortcutHelp: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
@@ -960,6 +1126,7 @@ export default Vue.extend({
     stageClasses(): object {
       return {
         'shelfview-reader-shell__stage--continuous': this.readerLayout === 'CONTINUOUS_SCROLL',
+        'shelfview-reader-shell__stage--fixed': this.fixedPageControlsVisible,
         'shelfview-reader-shell__stage--text': this.textControlsVisible,
       }
     },
@@ -985,7 +1152,10 @@ export default Vue.extend({
       return !!this.manifest?.capabilities.imageFilters
     },
     imageFilterStyle(): Record<string, string> {
-      return this.imageFiltersAvailable ? shelfViewImageFilterStyle(this.imageFilterPreset) : shelfViewImageFilterStyle('ORIGINAL')
+      const style = this.imageFiltersAvailable ? shelfViewImageFilterStyle(this.imageFilterPreset) : shelfViewImageFilterStyle('ORIGINAL')
+      style['--sv-brightness'] = roundNumber((Number(style['--sv-brightness']) || 1) * this.fixedPageBrightness, 4).toString()
+      style['--sv-contrast'] = roundNumber((Number(style['--sv-contrast']) || 1) * this.fixedPageContrast, 4).toString()
+      return style
     },
     imageFilterPresetIcon(): string {
       return shelfViewImageFilterPreset(this.imageFilterPreset).icon
@@ -1013,6 +1183,22 @@ export default Vue.extend({
         text: this.$t(`shelfview_reader.align_${value.toLowerCase()}`) as string,
         value,
       }))
+    },
+    fixedPageBackgroundOptions(): Array<{ text: string, value: ShelfViewFixedPageBackground }> {
+      return SHELFVIEW_FIXED_PAGE_BACKGROUNDS.map(option => ({
+        text: this.$t(`shelfview_reader.background_${option.id.toLowerCase()}`) as string,
+        value: option.id,
+      }))
+    },
+    readerStageStyle(): Record<string, string> {
+      if (!this.fixedPageControlsVisible) return {}
+
+      return {
+        '--sv-fixed-page-scale': (this.fixedPageScale / 100).toString(),
+        '--sv-fixed-page-gap': `${this.fixedPageGap}px`,
+        '--sv-fixed-page-margin': `${this.fixedPageMargin}px`,
+        '--sv-fixed-background': shelfViewFixedPageBackground(this.fixedPageBackground).cssValue,
+      }
     },
     textReaderStyle(): Record<string, string> {
       return {
@@ -1456,12 +1642,30 @@ export default Vue.extend({
       this.imageFilterPreset = shelfViewNextImageFilterPreset(this.imageFilterPreset)
       this.schedulePreferenceSave()
     },
+    openFixedPageSettings() {
+      this.textSettingsOpen = false
+      this.fixedPageSettingsOpen = true
+    },
+    closeFixedPageSettings() {
+      this.fixedPageSettingsOpen = false
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    resetFixedPageDisplaySettings() {
+      this.applyFixedPagePreferenceSettings(FIXED_PAGE_DISPLAY_DEFAULTS)
+      this.onFixedPageDisplaySettingChanged()
+    },
+    onFixedPageDisplaySettingChanged() {
+      this.normalizeFixedPageDisplaySettings()
+      this.$nextTick(() => this.restoreCurrentVisibleContent())
+      this.schedulePreferenceSave()
+    },
     cycleTextTheme() {
       this.textTheme = shelfViewNextTextTheme(this.textTheme)
       this.$nextTick(() => this.restoreCurrentTextScrollPosition())
       this.schedulePreferenceSave()
     },
     openTextSettings() {
+      this.fixedPageSettingsOpen = false
       this.textSettingsOpen = true
     },
     closeTextSettings() {
@@ -1496,6 +1700,7 @@ export default Vue.extend({
           this.imageFilterPreset = settings.imageFilterPreset
         }
         if (!this.imageFiltersAvailable) this.imageFilterPreset = 'ORIGINAL'
+        this.applyFixedPagePreferenceSettings(settings)
       }
 
       this.applyTextPreferenceSettings(settings)
@@ -1505,6 +1710,27 @@ export default Vue.extend({
 
       this.normalizeReaderLayout()
       if (persist) this.schedulePreferenceSave()
+    },
+    applyFixedPagePreferenceSettings(settings: ShelfViewFixedPagePreferenceSettings) {
+      if (isFiniteNumber(settings.fixedPageScale)) this.fixedPageScale = settings.fixedPageScale
+      if (isFiniteNumber(settings.fixedPageGap)) this.fixedPageGap = settings.fixedPageGap
+      if (isFiniteNumber(settings.fixedPageMargin)) this.fixedPageMargin = settings.fixedPageMargin
+      if (settings.fixedPageBackground && SHELFVIEW_FIXED_PAGE_BACKGROUNDS.some(option => option.id === settings.fixedPageBackground)) {
+        this.fixedPageBackground = settings.fixedPageBackground
+      }
+      if (isFiniteNumber(settings.fixedPageBrightness)) this.fixedPageBrightness = settings.fixedPageBrightness
+      if (isFiniteNumber(settings.fixedPageContrast)) this.fixedPageContrast = settings.fixedPageContrast
+      this.normalizeFixedPageDisplaySettings()
+    },
+    normalizeFixedPageDisplaySettings() {
+      this.fixedPageScale = Math.round(clampNumber(this.fixedPageScale, 80, 180) / 5) * 5
+      this.fixedPageGap = Math.round(clampNumber(this.fixedPageGap, 0, 64) / 2) * 2
+      this.fixedPageMargin = Math.round(clampNumber(this.fixedPageMargin, 0, 96) / 4) * 4
+      if (!SHELFVIEW_FIXED_PAGE_BACKGROUNDS.some(option => option.id === this.fixedPageBackground)) {
+        this.fixedPageBackground = FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBackground
+      }
+      this.fixedPageBrightness = roundNumber(clampNumber(this.fixedPageBrightness, 0.8, 1.2), 2)
+      this.fixedPageContrast = roundNumber(clampNumber(this.fixedPageContrast, 0.85, 1.35), 2)
     },
     applyTextPreferenceSettings(settings: ShelfViewFixedPagePreferenceSettings) {
       if (settings.textTheme && SHELFVIEW_TEXT_THEMES.includes(settings.textTheme)) this.textTheme = settings.textTheme
@@ -1556,6 +1782,12 @@ export default Vue.extend({
         readingDirection: this.readingDirection,
         pageFit: this.pageFit,
         imageFilterPreset: this.imageFilterPreset,
+        fixedPageScale: this.fixedPageScale,
+        fixedPageGap: this.fixedPageGap,
+        fixedPageMargin: this.fixedPageMargin,
+        fixedPageBackground: this.fixedPageBackground,
+        fixedPageBrightness: this.fixedPageBrightness,
+        fixedPageContrast: this.fixedPageContrast,
       }
     },
     currentPreferenceFormat(): ShelfViewPreferenceFormat | undefined {
@@ -2085,6 +2317,12 @@ function isFiniteNumber(value: unknown): value is number {
   overflow-y: auto;
 }
 
+.shelfview-reader-shell__stage--fixed {
+  background: var(--sv-fixed-background, #111111);
+  overflow: auto;
+  padding: 56px var(--sv-fixed-page-margin, 16px) var(--sv-fixed-page-margin, 16px);
+}
+
 .shelfview-reader-shell__stage--text {
   align-items: stretch;
   overflow-y: auto;
@@ -2095,7 +2333,7 @@ function isFiniteNumber(value: unknown): value is number {
 .shelfview-reader-shell__pages {
   align-items: center;
   display: flex;
-  gap: 8px;
+  gap: var(--sv-fixed-page-gap, 8px);
   height: 100%;
   justify-content: center;
   width: 100%;
@@ -2123,18 +2361,18 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__page--fit-screen {
-  max-height: calc(100vh - 72px);
-  max-width: 100%;
+  max-height: calc((100vh - 72px) * var(--sv-fixed-page-scale, 1));
+  max-width: calc(100% * var(--sv-fixed-page-scale, 1));
 }
 
 .shelfview-reader-shell__page--fit-width {
   height: auto;
-  max-width: 100%;
-  width: 100%;
+  max-width: none;
+  width: calc(100% * var(--sv-fixed-page-scale, 1));
 }
 
 .shelfview-reader-shell__page--fit-height {
-  height: calc(100vh - 72px);
+  height: calc((100vh - 72px) * var(--sv-fixed-page-scale, 1));
   max-width: 100%;
   width: auto;
 }
@@ -2147,23 +2385,23 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-screen {
-  max-width: calc(50vw - 24px);
+  max-width: calc((50vw - 24px) * var(--sv-fixed-page-scale, 1));
 }
 
 .shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-width {
-  width: calc(50vw - 24px);
+  width: calc((50vw - 24px) * var(--sv-fixed-page-scale, 1));
 }
 
 .shelfview-reader-shell__pages--continuous .shelfview-reader-shell__page {
-  margin-bottom: 12px;
+  margin-bottom: var(--sv-fixed-page-gap, 12px);
 }
 
 .shelfview-reader-shell__pages--continuous .shelfview-reader-shell__page--fit-screen,
 .shelfview-reader-shell__pages--continuous .shelfview-reader-shell__page--fit-width {
   height: auto;
   max-height: none;
-  max-width: min(100%, 1200px);
-  width: 100%;
+  max-width: min(calc(100% * var(--sv-fixed-page-scale, 1)), calc(1200px * var(--sv-fixed-page-scale, 1)));
+  width: calc(100% * var(--sv-fixed-page-scale, 1));
 }
 
 .shelfview-reader-shell__text {
@@ -2449,16 +2687,20 @@ function isFiniteNumber(value: unknown): value is number {
     padding: 56px 8px 8px;
   }
 
+  .shelfview-reader-shell__stage--fixed {
+    padding: 56px var(--sv-fixed-page-margin, 8px) var(--sv-fixed-page-margin, 8px);
+  }
+
   .shelfview-reader-shell__pages {
-    gap: 4px;
+    gap: var(--sv-fixed-page-gap, 4px);
   }
 
   .shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-screen {
-    max-width: calc(50vw - 12px);
+    max-width: calc((50vw - 12px) * var(--sv-fixed-page-scale, 1));
   }
 
   .shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-width {
-    width: calc(50vw - 12px);
+    width: calc((50vw - 12px) * var(--sv-fixed-page-scale, 1));
   }
 
   .shelfview-reader-shell__sync-status {

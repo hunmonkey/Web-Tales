@@ -207,6 +207,12 @@ class ShelfViewPreferenceController(
           copyTextSetting(settings, target, "readingDirection", setOf("LTR", "RTL"))
           copyTextSetting(settings, target, "pageFit", setOf("SCREEN", "WIDTH", "HEIGHT", "ORIGINAL"))
           copyTextSetting(settings, target, "imageFilterPreset", setOf("ORIGINAL", "EYE_COMFORT", "MONO_COMIC", "LOW_LIGHT", "NIGHT_INVERT", "OLED_TEXT"))
+          copyIntegerSetting(settings, target, "fixedPageScale", 80, 180)
+          copyIntegerSetting(settings, target, "fixedPageGap", 0, 64)
+          copyIntegerSetting(settings, target, "fixedPageMargin", 0, 96)
+          copyTextSetting(settings, target, "fixedPageBackground", setOf("BLACK", "DARK", "GRAY", "PAPER", "WHITE"))
+          copyDecimalSetting(settings, target, "fixedPageBrightness", 0.8, 1.2)
+          copyDecimalSetting(settings, target, "fixedPageContrast", 0.85, 1.35)
         }
 
         FORMAT_TEXT_REFLOW -> {
@@ -300,6 +306,12 @@ class ShelfViewPreferenceController(
           put("readingDirection", "LTR")
           put("pageFit", "SCREEN")
           put("imageFilterPreset", "ORIGINAL")
+          put("fixedPageScale", 100)
+          put("fixedPageGap", 12)
+          put("fixedPageMargin", 16)
+          put("fixedPageBackground", "DARK")
+          put("fixedPageBrightness", 1.0)
+          put("fixedPageContrast", 1.0)
         }
       }
     }
@@ -342,7 +354,19 @@ class ShelfViewPreferenceController(
     const val FORMAT_TEXT_REFLOW = "TEXT_REFLOW"
 
     val SUPPORTED_FORMATS = setOf(FORMAT_FIXED_PAGE_SEQUENCE, FORMAT_TEXT_REFLOW)
-    val FIXED_PAGE_SETTINGS_FIELDS = setOf("layout", "readingDirection", "pageFit", "imageFilterPreset")
+    val FIXED_PAGE_SETTINGS_FIELDS =
+      setOf(
+        "layout",
+        "readingDirection",
+        "pageFit",
+        "imageFilterPreset",
+        "fixedPageScale",
+        "fixedPageGap",
+        "fixedPageMargin",
+        "fixedPageBackground",
+        "fixedPageBrightness",
+        "fixedPageContrast",
+      )
     val TEXT_REFLOW_SETTINGS_FIELDS =
       setOf(
         "layout",
