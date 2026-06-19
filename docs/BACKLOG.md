@@ -61,7 +61,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 ## M7 Operations
 
-- [x] SV-700 CI checks (workflow added; first GitHub Actions run validates it live)
+- [x] SV-700 CI checks (workflow green on GitHub Actions: change-detection, backend tests, frontend lint/test/build, Docker image)
 - [x] SV-701 Versioned multi-arch Docker image (render script + CI build; live image build validated on GitHub Actions)
 - [x] SV-702 Unraid install, backup, upgrade and rollback guide
 
