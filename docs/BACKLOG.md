@@ -69,7 +69,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 - [x] SV-800 Threat model
 - [ ] SV-801 Performance baseline
-- [ ] SV-802 Dependency/license/notice audit
+- [x] SV-802 Dependency/license/notice audit
 - [ ] SV-803 v1.0 release candidate
 
 ## Later, not MVP
