@@ -12,7 +12,7 @@ runtime (UID/GID `1000`), an `/actuator/health` health check, and
 
 | Container path | Purpose | Mode | Suggested Unraid host path |
 | --- | --- | --- | --- |
-| `/config` | App data: SQLite DB, thumbnails, settings | read-write | `/mnt/user/appdata/tales` |
+| `/config` | App data: SQLite DB, thumbnails, settings | read-write | `/mnt/user/appdata/Web-Tales` |
 | `/data` (or your own) | Book library (CBZ/ZIP/PDF/TXT/image folders) | **read-only** | `/mnt/user/media/books` |
 
 Permissions:
@@ -20,7 +20,7 @@ Permissions:
 - The container runs as **UID/GID 1000** (non-root). The `/config` host directory
   must be writable by `1000`. On Unraid the default owner is `nobody:users`
   (`99:100`), so either:
-  1. `chown -R 1000:1000 /mnt/user/appdata/tales`, or
+  1. `chown -R 1000:1000 /mnt/user/appdata/Web-Tales`, or
   2. set the share/dir permissions so `1000` can read/write.
 - Mount the media share **read-only** (`:ro`) in the Unraid template so source
   files cannot be modified.
@@ -39,9 +39,9 @@ Permissions:
 
 ```bash
 docker run -d \
-  --name tales \
+  --name Web-Tales \
   -p 25600:25600 \
-  -v /mnt/user/appdata/tales:/config \
+  -v /mnt/user/appdata/Web-Tales:/config \
   -v /mnt/user/media/books:/data:ro \
   --restart unless-stopped \
   <your-image>:<version-or-sha>
@@ -53,7 +53,7 @@ All persistent state lives under `/config`, so backing up the appdata share is
 sufficient.
 
 1. **Stop the container** (clean SQLite state) — recommended before a backup.
-2. Back up `/mnt/user/appdata/shelfview` (the **CA Appdata Backup/Restore** plugin
+2. Back up `/mnt/user/appdata/Web-Tales` (the **CA Appdata Backup/Restore** plugin
    automates stop → archive → start on a schedule).
 3. Restore by stopping the container, replacing `/config` contents, and starting
    it again.
@@ -119,7 +119,7 @@ docker image inspect <your-image>:<tag> \
 
 ## 6. Log collection
 
-- **Live logs**: `docker logs -f tales`, or the Unraid Docker tab → container
+- **Live logs**: `docker logs -f Web-Tales`, or the Unraid Docker tab → container
   → *Logs*.
 - Tales writes application logs to stdout (captured by Docker) and, for
   deeper diagnostics, under `/config` (e.g. `logback`/Spring log output if enabled).
