@@ -79,18 +79,17 @@ class OpenApiConfiguration(
     return OpenAPI()
       .info(
         Info()
-          .title("Komga API")
+          .title("Tales API")
           .version(appVersion)
           .description(
             """
-            Komga REST API.
+            Tales REST API.
 
             ## Reference
 
             Check the API reference:
-            - on the [Komga website](https://komga.org/docs/openapi/komga-api)
-            - on any running Komga instance at `/swagger-ui.html`
-            - on [GitHub](https://raw.githubusercontent.com/gotson/komga/refs/heads/master/komga/docs/openapi.json)
+            - on any running Tales instance at `/swagger-ui.html`
+            - on [GitHub](https://raw.githubusercontent.com/hunmonkey/Web-Tales/refs/heads/main/komga/docs/openapi.json)
 
             ## Authentication
 
@@ -119,11 +118,11 @@ class OpenApiConfiguration(
 
             API endpoints marked as deprecated will be removed in the next major version.
             """.trimIndent(),
-          ).license(License().name("MIT").url("https://github.com/gotson/komga/blob/master/LICENSE")),
+          ).license(License().name("MIT").url("https://github.com/hunmonkey/Web-Tales/blob/main/LICENSE")),
       ).externalDocs(
         ExternalDocumentation()
-          .description("Komga documentation")
-          .url("https://komga.org"),
+          .description("Tales project documentation")
+          .url("https://github.com/hunmonkey/Web-Tales"),
       ).components(
         Components()
           .addSecuritySchemes(
@@ -149,9 +148,6 @@ class OpenApiConfiguration(
         if (generateOpenApi)
           servers(
             listOf(
-              Server()
-                .url("https://demo.komga.org")
-                .description("Demo server"),
               Server()
                 .url("http://localhost:{port}")
                 .description("Local development server")
@@ -207,10 +203,10 @@ class OpenApiConfiguration(
     }
   },
   "build": {
-    "artifact": "komga",
-    "name": "komga",
+    "artifact": "tales",
+    "name": "tales",
     "version": "1.21.2",
-    "group": "komga"
+    "group": "tales"
   },
   "java": {
     "version": "23.0.2",
@@ -429,23 +425,23 @@ class OpenApiConfiguration(
       Tag().name(READLISTS).description("Manage readlists."),
       Tag().name(READLIST_POSTER).description("Manage posters for readlists."),
       Tag().name(READLIST_BOOKS),
-      Tag().name(REFERENTIAL).description("Retrieve referential metadata from all items in the Komga server."),
+      Tag().name(REFERENTIAL).description("Retrieve referential metadata from all items in the Tales server."),
       Tag().name(CURRENT_USER).description("Manage current user."),
       Tag().name(USERS).description("Manage users."),
       Tag().name(API_KEYS).description("Manage API Keys"),
       Tag().name(USER_SESSION),
       Tag().name(OAUTH2).description("List registered OAuth2 providers"),
       Tag().name(SYNCPOINTS).description("Sync points are automatically created during a Kobo sync."),
-      Tag().name(CLAIM).description("Claim a freshly installed Komga server."),
+      Tag().name(CLAIM).description("Claim a freshly installed Tales server."),
       Tag().name(TASKS).description("Manage server tasks"),
       Tag().name(HISTORY).description("Server events history"),
       Tag().name(FILE_SYSTEM).description("List files from the host server's file system"),
       Tag().name(SERVER_SETTINGS).description("Store and retrieve server settings"),
       Tag().name(RELEASES).description("Retrieve releases information"),
-      Tag().name(ANNOUNCEMENTS).description("Retrieve announcements from the Komga website"),
+      Tag().name(ANNOUNCEMENTS).description("Retrieve Tales announcements"),
       Tag().name(MANAGEMENT).description("Manage server"),
       Tag().name(MIHON),
       Tag().name(COMICRACK),
-      Tag().name(CLIENT_SETTINGS).description("Store and retrieve global and per-user settings. Those settings are not used by Komga itself, but can be stored for convenience by client applications."),
+      Tag().name(CLIENT_SETTINGS).description("Store and retrieve global and per-user settings. Those settings are not used by Tales itself, but can be stored for convenience by client applications."),
     )
 }

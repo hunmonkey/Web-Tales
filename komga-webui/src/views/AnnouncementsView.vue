@@ -8,7 +8,7 @@
               dot
               inline
               left
-              :value="item._komga.read ? 0 : 1"
+              :value="item._tales.read ? 0 : 1"
               color="info"
             >
               <a :href="item.url" target="_blank" class="text-h3 font-weight-medium link-underline">{{ item.title }}</a>
@@ -28,7 +28,7 @@
         <v-col cols="auto">
           <v-tooltip :left="!$vuetify.rtl" :right="$vuetify.rtl">
             <template v-slot:activator="{ on }">
-              <v-btn icon elevation="5" color="success" v-on="on" :disabled="item._komga.read"
+              <v-btn icon elevation="5" color="success" v-on="on" :disabled="item._tales.read"
                      @click="markRead(item.id)">
                 <v-icon>mdi-check</v-icon>
               </v-btn>

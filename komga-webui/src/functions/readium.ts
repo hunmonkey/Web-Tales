@@ -7,7 +7,7 @@ export function createR2Progression(locator: Locator): R2Progression {
   return {
     modified: new Date(),
     device: {
-      name: 'Komga-webui',
+      name: 'Tales-webui',
       id: 'unused',
     },
     locator: locatorToR2Locator(locator),

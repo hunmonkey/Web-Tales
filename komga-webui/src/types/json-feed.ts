@@ -15,7 +15,7 @@ export interface ItemDto {
   date_modified?: Date,
   author: AuthorDto,
   tags: Set<string>,
-  _komga?: KomgaExtensionDto,
+  _tales?: TalesExtensionDto,
 }
 
 export interface AuthorDto {
@@ -23,6 +23,6 @@ export interface AuthorDto {
   url?: string,
 }
 
-export interface KomgaExtensionDto {
+export interface TalesExtensionDto {
   read: boolean,
 }

@@ -50,7 +50,7 @@ fun showErrorDialog(
               Dp.Unspecified,
             ),
         ),
-      icon = ClassPathResource("icons/komga-color.svg").inputStream.readAllBytes().decodeToSvgPainter(LocalDensity.current),
+      icon = ClassPathResource("icons/tales-color.svg").inputStream.readAllBytes().decodeToSvgPainter(LocalDensity.current),
     ) {
       Column(
         modifier = Modifier.padding(16.dp),
@@ -60,8 +60,8 @@ fun showErrorDialog(
           modifier = Modifier.padding(bottom = 16.dp),
         ) {
           Image(
-            painter = ClassPathResource("icons/komga-color.svg").inputStream.readAllBytes().decodeToSvgPainter(LocalDensity.current),
-            contentDescription = "Komga logo",
+            painter = ClassPathResource("icons/tales-color.svg").inputStream.readAllBytes().decodeToSvgPainter(LocalDensity.current),
+            contentDescription = "Tales logo",
             modifier =
               Modifier
                 .size(96.dp)

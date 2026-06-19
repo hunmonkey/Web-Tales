@@ -64,7 +64,7 @@ jreleaser {
     authors.add("Gauthier Roebroeck")
     license = "MIT"
     links {
-      homepage = "https://komga.org"
+      homepage = "https://github.com/hunmonkey/Web-Tales"
     }
   }
 
@@ -167,12 +167,12 @@ jreleaser {
       continueOnError = false
       templateDirectory = rootDir.resolve("komga/docker")
       repository.active = Active.NEVER
-      buildArgs = listOf("--cache-from", "gotson/komga:latest")
+      buildArgs = listOf("--cache-from", "web-tales:latest")
       imageNames =
         listOf(
-          "komga:latest",
-          "komga:{{projectVersion}}",
-          "komga:{{projectVersionMajor}}.x",
+          "web-tales:latest",
+          "web-tales:{{projectVersion}}",
+          "web-tales:{{projectVersionMajor}}.x",
         )
       registries {
         create("docker.io") { externalLogin = true }

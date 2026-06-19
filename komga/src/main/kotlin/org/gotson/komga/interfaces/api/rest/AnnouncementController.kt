@@ -17,21 +17,15 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.server.ResponseStatusException
 import java.util.concurrent.TimeUnit
-
-private const val WEBSITE = "https://komga.org"
 
 @RestController
 @RequestMapping("api/v1/announcements", produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(name = OpenApiConfiguration.TagNames.ANNOUNCEMENTS)
 class AnnouncementController(
   private val userRepository: KomgaUserRepository,
-  webClientBuilder: WebClient.Builder,
 ) {
-  private val webClient = webClientBuilder.baseUrl("$WEBSITE/blog/feed.json").build()
-
   private val cache =
     Caffeine
       .newBuilder()
@@ -48,7 +42,7 @@ class AnnouncementController(
       .get("announcements") { fetchWebsiteAnnouncements() }
       ?.let { feed ->
         val read = userRepository.findAnnouncementIdsReadByUserId(principal.user.id)
-        feed.copy(items = feed.items.map { item -> item.copy(komgaExtension = JsonFeedDto.KomgaExtensionDto(read.contains(item.id))) })
+        feed.copy(items = feed.items.map { item -> item.copy(talesExtension = JsonFeedDto.TalesExtensionDto(read.contains(item.id))) })
       }
       ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
@@ -63,13 +57,12 @@ class AnnouncementController(
     userRepository.saveAnnouncementIdsRead(principal.user, announcementIds)
   }
 
-  fun fetchWebsiteAnnouncements(): JsonFeedDto? {
-    val response =
-      webClient
-        .get()
-        .retrieve()
-        .toEntity(JsonFeedDto::class.java)
-        .block()
-    return response?.body
-  }
+  fun fetchWebsiteAnnouncements(): JsonFeedDto? =
+    JsonFeedDto(
+      version = "https://jsonfeed.org/version/1",
+      title = "Tales announcements",
+      homePageUrl = "https://github.com/hunmonkey/Web-Tales",
+      description = "Latest Tales announcements",
+      items = emptyList(),
+    )
 }

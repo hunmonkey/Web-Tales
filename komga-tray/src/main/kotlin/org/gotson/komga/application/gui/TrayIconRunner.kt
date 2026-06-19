@@ -29,7 +29,7 @@ class TrayIconRunner(
   val komgaUrl by lazy { "http://localhost:${serverSettings.effectiveServerPort}${serverSettings.effectiveServletContextPath}" }
   val komgaConfigDir by lazy { File(komgaConfigDir) }
   val logFile by lazy { File(logFileName) }
-  val iconFileName = if (env.activeProfiles.contains("mac")) "komga-gray-minimal.svg" else "komga-color.svg"
+  val iconFileName = if (env.activeProfiles.contains("mac")) "tales-gray-minimal.svg" else "tales-color.svg"
 
   @Async
   override fun run(args: ApplicationArguments) {
@@ -41,7 +41,7 @@ class TrayIconRunner(
       Tray(
         icon = ClassPathResource("icons/$iconFileName").inputStream.readAllBytes().decodeToSvgPainter(LocalDensity.current),
         menu = {
-          Item(RB.getString("menu.open_komga"), onClick = { openUrl(komgaUrl) })
+          Item(RB.getString("menu.open_tales"), onClick = { openUrl(komgaUrl) })
           Item(RB.getString("menu.show_log"), onClick = { openExplorer(logFile) })
           Item(RB.getString("menu.show_conf_dir"), onClick = { openExplorer(komgaConfigDir) })
           Item(RB.getString("menu.quit"), onClick = ::exitApplication)

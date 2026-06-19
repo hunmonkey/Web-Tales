@@ -24,8 +24,8 @@ data class JsonFeedDto(
     val dateModified: OffsetDateTime?,
     val author: AuthorDto?,
     val tags: Set<String> = emptySet(),
-    @field:JsonProperty("_komga")
-    val komgaExtension: KomgaExtensionDto?,
+    @field:JsonProperty("_tales")
+    val talesExtension: TalesExtensionDto?,
   )
 
   data class AuthorDto(
@@ -33,7 +33,7 @@ data class JsonFeedDto(
     val url: String?,
   )
 
-  data class KomgaExtensionDto(
+  data class TalesExtensionDto(
     val read: Boolean,
   )
 }

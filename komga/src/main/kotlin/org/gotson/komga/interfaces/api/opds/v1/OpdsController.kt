@@ -116,7 +116,7 @@ class OpdsController(
   @Qualifier("pdfImageType")
   private val pdfImageType: ImageType,
 ) {
-  private val komgaAuthor = OpdsAuthor("Komga", URI("https://github.com/gotson/komga"))
+  private val talesAuthor = OpdsAuthor("Tales", URI("https://github.com/hunmonkey/Web-Tales"))
 
   private val decimalFormat = DecimalFormat("0.#")
 
@@ -151,9 +151,9 @@ class OpdsController(
   fun getCatalog(): OpdsFeed =
     OpdsFeedNavigation(
       id = "root",
-      title = "Komga OPDS catalog",
+      title = "Tales OPDS catalog",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder(ROUTE_CATALOG).toUriString()),
@@ -256,7 +256,7 @@ class OpdsController(
       id = ID_ON_DECK,
       title = "On Deck",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, builder.toUriString()),
@@ -296,7 +296,7 @@ class OpdsController(
       id = ID_KEEP_READING,
       title = "Keep Reading",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, builder.toUriString()),
@@ -343,7 +343,7 @@ class OpdsController(
       id = ID_SERIES_ALL,
       title = if (!searchTerm.isNullOrBlank()) "Series search for: $searchTerm" else "All series",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, builder.toUriString()),
@@ -371,7 +371,7 @@ class OpdsController(
       id = ID_SERIES_LATEST,
       title = "Latest series",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -404,7 +404,7 @@ class OpdsController(
       id = ID_BOOKS_LATEST,
       title = "Latest books",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -429,7 +429,7 @@ class OpdsController(
       id = ID_LIBRARIES_ALL,
       title = "All libraries",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder(ROUTE_LIBRARIES_ALL).toUriString()),
@@ -453,7 +453,7 @@ class OpdsController(
       id = ID_COLLECTIONS_ALL,
       title = "All collections",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -478,7 +478,7 @@ class OpdsController(
       id = ID_READLISTS_ALL,
       title = "All read lists",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -502,7 +502,7 @@ class OpdsController(
       id = ID_PUBLISHERS_ALL,
       title = "All publishers",
       updated = ZonedDateTime.now(),
-      author = komgaAuthor,
+      author = talesAuthor,
       links =
         listOf(
           OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -552,7 +552,7 @@ class OpdsController(
         id = series.id,
         title = series.metadata.title,
         updated = series.lastModified.toZonedDateTime(),
-        author = komgaAuthor,
+        author = talesAuthor,
         links =
           listOf(
             OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -593,7 +593,7 @@ class OpdsController(
         id = library.id,
         title = library.name,
         updated = library.lastModifiedDate.atZone(ZoneId.systemDefault()) ?: ZonedDateTime.now(),
-        author = komgaAuthor,
+        author = talesAuthor,
         links =
           listOf(
             OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -637,7 +637,7 @@ class OpdsController(
         id = collection.id,
         title = collection.name,
         updated = collection.lastModifiedDate.atZone(ZoneId.systemDefault()) ?: ZonedDateTime.now(),
-        author = komgaAuthor,
+        author = talesAuthor,
         links =
           listOf(
             OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),
@@ -683,7 +683,7 @@ class OpdsController(
         id = readList.id,
         title = readList.name,
         updated = readList.lastModifiedDate.atZone(ZoneId.systemDefault()) ?: ZonedDateTime.now(),
-        author = komgaAuthor,
+        author = talesAuthor,
         links =
           listOf(
             OpdsLinkFeedNavigation(OpdsLinkRel.SELF, uriBuilder.toUriString()),

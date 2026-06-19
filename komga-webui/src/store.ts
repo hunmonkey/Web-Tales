@@ -66,7 +66,7 @@ export default new Vuex.Store({
   getters: {
     getUnreadAnnouncementsCount: (state) => (): number => {
       return state.announcements?.items
-        ?.filter((value: ItemDto) => false == value._komga?.read)
+        ?.filter((value: ItemDto) => false == value._tales?.read)
         ?.length || 0
     },
     isLatestVersion: (state) => (): number => {

@@ -87,12 +87,12 @@ class OpdsGenerator(
           .pathSegment(*pathSegments.toTypedArray())
           .path(ROUTE_AUTH)
           .toUriString(),
-      title = "Komga",
+      title = "Tales",
       description = "Enter your email and password to authenticate.",
       links =
         listOf(
-          WPLinkDto(rel = "help", href = "https://komga.org"),
-          WPLinkDto(rel = "logo", href = ServletUriComponentsBuilder.fromCurrentContextPath().pathSegment("android-chrome-512x512.png").toUriString()),
+          WPLinkDto(rel = "help", href = "https://github.com/hunmonkey/Web-Tales"),
+          WPLinkDto(rel = "logo", href = ServletUriComponentsBuilder.fromCurrentContextPath().pathSegment("tales-icon.svg").toUriString()),
         ),
       authentication =
         listOf(
