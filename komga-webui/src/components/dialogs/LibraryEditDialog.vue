@@ -523,6 +523,9 @@ export default Vue.extend({
       }, {
         text: this.$t('common.txt').toString(),
         value: 'txt',
+      }, {
+        text: this.$t('common.image_directory').toString(),
+        value: 'imageDirectory',
       }]
     },
 
@@ -634,6 +637,7 @@ export default Vue.extend({
       this.form.scanOnStartup = library ? library.scanOnStartup : false
       this.form.scanTypes = []
       if (!library) this.form.scanTypes = ['cbx', 'pdf', 'epub']
+      if (library?.scanImageDirectory == true) this.form.scanTypes.splice(0, 0, 'imageDirectory')
       if (library?.scanEpub == true) this.form.scanTypes.splice(0, 0, 'epub')
       if (library?.scanTxt == true) this.form.scanTypes.splice(0, 0, 'txt')
       if (library?.scanPdf == true) this.form.scanTypes.splice(0, 0, 'pdf')
@@ -674,6 +678,7 @@ export default Vue.extend({
           scanPdf: this.form.scanTypes.includes('pdf'),
           scanEpub: this.form.scanTypes.includes('epub'),
           scanTxt: this.form.scanTypes.includes('txt'),
+          scanImageDirectory: this.form.scanTypes.includes('imageDirectory'),
           scanDirectoryExclusions: this.form.scanDirectoryExclusions,
           repairExtensions: this.form.repairExtensions,
           convertToCbz: this.form.convertToCbz,

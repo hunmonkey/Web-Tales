@@ -1,0 +1,277 @@
+import {
+  FixedPageAdapter,
+  ShelfViewPagePreloader,
+  ShelfViewPageUrlResolver,
+  defaultShelfViewPagePreloader,
+} from '@/shelfview/adapters/fixed-page-adapter'
+import {ReaderAdapter} from '@/shelfview/adapters/reader-adapter'
+import {ShelfViewTextContentLoader, TextReflowAdapter} from '@/shelfview/adapters/text-reflow-adapter'
+import {shelfViewPageUrl} from '@/shelfview/functions/shelfview-urls'
+import {ShelfViewFixedPageLayout} from '@/shelfview/functions/fixed-page-view'
+import {ShelfViewManifest, ShelfViewManifestItem} from '@/shelfview/models/shelfview-manifest'
+import {
+  SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+  ShelfViewLocator,
+  ShelfViewMixedLocator,
+  ShelfViewPageLocator,
+  ShelfViewTextLocator,
+} from '@/shelfview/models/shelfview-locator'
+import {ShelfViewTextParagraph} from '@/shelfview/models/shelfview-text'
+
+type MixedItemAdapter = FixedPageAdapter | TextReflowAdapter
+
+export class MixedContentAdapter implements ReaderAdapter {
+  private manifest: ShelfViewManifest | undefined
+  private items: ShelfViewManifestItem[] = []
+  private currentItemIndex = 0
+  private currentAdapter: MixedItemAdapter | undefined
+
+  constructor(
+    private readonly loadTextContent: ShelfViewTextContentLoader,
+    private readonly resolvePageUrl: ShelfViewPageUrlResolver = shelfViewPageUrl,
+    private readonly preloadPage: ShelfViewPagePreloader = defaultShelfViewPagePreloader,
+  ) {
+  }
+
+  async open(manifest: ShelfViewManifest): Promise<void> {
+    if (manifest.kind !== 'MIXED_CONTENT_SEQUENCE') {
+      throw new Error('MixedContentAdapter can only open mixed manifests.')
+    }
+
+    const items = [...manifest.items ?? []].sort((a, b) => a.index - b.index)
+    if (items.length === 0) throw new Error('MixedContentAdapter requires at least one item.')
+    if (items.some(item => !this.isSupportedItem(item))) {
+      throw new Error('MixedContentAdapter only accepts fixed-page or text items.')
+    }
+
+    this.destroy()
+    this.manifest = manifest
+    this.items = items
+    await this.openItem(0)
+  }
+
+  async next(): Promise<void> {
+    const adapter = this.requireCurrentAdapter()
+    if (adapter.canGoNext()) {
+      await adapter.next()
+      return
+    }
+    if (this.currentItemIndex < this.items.length - 1) await this.openItem(this.currentItemIndex + 1)
+  }
+
+  async previous(): Promise<void> {
+    const adapter = this.requireCurrentAdapter()
+    if (adapter.canGoPrevious()) {
+      await adapter.previous()
+      return
+    }
+    if (this.currentItemIndex > 0) {
+      await this.openItem(this.currentItemIndex - 1)
+      await this.goToLastLocationInCurrentItem()
+    }
+  }
+
+  async goTo(locator: ShelfViewLocator): Promise<void> {
+    const manifest = this.requireManifest()
+
+    if (locator.schemaVersion !== SHELFVIEW_LOCATOR_SCHEMA_VERSION || locator.kind !== 'MIXED') {
+      throw new Error('MixedContentAdapter only accepts mixed locators.')
+    }
+    if (locator.contentFingerprint !== manifest.contentFingerprint) {
+      throw new Error('The mixed locator belongs to a different book version.')
+    }
+
+    const item = this.items[locator.itemIndex]
+    if (!item || item.itemId !== locator.itemId) {
+      throw new Error('The mixed locator item is unavailable.')
+    }
+    if (!this.itemMatchesLocator(item, locator.itemLocator)) {
+      throw new Error('The mixed locator item type is invalid.')
+    }
+
+    await this.openItem(locator.itemIndex)
+    await this.requireCurrentAdapter().goTo(locator.itemLocator)
+  }
+
+  async goToCurrentItemContentIndex(contentIndex: number): Promise<void> {
+    const adapter = this.requireCurrentAdapter()
+    const locator = adapter.getCurrentLocator()
+
+    if (locator.kind === 'PAGE') {
+      await adapter.goTo({
+        ...locator,
+        page: contentIndex,
+      })
+      return
+    }
+
+    await adapter.goTo({
+      ...locator,
+      paragraph: contentIndex,
+    })
+  }
+
+  async goToCurrentTextLocator(locator: ShelfViewTextLocator): Promise<void> {
+    const adapter = this.requireCurrentAdapter()
+    if (!(adapter instanceof TextReflowAdapter)) throw new Error('Current mixed item is not text.')
+    await adapter.goTo(locator)
+  }
+
+  getCurrentLocator(): ShelfViewMixedLocator {
+    const manifest = this.requireManifest()
+    const item = this.requireCurrentItem()
+
+    return {
+      schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+      kind: 'MIXED',
+      itemId: item.itemId,
+      itemIndex: this.currentItemIndex,
+      itemLocator: this.requireCurrentAdapter().getCurrentLocator() as ShelfViewPageLocator | ShelfViewTextLocator,
+      contentFingerprint: manifest.contentFingerprint,
+    }
+  }
+
+  getProgression(): number {
+    if (this.items.length === 0) return 0
+    return (this.currentItemIndex + this.requireCurrentAdapter().getProgression()) / this.items.length
+  }
+
+  getCurrentContentIndex(): number {
+    const locator = this.requireCurrentAdapter().getCurrentLocator()
+    return locator.kind === 'PAGE' ? locator.page : locator.paragraph
+  }
+
+  getCurrentContentCount(): number {
+    const adapter = this.requireCurrentAdapter()
+    if (adapter instanceof FixedPageAdapter) return adapter.getPagesCount()
+    return adapter.getParagraphsCount()
+  }
+
+  getCurrentTextLocator(): ShelfViewTextLocator | undefined {
+    const adapter = this.currentAdapter
+    return adapter instanceof TextReflowAdapter ? adapter.getCurrentLocator() : undefined
+  }
+
+  getParagraphLength(paragraphIndex: number): number {
+    const adapter = this.currentAdapter
+    return adapter instanceof TextReflowAdapter ? adapter.getParagraphLength(paragraphIndex) : 0
+  }
+
+  getVisibleParagraphs(layout: ShelfViewFixedPageLayout): ShelfViewTextParagraph[] {
+    const adapter = this.currentAdapter
+    return adapter instanceof TextReflowAdapter ? adapter.getVisibleParagraphs(layout) : []
+  }
+
+  getPageUrl(pageIndex: number): string | undefined {
+    const adapter = this.currentAdapter
+    return adapter instanceof FixedPageAdapter ? adapter.getPageUrl(pageIndex) : undefined
+  }
+
+  isCurrentFixedPage(): boolean {
+    return this.currentAdapter instanceof FixedPageAdapter
+  }
+
+  isCurrentText(): boolean {
+    return this.currentAdapter instanceof TextReflowAdapter
+  }
+
+  canGoPrevious(): boolean {
+    const adapter = this.requireCurrentAdapter()
+    return adapter.canGoPrevious() || this.currentItemIndex > 0
+  }
+
+  canGoNext(): boolean {
+    const adapter = this.requireCurrentAdapter()
+    return adapter.canGoNext() || this.currentItemIndex < this.items.length - 1
+  }
+
+  destroy(): void {
+    this.currentAdapter?.destroy()
+    this.currentAdapter = undefined
+    this.manifest = undefined
+    this.items = []
+    this.currentItemIndex = 0
+  }
+
+  private async openItem(itemIndex: number): Promise<void> {
+    const manifest = this.requireManifest()
+    const item = this.items[itemIndex]
+    if (!item) throw new Error('The mixed manifest item is unavailable.')
+
+    this.currentAdapter?.destroy()
+    this.currentItemIndex = itemIndex
+
+    if (item.kind === 'FIXED_PAGE_SEQUENCE') {
+      const adapter = new FixedPageAdapter(this.resolvePageUrl, this.preloadPage)
+      await adapter.open(toItemManifest(manifest, item))
+      this.currentAdapter = adapter
+      return
+    }
+
+    const adapter = new TextReflowAdapter(this.loadTextContent)
+    await adapter.open(toItemManifest(manifest, item))
+    this.currentAdapter = adapter
+  }
+
+  private async goToLastLocationInCurrentItem(): Promise<void> {
+    const adapter = this.requireCurrentAdapter()
+    if (adapter instanceof FixedPageAdapter) {
+      await this.goToCurrentItemContentIndex(adapter.getPagesCount() - 1)
+      return
+    }
+
+    await this.goToCurrentItemContentIndex(adapter.getParagraphsCount() - 1)
+  }
+
+  private itemMatchesLocator(
+    item: ShelfViewManifestItem,
+    locator: ShelfViewPageLocator | ShelfViewTextLocator,
+  ): boolean {
+    if (item.kind === 'FIXED_PAGE_SEQUENCE') return locator.kind === 'PAGE'
+    if (item.kind === 'TEXT_REFLOW') return locator.kind === 'TEXT'
+    return false
+  }
+
+  private isSupportedItem(item: ShelfViewManifestItem): boolean {
+    return item.kind === 'FIXED_PAGE_SEQUENCE' || item.kind === 'TEXT_REFLOW'
+  }
+
+  private requireManifest(): ShelfViewManifest {
+    if (!this.manifest) throw new Error('MixedContentAdapter is not open.')
+    return this.manifest
+  }
+
+  private requireCurrentAdapter(): MixedItemAdapter {
+    if (!this.currentAdapter) throw new Error('MixedContentAdapter has no current item.')
+    return this.currentAdapter
+  }
+
+  private requireCurrentItem(): ShelfViewManifestItem {
+    const item = this.items[this.currentItemIndex]
+    if (!item) throw new Error('MixedContentAdapter has no current item.')
+    return item
+  }
+}
+
+function toItemManifest(
+  manifest: ShelfViewManifest,
+  item: ShelfViewManifestItem,
+): ShelfViewManifest {
+  return {
+    schemaVersion: manifest.schemaVersion,
+    bookId: manifest.bookId,
+    title: item.label,
+    kind: item.kind,
+    sourceFormat: item.sourceFormat ?? manifest.sourceFormat,
+    contentFingerprint: item.contentFingerprint,
+    pageCount: item.pageCount,
+    text: item.text,
+    pages: item.pages,
+    capabilities: {
+      ...manifest.capabilities,
+      textSelection: item.kind === 'TEXT_REFLOW',
+      doublePage: item.kind === 'FIXED_PAGE_SEQUENCE' && manifest.capabilities.doublePage,
+      imageFilters: item.kind === 'FIXED_PAGE_SEQUENCE' && manifest.capabilities.imageFilters,
+    },
+  }
+}

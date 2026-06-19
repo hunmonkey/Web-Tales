@@ -5,4 +5,5 @@ enum class MediaProfile {
   PDF,
   EPUB,
   TXT,
+  IMAGE_DIRECTORY,
 }

@@ -4,8 +4,10 @@ import com.appmattus.crypto.Algorithm
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import java.io.InputStream
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.inputStream
+import kotlin.io.path.name
 
 private val logger = KotlinLogging.logger {}
 
@@ -17,7 +19,7 @@ class Hasher {
   fun computeHash(path: Path): String {
     logger.debug { "Hashing: $path" }
 
-    return computeHash(path.inputStream())
+    return if (Files.isDirectory(path)) computeDirectoryHash(path) else computeHash(path.inputStream())
   }
 
   fun computeHash(string: String): String = computeHash(string.byteInputStream())
@@ -43,4 +45,19 @@ class Hasher {
     asUByteArray().joinToString("") {
       it.toString(16).padStart(2, '0')
     }
+
+  private fun computeDirectoryHash(path: Path): String {
+    val manifest =
+      Files.list(path).use { stream ->
+        stream
+          .filter { candidate: Path -> Files.isRegularFile(candidate) }
+          .toList()
+          .sortedBy { it.name.lowercase() }
+          .joinToString("\n") {
+            "${it.name}\t${Files.size(it)}\t${computeHash(it.inputStream())}"
+          }
+      }
+
+    return computeHash(manifest)
+  }
 }

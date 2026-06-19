@@ -2,6 +2,7 @@ export type ShelfViewApiErrorCode =
   | 'BAD_REQUEST'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
+  | 'PAYLOAD_TOO_LARGE'
   | 'UNAVAILABLE'
   | 'UNSUPPORTED_SCHEMA'
 
@@ -33,6 +34,8 @@ function codeFromStatus(status?: number): ShelfViewApiErrorCode {
       return 'FORBIDDEN'
     case 404:
       return 'NOT_FOUND'
+    case 413:
+      return 'PAYLOAD_TOO_LARGE'
     default:
       return 'UNAVAILABLE'
   }

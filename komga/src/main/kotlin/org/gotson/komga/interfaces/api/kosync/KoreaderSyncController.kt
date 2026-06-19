@@ -96,6 +96,7 @@ class KoreaderSyncController(
         }
 
         MediaProfile.TXT -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Text profile is not supported for KOReader sync")
+        MediaProfile.IMAGE_DIRECTORY -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Image directory profile is not supported for KOReader sync")
         null -> throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book has no media profile")
       }
 
@@ -187,6 +188,7 @@ class KoreaderSyncController(
         }
 
         MediaProfile.TXT -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Text profile is not supported for KOReader sync")
+        MediaProfile.IMAGE_DIRECTORY -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Image directory profile is not supported for KOReader sync")
         null -> throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book has no media profile")
       }
 

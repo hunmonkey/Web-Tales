@@ -33,6 +33,50 @@ describe('ShelfViewManifestService', () => {
     expect(get).toHaveBeenCalledWith('/api/shelfview/v1/books/book-1/manifest')
   })
 
+  it('fetches a mixed ZIP manifest with ordered internal items', async () => {
+    const mixedManifest: ShelfViewManifest = {
+      ...manifest,
+      kind: 'MIXED_CONTENT_SEQUENCE',
+      sourceFormat: 'ZIP',
+      pageCount: 2,
+      pages: undefined,
+      items: [
+        {
+          itemId: 'text-item',
+          index: 0,
+          kind: 'TEXT_REFLOW',
+          label: '1.txt',
+          contentFingerprint: 'komga-file-state:book-1:zip-item:text-item',
+          sourceFormat: 'TXT',
+          text: {
+            endpoint: '/api/shelfview/v1/books/book-1/mixed/text-item/text',
+            normalizationVersion: 1,
+          },
+        },
+        {
+          itemId: 'image-item',
+          index: 1,
+          kind: 'FIXED_PAGE_SEQUENCE',
+          label: '2.jpg',
+          contentFingerprint: 'komga-file-state:book-1:zip-item:image-item',
+          sourceFormat: 'JPG',
+          pageCount: 1,
+          pages: {
+            endpointTemplate: '/api/shelfview/v1/books/book-1/mixed/image-item/pages/{page}?zero_based=true',
+          },
+        },
+      ],
+      capabilities: {
+        ...manifest.capabilities,
+        textSelection: true,
+      },
+    }
+    const get = jest.fn().mockResolvedValue({data: mixedManifest})
+    const service = new ShelfViewManifestService({get} as unknown as AxiosInstance)
+
+    await expect(service.getManifest('book-1')).resolves.toEqual(mixedManifest)
+  })
+
   it('maps missing books to a ShelfView API error', async () => {
     const get = jest.fn().mockRejectedValue({
       response: {

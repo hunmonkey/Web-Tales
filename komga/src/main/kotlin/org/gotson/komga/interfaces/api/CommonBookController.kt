@@ -84,6 +84,7 @@ class CommonBookController(
       MediaProfile.PDF -> getWebPubManifestPdfInternal(principal, bookId, webPubGenerator)
       MediaProfile.EPUB -> getWebPubManifestEpubInternal(principal, bookId, webPubGenerator)
       MediaProfile.TXT -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Text profile is not supported by the WebPub manifest")
+      MediaProfile.IMAGE_DIRECTORY -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Image directory profile is not supported by the WebPub manifest")
       null -> throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
     }
   } ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)

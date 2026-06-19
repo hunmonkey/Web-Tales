@@ -12,6 +12,7 @@ internal object ShelfViewLocatorValidator {
   private const val SCHEMA_VERSION = 1
   private const val KIND_PAGE = "PAGE"
   private const val KIND_TEXT = "TEXT"
+  private const val KIND_MIXED = "MIXED"
 
   fun validate(
     locator: JsonNode?,
@@ -50,17 +51,20 @@ internal object ShelfViewLocatorValidator {
     when (kind) {
       KIND_PAGE -> locator.validatePageLocator(pageCount)
       KIND_TEXT -> locator.validateTextLocator()
-      else -> invalid("kind must be PAGE or TEXT")
+      KIND_MIXED -> locator.validateMixedLocator()
+      else -> invalid("kind must be PAGE, TEXT or MIXED")
     }
 
     return ShelfViewValidatedLocator(contentFingerprint)
   }
 
-  private fun JsonNode.validatePageLocator(pageCount: Int) {
+  private fun JsonNode.validatePageLocator(pageCount: Int? = null) {
     val page = requiredInt("page")
     if (page < 0) invalid("page must be zero or greater")
-    if (pageCount < 1) invalid("page cannot be saved before the book has pages")
-    if (page >= pageCount) invalid("page must be lower than the book page count")
+    if (pageCount != null) {
+      if (pageCount < 1) invalid("page cannot be saved before the book has pages")
+      if (page >= pageCount) invalid("page must be lower than the book page count")
+    }
 
     val offset = requiredNumber("offset")
     if (offset < 0.0 || offset > 1.0) invalid("offset must be between 0 and 1")
@@ -69,10 +73,30 @@ internal object ShelfViewLocatorValidator {
   private fun JsonNode.validateTextLocator() {
     if (requiredInt("paragraph") < 0) invalid("paragraph must be zero or greater")
     if (requiredInt("characterOffset") < 0) invalid("characterOffset must be zero or greater")
-    if (requiredInt("normalizationVersion") < 1) invalid("normalizationVersion must be one or greater")
+    if (requiredInt("normalizationVersion") != SHELFVIEW_TEXT_NORMALIZATION_VERSION) {
+      invalid("normalizationVersion must be $SHELFVIEW_TEXT_NORMALIZATION_VERSION")
+    }
 
     val locatorProgression = requiredNumber("progression")
     if (locatorProgression < 0.0 || locatorProgression > 1.0) invalid("locator progression must be between 0 and 1")
+  }
+
+  private fun JsonNode.validateMixedLocator() {
+    requiredText("itemId")
+    if (requiredInt("itemIndex") < 0) invalid("itemIndex must be zero or greater")
+
+    val itemLocator = get("itemLocator") ?: invalid("itemLocator is required")
+    if (!itemLocator.isObject) invalid("itemLocator must be an object")
+
+    val schemaVersion = itemLocator.requiredInt("schemaVersion")
+    if (schemaVersion != SCHEMA_VERSION) invalid("itemLocator schemaVersion must be $SCHEMA_VERSION")
+
+    itemLocator.requiredText("contentFingerprint")
+    when (itemLocator.requiredText("kind")) {
+      KIND_PAGE -> itemLocator.validatePageLocator()
+      KIND_TEXT -> itemLocator.validateTextLocator()
+      else -> invalid("itemLocator kind must be PAGE or TEXT")
+    }
   }
 
   private fun JsonNode.requiredInt(name: String): Int {

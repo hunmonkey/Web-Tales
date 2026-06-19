@@ -8,22 +8,28 @@ import org.assertj.core.api.Assertions.assertThat
 import org.gotson.komga.domain.model.Book
 import org.gotson.komga.domain.model.BookPage
 import org.gotson.komga.domain.model.BookWithMedia
+import org.gotson.komga.domain.model.Dimension
 import org.gotson.komga.domain.model.Media
 import org.gotson.komga.domain.model.MediaExtensionEpub
+import org.gotson.komga.domain.model.MediaType
 import org.gotson.komga.domain.model.makeBook
 import org.gotson.komga.infrastructure.configuration.KomgaProperties
 import org.gotson.komga.infrastructure.mediacontainer.epub.EpubExtractor
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.ClassPathResource
+import java.awt.image.BufferedImage
+import java.nio.file.Files
 import java.nio.file.Path
 import java.time.LocalDateTime
+import javax.imageio.ImageIO
 import kotlin.io.path.extension
 import kotlin.io.path.inputStream
 import kotlin.io.path.listDirectoryEntries
@@ -156,6 +162,50 @@ class BookAnalyzerTest(
       assertThat(media.mediaType).isEqualTo("text/plain")
       assertThat(media.status).isEqualTo(Media.Status.READY)
       assertThat(media.pageCount).isEqualTo(0)
+    }
+  }
+
+  @Nested
+  inner class ImageDirectory {
+    @Test
+    fun `given marked image directory when analyzing then pages are naturally sorted and validated`(
+      @TempDir directory: Path,
+    ) {
+      Files.createFile(directory.resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER))
+      writeImage(directory.resolve("10.png"), "png", 10, 20)
+      writeImage(directory.resolve("2.jpg"), "jpg", 2, 3)
+      Files.writeString(directory.resolve("3.jpg"), "not an image")
+      Files.writeString(directory.resolve("notes.txt"), "hello")
+
+      val book = Book("book", directory.toUri().toURL(), LocalDateTime.now())
+
+      val media = bookAnalyzer.analyze(book, true)
+
+      assertThat(media.mediaType).isEqualTo(MediaType.IMAGE_DIRECTORY.type)
+      assertThat(media.status).isEqualTo(Media.Status.READY)
+      assertThat(media.pageCount).isEqualTo(2)
+      assertThat(media.pages.map { it.fileName }).containsExactly("2.jpg", "10.png")
+      assertThat(media.pages.map { it.mediaType }).containsExactly("image/jpeg", "image/png")
+      assertThat(media.pages.map { it.dimension }).containsExactly(Dimension(2, 3), Dimension(10, 20))
+      assertThat(media.pages.map { it.fileSize }).allMatch { it != null && it > 0 }
+      assertThat(media.files.map { it.fileName }).containsExactly("3.jpg", "notes.txt")
+      assertThat(media.comment).contains("ERR_1007 [3.jpg]")
+    }
+
+    @Test
+    fun `given marked image directory without image pages when analyzing then media status is ERROR`(
+      @TempDir directory: Path,
+    ) {
+      Files.createFile(directory.resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER))
+      Files.writeString(directory.resolve("notes.txt"), "hello")
+
+      val book = Book("book", directory.toUri().toURL(), LocalDateTime.now())
+
+      val media = bookAnalyzer.analyze(book, true)
+
+      assertThat(media.mediaType).isEqualTo(MediaType.IMAGE_DIRECTORY.type)
+      assertThat(media.status).isEqualTo(Media.Status.ERROR)
+      assertThat(media.comment).isEqualTo("ERR_1006")
     }
   }
 
@@ -346,5 +396,15 @@ class BookAnalyzerTest(
     }
 
     private fun provideDirectoriesForPageHashing() = ClassPathResource("hashpage").uri.toPath().listDirectoryEntries()
+  }
+
+  private fun writeImage(
+    path: Path,
+    format: String,
+    width: Int,
+    height: Int,
+  ) {
+    val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+    ImageIO.write(image, format, path.toFile())
   }
 }

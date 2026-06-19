@@ -41,6 +41,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.io.File
 import java.net.URLDecoder
+import java.nio.file.Files
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.io.path.deleteIfExists
@@ -120,6 +121,9 @@ class BookLifecycle(
       return logger.info { "File hashing for Koreader is disabled for the library, it may have changed since the task was submitted, skipping" }
 
     logger.info { "Hash Koreader and persist book: $book" }
+    if (Files.isDirectory(book.path))
+      return logger.info { "KOReader hashing is not supported for directory books, skipping" }
+
     if (book.fileHashKoreader.isBlank()) {
       val hash = hasherKoreader.computeHash(book.path)
       bookRepository.update(book.copy(fileHashKoreader = hash))
@@ -471,6 +475,7 @@ class BookLifecycle(
       when (media.profile!!) {
         MediaProfile.DIVINA,
         MediaProfile.PDF,
+        MediaProfile.IMAGE_DIRECTORY,
         -> {
           require(newProgression.locator.locations?.position in 1..media.pageCount) { "Page argument (${newProgression.locator.locations?.position}) must be within 1 and book page count (${media.pageCount})" }
           ReadProgress(

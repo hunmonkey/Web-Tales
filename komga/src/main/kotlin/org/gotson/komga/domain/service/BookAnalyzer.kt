@@ -1,6 +1,7 @@
 package org.gotson.komga.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
 import org.gotson.komga.domain.model.Book
 import org.gotson.komga.domain.model.BookPage
 import org.gotson.komga.domain.model.BookWithMedia
@@ -30,9 +31,15 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.nio.file.AccessDeniedException
+import java.nio.file.Files
 import java.nio.file.NoSuchFileException
+import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 import javax.imageio.ImageIO
 import kotlin.io.path.extension
+import kotlin.io.path.inputStream
+import kotlin.io.path.name
+import kotlin.io.path.readAttributes
 
 private val logger = KotlinLogging.logger {}
 
@@ -56,6 +63,7 @@ class BookAnalyzer(
     extractors
       .flatMap { e -> e.mediaTypes().map { it to e } }
       .toMap()
+  private val natSortComparator: Comparator<String> = CaseInsensitiveSimpleNaturalComparator.getInstance()
 
   fun analyze(
     book: Book,
@@ -64,9 +72,14 @@ class BookAnalyzer(
     logger.info { "Trying to analyze book: $book" }
     return try {
       var mediaType =
-        contentDetector.detectMediaType(book.path).let {
-          logger.info { "Detected media type: $it" }
-          MediaType.fromMediaType(it) ?: return Media(mediaType = it, status = Media.Status.UNSUPPORTED, comment = "ERR_1001", bookId = book.id)
+        if (book.path.isShelfViewImageDirectoryBook()) {
+          logger.info { "Detected ShelfView image directory" }
+          MediaType.IMAGE_DIRECTORY
+        } else {
+          contentDetector.detectMediaType(book.path).let {
+            logger.info { "Detected media type: $it" }
+            MediaType.fromMediaType(it) ?: return Media(mediaType = it, status = Media.Status.UNSUPPORTED, comment = "ERR_1001", bookId = book.id)
+          }
         }
 
       if (book.path.extension.lowercase() == "epub" && mediaType != MediaType.EPUB) {
@@ -83,6 +96,7 @@ class BookAnalyzer(
         MediaProfile.PDF -> analyzePdf(book, analyzeDimensions)
         MediaProfile.EPUB -> analyzeEpub(book, analyzeDimensions)
         MediaProfile.TXT -> analyzeTxt()
+        MediaProfile.IMAGE_DIRECTORY -> analyzeImageDirectory(book, analyzeDimensions)
       }.copy(mediaType = mediaType.type)
     } catch (ade: AccessDeniedException) {
       logger.error(ade) { "Error while analyzing book: $book" }
@@ -98,6 +112,59 @@ class BookAnalyzer(
 
   // ShelfView TXT (TEXT_REFLOW): native identity only. Real decoding/pagination/Locator live in the ShelfView namespace (ADR-0002).
   private fun analyzeTxt(): Media = Media(status = Media.Status.READY)
+
+  private fun analyzeImageDirectory(
+    book: Book,
+    analyzeDimensions: Boolean,
+  ): Media {
+    val pages = mutableListOf<BookPage>()
+    val files = mutableListOf<MediaFile>()
+    val rejectedPageNames = mutableListOf<String>()
+
+    Files.list(book.path).use { stream ->
+      stream
+        .filter { path: Path -> Files.isRegularFile(path) }
+        .toList()
+        .filterNot { it.name == SHELFVIEW_IMAGE_DIRECTORY_MARKER || it.name.startsWith(".") }
+        .sortedWith { first, second -> natSortComparator.compare(first.name, second.name) }
+        .forEach { path ->
+          val mediaType = contentDetector.detectMediaType(path)
+          val fileSize = path.readAttributes<BasicFileAttributes>().size()
+          val hasPageExtension = path.extension.lowercase() in imageDirectoryPageExtensions
+
+          if (hasPageExtension && contentDetector.isImage(mediaType)) {
+            pages +=
+              BookPage(
+                fileName = path.name,
+                mediaType = mediaType,
+                dimension =
+                  if (analyzeDimensions)
+                    path.inputStream().buffered().use { imageAnalyzer.getDimension(it) }
+                  else
+                    null,
+                fileSize = fileSize,
+              )
+          } else {
+            files += MediaFile(fileName = path.name, mediaType = mediaType, fileSize = fileSize)
+            if (hasPageExtension) rejectedPageNames += path.name
+          }
+        }
+    }
+
+    if (pages.isEmpty()) {
+      logger.warn { "ShelfView image directory $book does not contain any pages" }
+      return Media(status = Media.Status.ERROR, comment = "ERR_1006")
+    }
+
+    logger.info { "ShelfView image directory has ${pages.size} pages" }
+
+    val entriesErrorSummary =
+      rejectedPageNames
+        .ifEmpty { null }
+        ?.joinToString(prefix = "ERR_1007 [", postfix = "]") { it }
+
+    return Media(status = Media.Status.READY, pages = pages, pageCount = pages.size, files = files, comment = entriesErrorSummary)
+  }
 
   private fun analyzeDivina(
     book: Book,
@@ -274,6 +341,7 @@ class BookAnalyzer(
       MediaProfile.PDF -> pdfExtractor.getPageContentAsImage(book.book.path, 1)
       MediaProfile.EPUB -> epubExtractor.getCover(book.book.path) ?: if (book.media.epubDivinaCompatible) divinaExtractors[MediaType.ZIP.type]?.getPoster(book) else null
       MediaProfile.TXT -> null
+      MediaProfile.IMAGE_DIRECTORY -> null
       null -> null
     }
 
@@ -323,6 +391,7 @@ class BookAnalyzer(
           throw MediaUnsupportedException("Epub profile does not support getting page content")
 
       MediaProfile.TXT -> throw MediaUnsupportedException("Text profile does not support getting page content")
+      MediaProfile.IMAGE_DIRECTORY -> throw MediaUnsupportedException("Image directory profile page delivery is not implemented yet")
       null -> throw MediaNotReadyException()
     }
   }
@@ -368,7 +437,7 @@ class BookAnalyzer(
     return when (book.media.profile) {
       MediaProfile.DIVINA -> divinaExtractors.getValue(book.media.mediaType!!).getEntryStream(book.book.path, fileName)
       MediaProfile.EPUB -> epubExtractor.getEntryStream(book.book.path, fileName)
-      MediaProfile.PDF, MediaProfile.TXT, null -> throw MediaUnsupportedException("Extractor does not support extraction of files")
+      MediaProfile.PDF, MediaProfile.TXT, MediaProfile.IMAGE_DIRECTORY, null -> throw MediaUnsupportedException("Extractor does not support extraction of files")
     }
   }
 
@@ -425,5 +494,11 @@ class BookAnalyzer(
         dimension = page.dimension?.let { pdfExtractor.scaleDimension(it) },
       )
     }
+  }
+
+  private fun Path.isShelfViewImageDirectoryBook(): Boolean = Files.isDirectory(this) && Files.isRegularFile(resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER))
+
+  private companion object {
+    val imageDirectoryPageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
   }
 }

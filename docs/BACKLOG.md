@@ -35,29 +35,29 @@ Work in order unless an ADR explicitly changes dependencies.
 
 - [x] SV-400 Scanner/domain design spike and ADR
 - [x] SV-401 TXT scan and analysis
-- [ ] SV-402 TXT content and encoding API
-- [ ] SV-403 TextReflowAdapter and themes
-- [ ] SV-404 Stable paragraph/character Locator
+- [x] SV-402 TXT content and encoding API
+- [x] SV-403 TextReflowAdapter and themes
+- [x] SV-404 Stable paragraph/character Locator
 
 ## M4.5 ZIP internal mixed content
 
-- [ ] SV-450 ZIP internal TXT/JPG/GIF design spike and ADR
-- [ ] SV-451 ZIP internal TXT content and encoding integration
-- [ ] SV-452 ZIP internal JPG/GIF page delivery and validation
-- [ ] SV-453 Mixed ZIP manifest, reader routing and regression tests
+- [x] SV-450 ZIP internal TXT/PDF/JPG/GIF design spike and ADR
+- [x] SV-451 ZIP internal TXT content and encoding integration
+- [x] SV-452 ZIP internal PDF/JPG/GIF page delivery and validation
+- [x] SV-453 Mixed ZIP manifest, reader routing and regression tests (cover-candidate exposure remains future UX/detail work)
 
 ## M5 Image-directory books
 
-- [ ] SV-500 Library setting and `.shelfview-book` domain rule
-- [ ] SV-501 Scan, natural sort, MIME/dimension validation and metadata
-- [ ] SV-502 Page delivery and cache integration
-- [ ] SV-503 Change, move, delete and marker lifecycle
+- [x] SV-500 Library setting and `.shelfview-book` domain rule
+- [x] SV-501 Scan, natural sort, MIME/dimension validation and metadata
+- [x] SV-502 Page delivery and cache integration
+- [x] SV-503 Change, move, delete and marker lifecycle
 
 ## M6 Compatibility and UX
 
-- [ ] SV-600 Existing Komga progress compatibility
-- [ ] SV-601 Corrupt/missing/network/encoding recovery UX
-- [ ] SV-602 Desktop/mobile/browser validation
+- [x] SV-600 Existing Komga progress compatibility
+- [x] SV-601 Corrupt/missing/network/encoding recovery UX
+- [ ] SV-602 Desktop browser validation
 
 ## M7 Operations
 

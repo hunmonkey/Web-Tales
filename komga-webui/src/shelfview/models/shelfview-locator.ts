@@ -3,6 +3,7 @@ export const SHELFVIEW_LOCATOR_SCHEMA_VERSION = 1
 export type ShelfViewLocatorKind =
   | 'PAGE'
   | 'TEXT'
+  | 'MIXED'
 
 export interface ShelfViewPageLocator {
   schemaVersion: typeof SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -22,4 +23,13 @@ export interface ShelfViewTextLocator {
   contentFingerprint: string,
 }
 
-export type ShelfViewLocator = ShelfViewPageLocator | ShelfViewTextLocator
+export interface ShelfViewMixedLocator {
+  schemaVersion: typeof SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+  kind: 'MIXED',
+  itemId: string,
+  itemIndex: number,
+  itemLocator: ShelfViewPageLocator | ShelfViewTextLocator,
+  contentFingerprint: string,
+}
+
+export type ShelfViewLocator = ShelfViewPageLocator | ShelfViewTextLocator | ShelfViewMixedLocator

@@ -150,6 +150,96 @@ class FileSystemScannerTest {
     }
   }
 
+  @Test
+  fun `given marked image directory when scanning with image directories enabled then folder is returned as a book`() {
+    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
+      // given
+      val root = fs.getPath("/root")
+      Files.createDirectory(root)
+
+      val series = Files.createDirectory(root.resolve("Series"))
+      val imageBook = Files.createDirectory(series.resolve("Image Book"))
+      Files.createFile(imageBook.resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER))
+      Files.createFile(imageBook.resolve("001.jpg"))
+      Files.createFile(imageBook.resolve("002.png"))
+
+      // when
+      val scan = scanner.scanRootFolder(root, scanImageDirectory = true).series
+      val scannedSeries = scan.keys.first()
+      val books = scan.getValue(scannedSeries)
+
+      // then
+      assertThat(scan).hasSize(1)
+      assertThat(scannedSeries.name).isEqualTo("Series")
+      assertThat(books.map { it.name }).containsExactly("Image Book")
+      assertThat(books.first().url).isEqualTo(imageBook.toUri().toURL())
+    }
+  }
+
+  @Test
+  fun `given marked image directory when scanning then book size comes from direct non-marker files`() {
+    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
+      // given
+      val root = fs.getPath("/root")
+      Files.createDirectory(root)
+
+      val series = Files.createDirectory(root.resolve("Series"))
+      val imageBook = Files.createDirectory(series.resolve("Image Book"))
+      Files.write(imageBook.resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER), ByteArray(10))
+      Files.write(imageBook.resolve("001.jpg"), ByteArray(3))
+      Files.write(imageBook.resolve("notes.txt"), ByteArray(2))
+      Files.write(imageBook.resolve(".hidden.jpg"), ByteArray(50))
+
+      // when
+      val scan = scanner.scanRootFolder(root, scanImageDirectory = true).series
+      val book = scan.values.flatten().first()
+
+      // then
+      assertThat(book.fileSize).isEqualTo(5)
+    }
+  }
+
+  @Test
+  fun `given marked image directory when marker is removed then folder is no longer returned as a book`() {
+    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
+      // given
+      val root = fs.getPath("/root")
+      Files.createDirectory(root)
+
+      val imageBook = Files.createDirectory(root.resolve("Image Book"))
+      val marker = Files.createFile(imageBook.resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER))
+      Files.createFile(imageBook.resolve("001.jpg"))
+
+      assertThat(scanner.scanRootFolder(root, scanImageDirectory = true).series).hasSize(1)
+
+      // when
+      Files.delete(marker)
+      val scan = scanner.scanRootFolder(root, scanImageDirectory = true).series
+
+      // then
+      assertThat(scan).isEmpty()
+    }
+  }
+
+  @Test
+  fun `given marked image directory when scanning with default options then marker folder is ignored`() {
+    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
+      // given
+      val root = fs.getPath("/root")
+      Files.createDirectory(root)
+
+      val imageBook = Files.createDirectory(root.resolve("Image Book"))
+      Files.createFile(imageBook.resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER))
+      Files.createFile(imageBook.resolve("001.jpg"))
+
+      // when
+      val scan = scanner.scanRootFolder(root).series
+
+      // then
+      assertThat(scan).isEmpty()
+    }
+  }
+
   @ParameterizedTest
   @MethodSource("libraryScanFileTypesArguments")
   fun `given directory when scanning excluding some files then return a series excluding those files as books`(

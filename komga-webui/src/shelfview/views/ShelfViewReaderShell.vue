@@ -44,6 +44,23 @@
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
+              v-if="textControlsVisible"
+              icon
+              :aria-label="textThemeLabel"
+              data-testid="shelfview-reader-text-theme-toggle"
+              v-on="on"
+              @click="cycleTextTheme"
+            >
+              <v-icon>{{ textThemeIcon }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ textThemeLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              v-if="fixedPageControlsVisible"
               icon
               :aria-label="readingDirectionLabel"
               :disabled="!rtlAvailable"
@@ -60,6 +77,7 @@
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
+              v-if="fixedPageControlsVisible"
               icon
               :aria-label="pageFitLabel"
               data-testid="shelfview-reader-fit-toggle"
@@ -75,6 +93,7 @@
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
+              v-if="fixedPageControlsVisible"
               icon
               :aria-label="imageFilterPresetLabel"
               :disabled="!imageFiltersAvailable"
@@ -234,12 +253,50 @@
         </v-icon>
         <h2>{{ displayErrorTitle }}</h2>
         <p>{{ displayErrorMessage }}</p>
-        <v-btn
-          color="primary"
-          :to="legacyReaderLocation"
+        <div class="shelfview-reader-shell__status-actions">
+          <v-btn
+            color="primary"
+            data-testid="shelfview-reader-retry"
+            @click="retryReader"
+          >
+            Try again
+          </v-btn>
+          <v-btn
+            v-if="encodingRecoveryVisible"
+            data-testid="shelfview-reader-retry-utf8"
+            @click="retryTextEncoding('utf-8')"
+          >
+            UTF-8
+          </v-btn>
+          <v-btn
+            v-if="encodingRecoveryVisible"
+            data-testid="shelfview-reader-retry-euckr"
+            @click="retryTextEncoding('euc-kr')"
+          >
+            EUC-KR
+          </v-btn>
+          <v-btn
+            v-if="encodingRecoveryVisible"
+            data-testid="shelfview-reader-retry-auto"
+            @click="retryTextEncoding()"
+          >
+            Auto
+          </v-btn>
+          <v-btn
+            color="secondary"
+            :to="legacyReaderLocation"
+            data-testid="shelfview-reader-legacy"
+          >
+            {{ $t('browse_book.read_book') }}
+          </v-btn>
+        </div>
+        <p
+          v-if="encodingRecoveryVisible"
+          class="shelfview-reader-shell__status-note"
+          data-testid="shelfview-reader-encoding-note"
         >
-          {{ $t('browse_book.read_book') }}
-        </v-btn>
+          Current text decoding: {{ textEncodingLabel }}
+        </p>
       </section>
 
       <section
@@ -265,17 +322,35 @@
       >
         <img
           v-for="page in visiblePageSources"
-          :key="`page-${page.pageIndex}`"
+          :key="`page-${page.pageIndex}-${pageImageReloadNonce}`"
           class="shelfview-reader-shell__page shelfview-page-content"
           :class="pageImageClass"
           :style="imageFilterStyle"
           :src="page.url"
           :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
           :data-page-index="page.pageIndex"
+          :data-page-reload="pageImageReloadNonce"
           data-testid="shelfview-reader-page"
-          @error="pageImageFailed = true"
+          @error="onPageImageError"
         />
       </div>
+
+      <article
+        v-else-if="readerTextVisible"
+        class="shelfview-reader-shell__text"
+        :class="textThemeClass"
+        data-testid="shelfview-reader-text"
+      >
+        <p
+          v-for="paragraph in visibleTextParagraphs"
+          :key="`paragraph-${paragraph.paragraphIndex}`"
+          class="shelfview-reader-shell__text-paragraph"
+          :data-text-paragraph-index="paragraph.paragraphIndex"
+          data-testid="shelfview-reader-text-paragraph"
+        >
+          {{ paragraph.text }}
+        </p>
+      </article>
     </main>
 
     <aside
@@ -384,8 +459,12 @@ import {getBookTitleCompact} from '@/functions/book-title'
 import {getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
+import {ReaderAdapter} from '@/shelfview/adapters/reader-adapter'
 import {FixedPageAdapter} from '@/shelfview/adapters/fixed-page-adapter'
-import {ShelfViewPageLocator} from '@/shelfview/models/shelfview-locator'
+import {TextReflowAdapter} from '@/shelfview/adapters/text-reflow-adapter'
+import {MixedContentAdapter} from '@/shelfview/adapters/mixed-content-adapter'
+import {ShelfViewLocator, ShelfViewTextLocator} from '@/shelfview/models/shelfview-locator'
+import {ShelfViewTextParagraph} from '@/shelfview/models/shelfview-text'
 import {
   ShelfViewBookmarkDto,
   ShelfViewFixedPagePreferenceSettings,
@@ -416,6 +495,11 @@ import {
   shelfViewShouldIgnoreShortcutTarget,
   shelfViewTouchAction,
 } from '@/shelfview/functions/reader-input'
+import {
+  ShelfViewTextTheme,
+  shelfViewNextTextTheme,
+  shelfViewTextTheme,
+} from '@/shelfview/functions/text-reflow-view'
 
 interface ShelfViewPageSource {
   pageIndex: number,
@@ -446,16 +530,19 @@ export default Vue.extend({
     book: undefined as unknown as BookDto,
     series: undefined as unknown as SeriesDto,
     manifest: undefined as unknown as ShelfViewManifest,
-    adapter: undefined as FixedPageAdapter | undefined,
-    currentLocator: undefined as ShelfViewPageLocator | undefined,
+    adapter: undefined as ReaderAdapter | undefined,
+    currentLocator: undefined as ShelfViewLocator | undefined,
     context: {} as Context,
     error: undefined as Error | ShelfViewApiError | undefined,
     loading: true,
     pageImageFailed: false,
+    pageImageReloadNonce: 0,
+    textEncodingOverride: undefined as string | undefined,
     readerLayout: 'SINGLE_PAGE' as ShelfViewFixedPageLayout,
     readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
+    textTheme: 'PAPER' as ShelfViewTextTheme,
     showShortcutHelp: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
     bookmarksDrawerOpen: false,
@@ -469,6 +556,8 @@ export default Vue.extend({
   async mounted() {
     window.addEventListener('online', this.onReaderOnline)
     window.addEventListener('offline', this.onReaderOffline)
+    window.addEventListener('resize', this.onReaderViewportChanged)
+    window.addEventListener('orientationchange', this.onReaderViewportChanged)
     window.addEventListener('pagehide', this.onPageHide)
     document.addEventListener('visibilitychange', this.onVisibilityChange)
     await this.setup(this.bookId)
@@ -479,12 +568,15 @@ export default Vue.extend({
     this.clearReaderStateTimers()
     window.removeEventListener('online', this.onReaderOnline)
     window.removeEventListener('offline', this.onReaderOffline)
+    window.removeEventListener('resize', this.onReaderViewportChanged)
+    window.removeEventListener('orientationchange', this.onReaderViewportChanged)
     window.removeEventListener('pagehide', this.onPageHide)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
     this.destroyAdapter()
   },
   async beforeRouteUpdate(to, from, next) {
     if (to.params.bookId !== from.params.bookId) {
+      this.textEncodingOverride = undefined
       await this.flushReaderState()
       await this.setup(to.params.bookId)
     }
@@ -500,6 +592,12 @@ export default Vue.extend({
     pageControlsVisible(): boolean {
       return !!this.adapter && !this.hasDisplayError && !this.empty && this.pagesCount > 0
     },
+    fixedPageControlsVisible(): boolean {
+      return this.manifest?.kind === 'FIXED_PAGE_SEQUENCE' || !!this.mixedContentAdapter?.isCurrentFixedPage()
+    },
+    textControlsVisible(): boolean {
+      return this.manifest?.kind === 'TEXT_REFLOW' || !!this.mixedContentAdapter?.isCurrentText()
+    },
     readerStateNoticeVisible(): boolean {
       return this.readerStateStatus !== 'IDLE' && this.readerStateMessage.length > 0
     },
@@ -510,16 +608,41 @@ export default Vue.extend({
       }
     },
     availableReaderLayouts(): ShelfViewFixedPageLayout[] {
+      if (this.manifest?.kind === 'TEXT_REFLOW' || this.mixedContentAdapter?.isCurrentText()) {
+        const layouts: ShelfViewFixedPageLayout[] = ['SINGLE_PAGE']
+        if (this.manifest.capabilities.continuousScroll) layouts.push('CONTINUOUS_SCROLL')
+        return layouts
+      }
+
       const layouts: ShelfViewFixedPageLayout[] = ['SINGLE_PAGE']
       if (this.manifest?.capabilities.doublePage) layouts.push('DOUBLE_PAGE')
       if (this.manifest?.capabilities.continuousScroll) layouts.push('CONTINUOUS_SCROLL')
       return layouts
     },
+    fixedPageAdapter(): FixedPageAdapter | undefined {
+      return this.adapter instanceof FixedPageAdapter ? this.adapter : undefined
+    },
+    textAdapter(): TextReflowAdapter | undefined {
+      return this.adapter instanceof TextReflowAdapter ? this.adapter : undefined
+    },
+    mixedContentAdapter(): MixedContentAdapter | undefined {
+      return this.adapter instanceof MixedContentAdapter ? this.adapter : undefined
+    },
     pagesCount(): number {
-      return this.adapter?.getPagesCount() || this.manifest?.pageCount || 0
+      if (this.fixedPageAdapter) return this.fixedPageAdapter.getPagesCount()
+      if (this.textAdapter) return this.textAdapter.getParagraphsCount()
+      if (this.mixedContentAdapter) return this.mixedContentAdapter.getCurrentContentCount()
+      return this.manifest?.pageCount || 0
     },
     currentPageIndex(): number {
-      return this.currentLocator?.page || 0
+      if (this.currentLocator?.kind === 'PAGE') return this.currentLocator.page
+      if (this.currentLocator?.kind === 'TEXT') return this.currentLocator.paragraph
+      if (this.currentLocator?.kind === 'MIXED') {
+        return this.currentLocator.itemLocator.kind === 'PAGE'
+          ? this.currentLocator.itemLocator.page
+          : this.currentLocator.itemLocator.paragraph
+      }
+      return 0
     },
     currentPageNumber(): number {
       return this.currentPageIndex + 1
@@ -532,10 +655,16 @@ export default Vue.extend({
       return this.currentPageNumber.toString()
     },
     readerAriaLabel(): string {
-      return `${this.bookTitle} reader, page ${this.currentPageLabel} of ${this.pagesCount}`
+      return `${this.bookTitle} reader, ${this.currentLocationUnit} ${this.currentPageLabel} of ${this.pagesCount}`
     },
     readerLiveStatus(): string {
-      return `Page ${this.currentPageLabel} of ${this.pagesCount}`
+      return `${this.currentLocationUnitLabel} ${this.currentPageLabel} of ${this.pagesCount}`
+    },
+    currentLocationUnit(): string {
+      return this.textControlsVisible ? 'paragraph' : 'page'
+    },
+    currentLocationUnitLabel(): string {
+      return this.textControlsVisible ? 'Paragraph' : 'Page'
     },
     shortcutRows(): Array<{ keys: string, label: string }> {
       return [
@@ -547,16 +676,20 @@ export default Vue.extend({
       ]
     },
     canGoPrevious(): boolean {
+      if (this.mixedContentAdapter) return this.mixedContentAdapter.canGoPrevious()
+      if (this.textAdapter) return this.textAdapter.canGoPrevious()
       return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout)
     },
     canGoNext(): boolean {
+      if (this.mixedContentAdapter) return this.mixedContentAdapter.canGoNext()
+      if (this.textAdapter) return this.textAdapter.canGoNext()
       return !!this.adapter && shelfViewCanGoNext(this.currentPageIndex, this.pagesCount, this.readerLayout)
     },
     rtlAvailable(): boolean {
       return !!this.manifest?.capabilities.rtl
     },
     visiblePageSources(): ShelfViewPageSource[] {
-      if (!this.adapter) return []
+      if (!this.fixedPageAdapter && !this.mixedContentAdapter?.isCurrentFixedPage()) return []
 
       return shelfViewVisiblePageIndexes(
         this.currentPageIndex,
@@ -566,16 +699,23 @@ export default Vue.extend({
       )
         .map(pageIndex => ({
           pageIndex,
-          url: this.adapter?.getPageUrl(pageIndex),
+          url: this.fixedPageAdapter?.getPageUrl(pageIndex) ?? this.mixedContentAdapter?.getPageUrl(pageIndex),
         }))
         .filter((page): page is ShelfViewPageSource => !!page.url)
     },
     readerPagesVisible(): boolean {
       return this.visiblePageSources.length > 0
     },
+    visibleTextParagraphs(): ShelfViewTextParagraph[] {
+      return this.textAdapter?.getVisibleParagraphs(this.readerLayout) ?? this.mixedContentAdapter?.getVisibleParagraphs(this.readerLayout) ?? []
+    },
+    readerTextVisible(): boolean {
+      return this.visibleTextParagraphs.length > 0
+    },
     stageClasses(): object {
       return {
         'shelfview-reader-shell__stage--continuous': this.readerLayout === 'CONTINUOUS_SCROLL',
+        'shelfview-reader-shell__stage--text': this.textControlsVisible,
       }
     },
     readerPagesClasses(): object {
@@ -604,6 +744,15 @@ export default Vue.extend({
     },
     imageFilterPresetLabel(): string {
       return shelfViewImageFilterPreset(this.imageFilterPreset).label
+    },
+    textThemeIcon(): string {
+      return shelfViewTextTheme(this.textTheme).icon
+    },
+    textThemeLabel(): string {
+      return shelfViewTextTheme(this.textTheme).label
+    },
+    textThemeClass(): string {
+      return shelfViewTextTheme(this.textTheme).className
     },
     readerLayoutIcon(): string {
       switch (this.readerLayout) {
@@ -656,26 +805,74 @@ export default Vue.extend({
       }
     },
     empty(): boolean {
-      return !!this.manifest && !this.readerPagesVisible
+      return !!this.manifest && !this.readerPagesVisible && !this.readerTextVisible
     },
     emptyMessage(): string {
-      if (this.manifest?.kind && this.manifest.kind !== 'FIXED_PAGE_SEQUENCE') {
-        return 'This ShelfView format is not ready yet.'
+      if (this.manifest?.kind === 'TEXT_REFLOW') {
+        return 'No readable text is available for this book.'
       }
       return 'No readable pages are available for this book.'
     },
     hasDisplayError(): boolean {
       return !!this.error || this.pageImageFailed
     },
+    encodingRecoveryVisible(): boolean {
+      return !!this.error && this.textRecoveryAvailable && this.errorLooksEncodingRelated(this.error)
+    },
+    textEncodingLabel(): string {
+      return this.textEncodingOverride?.toUpperCase() ?? 'Auto'
+    },
     displayErrorTitle(): string {
-      return this.pageImageFailed ? 'Unable to load this page' : 'Unable to open this book'
+      if (this.pageImageFailed) return 'Page could not be loaded'
+      if (this.error instanceof ShelfViewApiError) {
+        switch (this.error.code) {
+          case 'FORBIDDEN':
+            return 'You do not have access to this book'
+          case 'NOT_FOUND':
+            return 'This book or page is missing'
+          case 'PAYLOAD_TOO_LARGE':
+            return 'This text file is too large'
+          case 'UNAVAILABLE':
+            return 'Connection interrupted'
+          case 'UNSUPPORTED_SCHEMA':
+            return 'ShelfView needs an update'
+          default:
+            return this.errorLooksEncodingRelated(this.error)
+              ? 'Text encoding could not be read'
+              : 'Unable to open this book'
+        }
+      }
+      return 'Unable to open this book'
     },
     displayErrorMessage(): string {
       if (this.pageImageFailed) {
-        return 'The first page image could not be loaded.'
+        return 'The page file may be missing, corrupt, or temporarily unreachable. Try again, or open the old reader if this format supports it.'
       }
-      if (this.error instanceof ShelfViewApiError && this.error.code === 'BAD_REQUEST') {
-        return 'This book is not supported by the ShelfView reader yet.'
+      if (this.error instanceof ShelfViewApiError) {
+        switch (this.error.code) {
+          case 'FORBIDDEN':
+            return 'Your account is signed in, but this library or book is not shared with you.'
+          case 'NOT_FOUND':
+            return 'The file, page, or archive entry is no longer available. If the file was moved, rescan the library and try again.'
+          case 'PAYLOAD_TOO_LARGE':
+            return 'The text is over ShelfView limits for file size or line length. Try a smaller source file, or open the old reader if this format supports it.'
+          case 'UNAVAILABLE':
+            return this.browserOffline()
+              ? 'Your browser is offline. Reconnect and try again.'
+              : 'The server did not answer. Check the connection and try again.'
+          case 'UNSUPPORTED_SCHEMA':
+            return 'This saved ShelfView response uses a newer format than this web app understands.'
+          default:
+            if (this.errorLooksEncodingRelated(this.error)) {
+              return 'ShelfView could not decode this text automatically. Try UTF-8 or EUC-KR and then retry.'
+            }
+            if (this.error.code === 'BAD_REQUEST') {
+              return 'This book is not supported by the ShelfView reader yet, or the file needs to be analyzed again.'
+            }
+        }
+      }
+      if (this.error instanceof Error && this.error.message.toLowerCase().includes('different book version')) {
+        return 'The book changed while ShelfView was opening it. Try again after the library finishes rescanning.'
       }
       return this.error?.message || 'ShelfView could not load this book.'
     },
@@ -685,6 +882,9 @@ export default Vue.extend({
         params: {bookId: this.bookId},
         query: this.$route.query,
       }
+    },
+    textRecoveryAvailable(): boolean {
+      return this.manifest?.kind === 'TEXT_REFLOW' || this.manifest?.kind === 'MIXED_CONTENT_SEQUENCE'
     },
   },
   methods: {
@@ -721,11 +921,17 @@ export default Vue.extend({
         this.manifest = await this.$shelfViewManifest.getManifest(bookId)
         if (requestId !== this.setupRequestId) return
 
-        if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE') {
-          const savedPosition = await this.loadShelfViewState(bookId)
+        if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE' || this.manifest.kind === 'TEXT_REFLOW' || this.manifest.kind === 'MIXED_CONTENT_SEQUENCE') {
+          const savedPosition = await this.loadShelfViewState(bookId, this.manifest.kind !== 'TEXT_REFLOW')
           if (requestId !== this.setupRequestId) return
 
-          await this.openFixedPageManifest(this.manifest, savedPosition)
+          if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE') {
+            await this.openFixedPageManifest(this.manifest, savedPosition)
+          } else if (this.manifest.kind === 'TEXT_REFLOW') {
+            await this.openTextManifest(this.manifest, savedPosition)
+          } else {
+            await this.openMixedManifest(this.manifest, savedPosition)
+          }
         }
         if (requestId !== this.setupRequestId) return
 
@@ -736,20 +942,25 @@ export default Vue.extend({
         if (requestId === this.setupRequestId) this.loading = false
       }
     },
-    async loadShelfViewState(bookId: string): Promise<ShelfViewPositionDto | undefined> {
+    async loadShelfViewState(
+      bookId: string,
+      loadFixedPagePreference: boolean,
+    ): Promise<ShelfViewPositionDto | undefined> {
       try {
         const [savedPosition, bookmarks, preference] = await Promise.all([
           this.$shelfViewState.getPosition(bookId),
           this.$shelfViewState.getBookmarks(bookId),
-          this.$shelfViewState.getPreference({
-            scopeType: 'BOOK',
-            scopeId: bookId,
-            format: SHELFVIEW_FIXED_PAGE_FORMAT,
-          }),
+          loadFixedPagePreference
+            ? this.$shelfViewState.getPreference({
+              scopeType: 'BOOK',
+              scopeId: bookId,
+              format: SHELFVIEW_FIXED_PAGE_FORMAT,
+            })
+            : Promise.resolve(undefined),
         ])
 
         this.bookmarks = bookmarks
-        this.applyPreferenceSettings(preference.effectiveSettings, false)
+        if (preference) this.applyPreferenceSettings(preference.effectiveSettings, false)
         this.setReaderStateStatus('SAVED', 'Restored')
 
         return savedPosition
@@ -770,14 +981,79 @@ export default Vue.extend({
       this.syncAdapterState()
       this.$nextTick(() => this.focusReaderStage())
     },
+    async openTextManifest(
+      manifest: ShelfViewManifest,
+      savedPosition?: ShelfViewPositionDto,
+    ) {
+      const adapter = new TextReflowAdapter(textManifest => this.loadTextContent(textManifest))
+      await adapter.open(manifest)
+      this.adapter = adapter
+      this.normalizeReaderLayout()
+      await this.restoreSavedPosition(savedPosition)
+      this.syncAdapterState()
+      this.$nextTick(() => {
+        this.restoreCurrentTextScrollPosition()
+        this.focusReaderStage()
+      })
+    },
+    async openMixedManifest(
+      manifest: ShelfViewManifest,
+      savedPosition?: ShelfViewPositionDto,
+    ) {
+      const adapter = new MixedContentAdapter(textManifest => this.loadTextContent(textManifest))
+      await adapter.open(manifest)
+      this.adapter = adapter
+      this.normalizeReaderLayout()
+      await this.restoreSavedPosition(savedPosition)
+      this.syncAdapterState()
+      this.$nextTick(() => {
+        this.restoreCurrentTextScrollPosition()
+        this.focusReaderStage()
+      })
+    },
     async restoreSavedPosition(savedPosition?: ShelfViewPositionDto) {
       if (!this.adapter || !savedPosition) return
 
       try {
         await this.adapter.goTo(savedPosition.locator)
       } catch (e) {
-        this.setReaderStateStatus('ERROR', 'Saved page unavailable')
+        this.setReaderStateStatus('ERROR', this.savedLocationErrorMessage(e))
       }
+    },
+    savedLocationErrorMessage(e: unknown): string {
+      if (e instanceof Error && e.message.toLowerCase().includes('different book version')) {
+        return 'Book changed, saved location unavailable'
+      }
+      return 'Saved location unavailable'
+    },
+    loadTextContent(manifest: ShelfViewManifest) {
+      return this.textEncodingOverride
+        ? this.$shelfViewText.getTextContent(manifest, this.textEncodingOverride)
+        : this.$shelfViewText.getTextContent(manifest)
+    },
+    retryReader() {
+      if (this.pageImageFailed && !this.error) {
+        this.retryPageImage()
+        return
+      }
+
+      void this.setup(this.bookId)
+    },
+    retryPageImage() {
+      this.pageImageFailed = false
+      this.pageImageReloadNonce += 1
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    retryTextEncoding(encoding?: string) {
+      this.textEncodingOverride = encoding
+      this.pageImageFailed = false
+      void this.setup(this.bookId)
+    },
+    onPageImageError() {
+      this.pageImageFailed = true
+    },
+    errorLooksEncodingRelated(error: Error | ShelfViewApiError): boolean {
+      return error.message.toLowerCase().includes('encoding')
     },
     destroyAdapter() {
       this.adapter?.destroy()
@@ -795,10 +1071,42 @@ export default Vue.extend({
     async previousPage() {
       if (!this.adapter) return
 
+      if (this.mixedContentAdapter) {
+        await this.mixedContentAdapter.previous()
+        this.normalizeReaderLayout()
+        this.syncAdapterState()
+        this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+        this.schedulePositionSave()
+        return
+      }
+
+      if (this.textAdapter) {
+        await this.textAdapter.previous()
+        this.syncAdapterState()
+        this.schedulePositionSave()
+        return
+      }
+
       await this.goToPageIndex(shelfViewPreviousPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout))
     },
     async nextPage() {
       if (!this.adapter) return
+
+      if (this.mixedContentAdapter) {
+        await this.mixedContentAdapter.next()
+        this.normalizeReaderLayout()
+        this.syncAdapterState()
+        this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+        this.schedulePositionSave()
+        return
+      }
+
+      if (this.textAdapter) {
+        await this.textAdapter.next()
+        this.syncAdapterState()
+        this.schedulePositionSave()
+        return
+      }
 
       await this.goToPageIndex(shelfViewNextPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout))
     },
@@ -806,10 +1114,25 @@ export default Vue.extend({
       if (!this.adapter) return
 
       this.pageImageFailed = false
-      await this.adapter.goTo({
-        ...this.adapter.getCurrentLocator(),
-        page: pageIndex,
-      })
+      if (this.mixedContentAdapter) {
+        await this.mixedContentAdapter.goToCurrentItemContentIndex(pageIndex)
+        this.syncAdapterState()
+        this.schedulePositionSave()
+        return
+      }
+
+      const currentLocator = this.adapter.getCurrentLocator()
+      if (currentLocator.kind === 'PAGE') {
+        await this.adapter.goTo({
+          ...currentLocator,
+          page: pageIndex,
+        })
+      } else {
+        await this.adapter.goTo({
+          ...currentLocator,
+          paragraph: pageIndex,
+        })
+      }
       this.syncAdapterState()
       this.schedulePositionSave()
     },
@@ -823,6 +1146,7 @@ export default Vue.extend({
       const currentIndex = layouts.indexOf(this.readerLayout)
       this.readerLayout = layouts[(currentIndex + 1) % layouts.length]
       this.syncAdapterState()
+      this.$nextTick(() => this.restoreCurrentTextScrollPosition())
       this.schedulePreferenceSave()
     },
     toggleReadingDirection() {
@@ -842,6 +1166,10 @@ export default Vue.extend({
 
       this.imageFilterPreset = shelfViewNextImageFilterPreset(this.imageFilterPreset)
       this.schedulePreferenceSave()
+    },
+    cycleTextTheme() {
+      this.textTheme = shelfViewNextTextTheme(this.textTheme)
+      this.$nextTick(() => this.restoreCurrentTextScrollPosition())
     },
     applyPreferenceSettings(
       settings: ShelfViewFixedPagePreferenceSettings,
@@ -984,7 +1312,7 @@ export default Vue.extend({
       try {
         const bookmark = await this.$shelfViewState.createBookmark(this.bookId, {
           locator: this.currentLocator,
-          label: `Page ${this.currentPageNumber}`,
+          label: `${this.currentLocationUnitLabel} ${this.currentPageNumber}`,
         })
         this.bookmarks = [
           ...this.bookmarks.filter(existing => existing.id !== bookmark.id),
@@ -1024,7 +1352,15 @@ export default Vue.extend({
     bookmarkLabel(bookmark: ShelfViewBookmarkDto): string {
       if (bookmark.label) return bookmark.label
       if (bookmark.locator.kind === 'PAGE') return `Page ${bookmark.locator.page + 1}`
-      return 'Bookmark'
+      if (bookmark.locator.kind === 'MIXED') return this.mixedBookmarkLabel(bookmark.locator)
+      return `Paragraph ${bookmark.locator.paragraph + 1}`
+    },
+    mixedBookmarkLabel(locator: ShelfViewLocator): string {
+      if (locator.kind !== 'MIXED') return 'Item'
+
+      const itemNumber = locator.itemIndex + 1
+      if (locator.itemLocator.kind === 'PAGE') return `Item ${itemNumber}, page ${locator.itemLocator.page + 1}`
+      return `Item ${itemNumber}, paragraph ${locator.itemLocator.paragraph + 1}`
     },
     onReaderOnline() {
       if (this.readerStateStatus === 'OFFLINE') {
@@ -1037,6 +1373,9 @@ export default Vue.extend({
     },
     onVisibilityChange() {
       if (document.visibilityState === 'hidden') void this.flushReaderState()
+    },
+    onReaderViewportChanged() {
+      this.$nextTick(() => this.restoreCurrentVisibleContent())
     },
     onPageHide() {
       void this.flushReaderState()
@@ -1077,23 +1416,144 @@ export default Vue.extend({
       await this.runReaderInputAction(action)
     },
     onReaderStageScroll() {
-      if (this.readerLayout !== 'CONTINUOUS_SCROLL' || !this.adapter) return
+      if (!this.adapter) return
 
-      const pageIndex = this.nearestContinuousPageIndex()
+      if (this.textAdapter || this.mixedContentAdapter?.isCurrentText()) {
+        const locator = this.nearestTextLocator()
+        if (!locator || this.sameTextLocator(locator, this.currentLocator)) return
+
+        void this.goToTextLocator(locator)
+        return
+      }
+
+      if (this.readerLayout !== 'CONTINUOUS_SCROLL') return
+
+      const pageIndex = this.nearestContinuousContentIndex()
       if (pageIndex === undefined || pageIndex === this.currentPageIndex) return
 
-      void this.adapter.goTo({
-        ...this.adapter.getCurrentLocator(),
-        page: pageIndex,
-      })
+      void this.goToPageIndex(pageIndex)
+    },
+    async goToTextLocator(locator: ShelfViewTextLocator) {
+      if (this.mixedContentAdapter?.isCurrentText()) {
+        await this.mixedContentAdapter.goToCurrentTextLocator(locator)
+        this.syncAdapterState()
+        this.schedulePositionSave()
+        return
+      }
+      if (!this.textAdapter) return
+
+      await this.textAdapter.goTo(locator)
       this.syncAdapterState()
       this.schedulePositionSave()
     },
-    nearestContinuousPageIndex(): number | undefined {
+    nearestTextLocator(): ShelfViewTextLocator | undefined {
+      const currentTextLocator = this.currentTextLocator()
+      if (!currentTextLocator) return undefined
+
       const readerStage = this.$refs.readerStage as HTMLElement | undefined
       if (!readerStage) return undefined
 
-      const pages = Array.from(readerStage.querySelectorAll<HTMLElement>('[data-page-index]'))
+      const paragraphs = Array.from(readerStage.querySelectorAll<HTMLElement>('[data-text-paragraph-index]'))
+      if (paragraphs.length === 0) return undefined
+
+      const stageTop = readerStage.getBoundingClientRect().top
+      let closestParagraph: HTMLElement | undefined
+      let closestDistance = Number.POSITIVE_INFINITY
+
+      paragraphs.forEach(paragraph => {
+        const rect = paragraph.getBoundingClientRect()
+        const distance = rect.top <= stageTop && rect.bottom >= stageTop
+          ? 0
+          : Math.abs(rect.top - stageTop)
+
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestParagraph = paragraph
+        }
+      })
+
+      if (!closestParagraph) return undefined
+
+      const paragraph = Number(closestParagraph.dataset.textParagraphIndex)
+      if (!Number.isFinite(paragraph)) return undefined
+
+      const rect = closestParagraph.getBoundingClientRect()
+      const textLength = this.currentTextParagraphLength(paragraph)
+      const offsetRatio = rect.height > 0
+        ? clampNumber((stageTop - rect.top) / rect.height, 0, 1)
+        : 0
+
+      return {
+        ...currentTextLocator,
+        paragraph,
+        characterOffset: Math.floor(textLength * offsetRatio),
+      }
+    },
+    sameTextLocator(
+      locator: ShelfViewTextLocator,
+      currentLocator?: ShelfViewLocator,
+    ): boolean {
+      const currentTextLocator = currentLocator?.kind === 'MIXED' ? currentLocator.itemLocator : currentLocator
+
+      return currentTextLocator?.kind === 'TEXT' &&
+        locator.paragraph === currentTextLocator.paragraph &&
+        locator.characterOffset === currentTextLocator.characterOffset
+    },
+    restoreCurrentTextScrollPosition() {
+      const currentTextLocator = this.currentTextLocator()
+      if (!currentTextLocator) return
+
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return
+
+      const paragraph = Array
+        .from(readerStage.querySelectorAll<HTMLElement>('[data-text-paragraph-index]'))
+        .find(x => Number(x.dataset.textParagraphIndex) === currentTextLocator.paragraph)
+      if (!paragraph) return
+
+      const paragraphLength = this.currentTextParagraphLength(currentTextLocator.paragraph)
+      const offsetRatio = paragraphLength > 0
+        ? clampNumber(currentTextLocator.characterOffset / paragraphLength, 0, 1)
+        : 0
+
+      readerStage.scrollTop = Math.max(0, paragraph.offsetTop + (paragraph.offsetHeight * offsetRatio))
+    },
+    restoreCurrentVisibleContent() {
+      if (!this.adapter || this.hasDisplayError) return
+
+      if (this.textAdapter || this.mixedContentAdapter?.isCurrentText()) {
+        this.restoreCurrentTextScrollPosition()
+        return
+      }
+
+      if (this.readerLayout === 'CONTINUOUS_SCROLL') this.scrollCurrentPageIntoView()
+    },
+    scrollCurrentPageIntoView() {
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      const page = readerStage?.querySelector<HTMLElement>(`[data-page-index="${this.currentPageIndex}"]`)
+      if (!readerStage || !page) return
+
+      if (typeof page.scrollIntoView === 'function') {
+        page.scrollIntoView({block: 'start', inline: 'nearest'})
+      } else {
+        readerStage.scrollTop = page.offsetTop
+      }
+    },
+    currentTextLocator(): ShelfViewTextLocator | undefined {
+      if (this.currentLocator?.kind === 'TEXT') return this.currentLocator
+      if (this.currentLocator?.kind === 'MIXED' && this.currentLocator.itemLocator.kind === 'TEXT') return this.currentLocator.itemLocator
+      return undefined
+    },
+    currentTextParagraphLength(paragraphIndex: number): number {
+      return this.textAdapter?.getParagraphLength(paragraphIndex) ?? this.mixedContentAdapter?.getParagraphLength(paragraphIndex) ?? 0
+    },
+    nearestContinuousContentIndex(): number | undefined {
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return undefined
+
+      const dataAttribute = this.textControlsVisible ? 'textParagraphIndex' : 'pageIndex'
+      const selector = this.textControlsVisible ? '[data-text-paragraph-index]' : '[data-page-index]'
+      const pages = Array.from(readerStage.querySelectorAll<HTMLElement>(selector))
       if (pages.length === 0) return undefined
 
       const stageTop = readerStage.getBoundingClientRect().top
@@ -1101,7 +1561,7 @@ export default Vue.extend({
       let closestDistance = Number.POSITIVE_INFINITY
 
       pages.forEach(page => {
-        const pageIndex = Number(page.dataset.pageIndex)
+        const pageIndex = Number(page.dataset[dataAttribute])
         if (!Number.isFinite(pageIndex)) return
 
         const distance = Math.abs(page.getBoundingClientRect().top - stageTop)
@@ -1147,6 +1607,14 @@ export default Vue.extend({
     },
   },
 })
+
+function clampNumber(
+  value: number,
+  min: number,
+  max: number,
+): number {
+  return Math.max(min, Math.min(value, max))
+}
 </script>
 
 <style scoped>
@@ -1158,6 +1626,7 @@ export default Vue.extend({
 }
 
 .shelfview-reader-shell__toolbar {
+  min-width: 0;
   position: fixed;
   top: 0;
   z-index: 2;
@@ -1165,6 +1634,7 @@ export default Vue.extend({
 
 .shelfview-reader-shell__title {
   max-width: min(54vw, 720px);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1173,8 +1643,16 @@ export default Vue.extend({
 .shelfview-reader-shell__page-controls {
   align-items: center;
   display: flex;
+  flex: 0 1 auto;
   gap: 4px;
   margin-right: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shelfview-reader-shell__page-controls::-webkit-scrollbar {
+  display: none;
 }
 
 .shelfview-reader-shell__page-counter {
@@ -1226,6 +1704,13 @@ export default Vue.extend({
   align-items: stretch;
   justify-content: flex-start;
   overflow-y: auto;
+}
+
+.shelfview-reader-shell__stage--text {
+  align-items: stretch;
+  overflow-y: auto;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .shelfview-reader-shell__pages {
@@ -1302,6 +1787,43 @@ export default Vue.extend({
   width: 100%;
 }
 
+.shelfview-reader-shell__text {
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 18px;
+  line-height: 1.8;
+  margin: 0 auto;
+  min-height: 100%;
+  max-width: 880px;
+  padding: 42px min(7vw, 72px) 56px;
+  white-space: pre-wrap;
+  width: 100%;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.shelfview-reader-shell__text--paper {
+  background: #f7f2e8;
+  color: #24211c;
+}
+
+.shelfview-reader-shell__text--dark {
+  background: #171a1f;
+  color: #e7eaf0;
+}
+
+.shelfview-reader-shell__text--oled {
+  background: #000000;
+  color: #f0f0f0;
+}
+
+.shelfview-reader-shell__text-paragraph {
+  margin: 0 0 1.35em;
+}
+
+.shelfview-reader-shell__text-paragraph:last-child {
+  margin-bottom: 0;
+}
+
 .shelfview-reader-shell__status {
   align-items: center;
   color: #f5f5f5;
@@ -1323,6 +1845,18 @@ export default Vue.extend({
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
+}
+
+.shelfview-reader-shell__status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.shelfview-reader-shell__status-note {
+  color: #bdbdbd;
+  font-size: 13px;
 }
 
 .shelfview-reader-shell__bookmarks-drawer {
@@ -1451,7 +1985,7 @@ export default Vue.extend({
 
 @media (max-width: 600px) {
   .shelfview-reader-shell__title {
-    max-width: 38vw;
+    max-width: 24vw;
   }
 
   .shelfview-reader-shell__page-counter {
@@ -1461,11 +1995,35 @@ export default Vue.extend({
 
   .shelfview-reader-shell__page-controls {
     gap: 0;
+    max-width: 62vw;
+  }
+
+  .shelfview-reader-shell__stage {
+    padding: 56px 8px 8px;
+  }
+
+  .shelfview-reader-shell__pages {
+    gap: 4px;
+  }
+
+  .shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-screen {
+    max-width: calc(50vw - 12px);
+  }
+
+  .shelfview-reader-shell__pages--double .shelfview-reader-shell__page--fit-width {
+    width: calc(50vw - 12px);
   }
 
   .shelfview-reader-shell__sync-status {
+    display: none;
     max-width: 72px;
     padding: 5px;
+  }
+
+  .shelfview-reader-shell__text {
+    font-size: 16px;
+    line-height: 1.7;
+    padding: 24px 18px 40px;
   }
 }
 </style>

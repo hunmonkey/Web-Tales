@@ -289,6 +289,7 @@ class WebPubGenerator(
       MediaProfile.PDF -> MEDIATYPE_WEBPUB_JSON_VALUE
       MediaProfile.EPUB -> MEDIATYPE_WEBPUB_JSON_VALUE
       MediaProfile.TXT -> MEDIATYPE_WEBPUB_JSON_VALUE
+      MediaProfile.IMAGE_DIRECTORY -> MEDIATYPE_WEBPUB_JSON_VALUE
       null -> MEDIATYPE_WEBPUB_JSON_VALUE
     }
 

@@ -2,7 +2,9 @@ package org.gotson.komga.shelfview.api
 
 import org.apache.commons.io.FilenameUtils
 import org.gotson.komga.domain.model.Media
+import org.gotson.komga.domain.model.MediaFile
 import org.gotson.komga.domain.model.MediaProfile
+import org.gotson.komga.domain.persistence.BookRepository
 import org.gotson.komga.domain.persistence.MediaRepository
 import org.gotson.komga.infrastructure.security.KomgaPrincipal
 import org.gotson.komga.interfaces.api.ContentRestrictionChecker
@@ -10,7 +12,9 @@ import org.gotson.komga.interfaces.api.persistence.BookDtoRepository
 import org.gotson.komga.interfaces.api.rest.dto.BookDto
 import org.gotson.komga.shelfview.api.dto.ShelfViewCapabilitiesDto
 import org.gotson.komga.shelfview.api.dto.ShelfViewManifestDto
+import org.gotson.komga.shelfview.api.dto.ShelfViewManifestItemDto
 import org.gotson.komga.shelfview.api.dto.ShelfViewPagesDto
+import org.gotson.komga.shelfview.api.dto.ShelfViewTextDto
 import org.gotson.komga.shelfview.domain.ShelfViewPublicationKind
 import org.gotson.komga.shelfview.domain.ShelfViewSourceFormat
 import org.springframework.http.HttpStatus
@@ -27,8 +31,10 @@ import org.gotson.komga.domain.model.MediaType as KomgaMediaType
 @RequestMapping("api/shelfview/v1", produces = [MediaType.APPLICATION_JSON_VALUE])
 class ShelfViewManifestController(
   private val bookDtoRepository: BookDtoRepository,
+  private val bookRepository: BookRepository,
   private val mediaRepository: MediaRepository,
   private val contentRestrictionChecker: ContentRestrictionChecker,
+  private val zipMixedContentProvider: ShelfViewZipMixedContentProvider,
 ) {
   @GetMapping("books/{bookId}/manifest")
   fun getManifest(
@@ -44,6 +50,52 @@ class ShelfViewManifestController(
     val mediaType =
       KomgaMediaType.fromMediaType(media.mediaType)
         ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
+    val contentFingerprint = shelfViewContentFingerprint(book, media)
+
+    if (mediaType.profile == MediaProfile.TXT) {
+      return ShelfViewManifestDto(
+        bookId = book.id,
+        title = book.metadata.title.ifBlank { book.name },
+        kind = ShelfViewPublicationKind.TEXT_REFLOW,
+        sourceFormat = ShelfViewSourceFormat.TXT,
+        contentFingerprint = contentFingerprint,
+        text =
+          ShelfViewTextDto(
+            endpoint = "/api/shelfview/v1/books/${book.id}/text",
+            normalizationVersion = SHELFVIEW_TEXT_NORMALIZATION_VERSION,
+          ),
+        capabilities = textCapabilities,
+      )
+    }
+
+    val sourceFormat = sourceFormat(book, mediaType)
+
+    if (mediaType == KomgaMediaType.ZIP && sourceFormat == ShelfViewSourceFormat.ZIP && hasMixedZipEntries(media.files)) {
+      val sourceBook = bookRepository.findByIdOrNull(book.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+      val items =
+        zipMixedContentProvider
+          .listManifestItems(sourceBook.path, contentFingerprint)
+          .mapIndexed { index, item ->
+            item.toManifestItemDto(
+              bookId = book.id,
+              bookContentFingerprint = contentFingerprint,
+              index = index,
+            )
+          }
+
+      if (items.any { it.kind == ShelfViewPublicationKind.TEXT_REFLOW || it.sourceFormat == ShelfViewSourceFormat.PDF }) {
+        return ShelfViewManifestDto(
+          bookId = book.id,
+          title = book.metadata.title.ifBlank { book.name },
+          kind = ShelfViewPublicationKind.MIXED_CONTENT_SEQUENCE,
+          sourceFormat = ShelfViewSourceFormat.ZIP,
+          contentFingerprint = contentFingerprint,
+          pageCount = items.sumOf { it.pageCount ?: 1 },
+          items = items,
+          capabilities = mixedContentCapabilities,
+        )
+      }
+    }
 
     if (mediaType.profile !in fixedPageProfiles) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Book media type '${media.mediaType}' is not supported by ShelfView fixed-page manifest yet")
@@ -53,10 +105,10 @@ class ShelfViewManifestController(
       bookId = book.id,
       title = book.metadata.title.ifBlank { book.name },
       kind = ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE,
-      sourceFormat = sourceFormat(book, mediaType),
-      contentFingerprint = shelfViewContentFingerprint(book, media),
+      sourceFormat = sourceFormat,
+      contentFingerprint = contentFingerprint,
       pageCount = shelfViewPageCount(media),
-      pages = ShelfViewPagesDto(endpointTemplate = "/api/v1/books/${book.id}/pages/{page}?zero_based=true"),
+      pages = ShelfViewPagesDto(endpointTemplate = fixedPageEndpointTemplate(book.id, mediaType)),
       capabilities = fixedPageCapabilities,
     )
   }
@@ -84,10 +136,59 @@ class ShelfViewManifestController(
       KomgaMediaType.PDF -> ShelfViewSourceFormat.PDF
       KomgaMediaType.EPUB -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "EPUB is not supported by ShelfView fixed-page manifest yet")
       KomgaMediaType.TXT -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "TXT is handled by the ShelfView text manifest, not the fixed-page manifest")
+      KomgaMediaType.IMAGE_DIRECTORY -> ShelfViewSourceFormat.IMAGE_DIRECTORY
     }
 
+  private fun fixedPageEndpointTemplate(
+    bookId: String,
+    mediaType: KomgaMediaType,
+  ): String =
+    when (mediaType) {
+      KomgaMediaType.IMAGE_DIRECTORY -> "/api/shelfview/v1/books/$bookId/image-directory/pages/{page}?zero_based=true"
+      else -> "/api/v1/books/$bookId/pages/{page}?zero_based=true"
+    }
+
+  private fun hasMixedZipEntries(files: List<MediaFile>): Boolean =
+    files.any { file ->
+      val extension = FilenameUtils.getExtension(file.fileName).lowercase()
+      extension == "txt" || extension == "pdf"
+    }
+
+  private fun ShelfViewZipMixedManifestItem.toManifestItemDto(
+    bookId: String,
+    bookContentFingerprint: String,
+    index: Int,
+  ): ShelfViewManifestItemDto {
+    val itemContentFingerprint = ShelfViewZipMixedItemIds.itemContentFingerprint(bookContentFingerprint, itemId)
+
+    return ShelfViewManifestItemDto(
+      itemId = itemId,
+      index = index,
+      kind = kind,
+      label = label,
+      contentFingerprint = itemContentFingerprint,
+      sourceFormat = sourceFormat,
+      pageCount = pageCount,
+      text =
+        if (kind == ShelfViewPublicationKind.TEXT_REFLOW) {
+          ShelfViewTextDto(
+            endpoint = "/api/shelfview/v1/books/$bookId/mixed/$itemId/text",
+            normalizationVersion = SHELFVIEW_TEXT_NORMALIZATION_VERSION,
+          )
+        } else {
+          null
+        },
+      pages =
+        if (kind == ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE) {
+          ShelfViewPagesDto(endpointTemplate = "/api/shelfview/v1/books/$bookId/mixed/$itemId/pages/{page}?zero_based=true")
+        } else {
+          null
+        },
+    )
+  }
+
   private companion object {
-    val fixedPageProfiles = setOf(MediaProfile.DIVINA, MediaProfile.PDF)
+    val fixedPageProfiles = setOf(MediaProfile.DIVINA, MediaProfile.PDF, MediaProfile.IMAGE_DIRECTORY)
 
     val fixedPageCapabilities =
       ShelfViewCapabilitiesDto(
@@ -98,5 +199,27 @@ class ShelfViewManifestController(
         rtl = true,
         imageFilters = true,
       )
+
+    val textCapabilities =
+      ShelfViewCapabilitiesDto(
+        search = false,
+        textSelection = true,
+        doublePage = false,
+        continuousScroll = true,
+        rtl = false,
+        imageFilters = false,
+      )
+
+    val mixedContentCapabilities =
+      ShelfViewCapabilitiesDto(
+        search = false,
+        textSelection = true,
+        doublePage = true,
+        continuousScroll = true,
+        rtl = false,
+        imageFilters = true,
+      )
   }
 }
+
+internal const val SHELFVIEW_TEXT_NORMALIZATION_VERSION = 1

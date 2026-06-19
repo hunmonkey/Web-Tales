@@ -35,6 +35,7 @@ import komgaSettings from './plugins/komga-settings.plugin'
 import komgaFonts from './plugins/komga-fonts.plugin'
 import shelfViewManifest from './shelfview/plugins/shelfview-manifest.plugin'
 import shelfViewState from './shelfview/plugins/shelfview-state.plugin'
+import shelfViewText from './shelfview/plugins/shelfview-text.plugin'
 import vuetify from './plugins/vuetify'
 import logger from './plugins/logger.plugin'
 import './public-path'
@@ -86,6 +87,7 @@ Vue.use(komgaReleases, {http: Vue.prototype.$http})
 Vue.use(komgaFonts, {http: Vue.prototype.$http})
 Vue.use(shelfViewManifest, {http: Vue.prototype.$http})
 Vue.use(shelfViewState, {http: Vue.prototype.$http})
+Vue.use(shelfViewText, {http: Vue.prototype.$http})
 
 Vue.config.productionTip = false
 

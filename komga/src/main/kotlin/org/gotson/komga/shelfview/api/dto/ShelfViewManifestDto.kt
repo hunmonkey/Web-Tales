@@ -13,7 +13,20 @@ data class ShelfViewManifestDto(
   val pageCount: Int? = null,
   val text: ShelfViewTextDto? = null,
   val pages: ShelfViewPagesDto? = null,
+  val items: List<ShelfViewManifestItemDto> = emptyList(),
   val capabilities: ShelfViewCapabilitiesDto,
+)
+
+data class ShelfViewManifestItemDto(
+  val itemId: String,
+  val index: Int,
+  val kind: ShelfViewPublicationKind,
+  val label: String,
+  val contentFingerprint: String,
+  val sourceFormat: ShelfViewSourceFormat? = null,
+  val pageCount: Int? = null,
+  val text: ShelfViewTextDto? = null,
+  val pages: ShelfViewPagesDto? = null,
 )
 
 data class ShelfViewTextDto(

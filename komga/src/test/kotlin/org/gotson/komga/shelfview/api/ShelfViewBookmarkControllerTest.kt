@@ -153,6 +153,35 @@ class ShelfViewBookmarkControllerTest(
   }
 
   @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given mixed locator when creating bookmark then it can be fetched`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .post("/api/shelfview/v1/books/${book.id}/bookmarks") {
+        contentType = MediaType.APPLICATION_JSON
+        content = mixedBookmarkJson(label = "Archive image")
+      }.andExpect {
+        status { isCreated() }
+        jsonPath("$.locator.kind") { value("MIXED") }
+        jsonPath("$.locator.itemId") { value("opaque-item") }
+        jsonPath("$.locator.itemIndex") { value(1) }
+        jsonPath("$.locator.itemLocator.kind") { value("PAGE") }
+        jsonPath("$.locator.itemLocator.page") { value(0) }
+        jsonPath("$.label") { value("Archive image") }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/bookmarks")
+      .andExpect {
+        status { isOk() }
+        jsonPath("$.length()") { value(1) }
+        jsonPath("${'$'}[0].locator.kind") { value("MIXED") }
+        jsonPath("${'$'}[0].locator.itemId") { value("opaque-item") }
+      }
+  }
+
+  @Test
   @WithMockCustomUser(id = USER_2_ID)
   fun `given bookmark saved by one user when another user reads or changes bookmark then it is isolated`() {
     val book = createBookWithMedia()
@@ -198,6 +227,9 @@ class ShelfViewBookmarkControllerTest(
       """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":2,"contentFingerprint":"komga-file-hash:bookmark-hash"},"label":"Bad"}""",
       """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"stale"},"label":"Bad"}""",
       """{"locator":{"schemaVersion":1,"kind":"TEXT","paragraph":0,"characterOffset":0,"progression":1.5,"normalizationVersion":1,"contentFingerprint":"komga-file-hash:bookmark-hash"},"label":"Bad"}""",
+      """{"locator":{"schemaVersion":1,"kind":"TEXT","paragraph":0,"characterOffset":0,"progression":0.5,"normalizationVersion":2,"contentFingerprint":"komga-file-hash:bookmark-hash"},"label":"Bad"}""",
+      """{"locator":{"schemaVersion":1,"kind":"MIXED","itemId":"opaque","itemIndex":-1,"itemLocator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"komga-file-hash:bookmark-hash:item"},"contentFingerprint":"komga-file-hash:bookmark-hash"},"label":"Bad"}""",
+      """{"locator":{"schemaVersion":1,"kind":"MIXED","itemId":"opaque","itemIndex":0,"itemLocator":{"schemaVersion":1,"kind":"UNKNOWN","contentFingerprint":"komga-file-hash:bookmark-hash:item"},"contentFingerprint":"komga-file-hash:bookmark-hash"},"label":"Bad"}""",
     ],
   )
   @WithMockCustomUser(id = USER_1_ID)
@@ -282,6 +314,28 @@ class ShelfViewBookmarkControllerTest(
       "locator": ${pageLocatorJson(page)},
       "label": "$label",
       "note": ${note?.let { "\"$it\"" } ?: "null"}
+    }
+    """.trimIndent()
+
+  private fun mixedBookmarkJson(label: String) =
+    """
+    {
+      "locator": {
+        "schemaVersion": 1,
+        "kind": "MIXED",
+        "itemId": "opaque-item",
+        "itemIndex": 1,
+        "itemLocator": {
+          "schemaVersion": 1,
+          "kind": "PAGE",
+          "page": 0,
+          "offset": 0,
+          "contentFingerprint": "$CONTENT_FINGERPRINT:opaque-item"
+        },
+        "contentFingerprint": "$CONTENT_FINGERPRINT"
+      },
+      "label": "$label",
+      "note": null
     }
     """.trimIndent()
 

@@ -5,7 +5,8 @@ import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
 import {BookDto} from '@/types/komga-books'
 import {SeriesDto} from '@/types/komga-series'
-import {SHELFVIEW_LOCATOR_SCHEMA_VERSION, ShelfViewPageLocator} from '@/shelfview/models/shelfview-locator'
+import {SHELFVIEW_LOCATOR_SCHEMA_VERSION, ShelfViewPageLocator, ShelfViewTextLocator} from '@/shelfview/models/shelfview-locator'
+import {ShelfViewTextContent} from '@/shelfview/models/shelfview-text'
 
 jest.mock('@/functions/urls', () => ({
   __esModule: true,
@@ -62,6 +63,91 @@ const manifest: ShelfViewManifest = {
   },
 }
 
+const textManifest: ShelfViewManifest = {
+  schemaVersion: 1,
+  bookId: 'book-1',
+  title: 'Book One',
+  kind: 'TEXT_REFLOW',
+  sourceFormat: 'TXT',
+  contentFingerprint: 'komga-file-state:book-1-text',
+  text: {
+    endpoint: '/api/shelfview/v1/books/book-1/text',
+    detectedEncoding: 'UTF-8',
+    normalizationVersion: 1,
+  },
+  capabilities: {
+    search: false,
+    textSelection: true,
+    doublePage: false,
+    continuousScroll: true,
+    rtl: false,
+    imageFilters: false,
+  },
+}
+
+const textContent: ShelfViewTextContent = {
+  schemaVersion: 1,
+  bookId: 'book-1',
+  contentFingerprint: textManifest.contentFingerprint,
+  encoding: 'UTF-8',
+  normalizationVersion: 1,
+  paragraphs: ['첫 번째 문단입니다.', '<script>alert("x")</script>', '마지막 문단입니다.'],
+}
+
+const mixedManifest: ShelfViewManifest = {
+  schemaVersion: 1,
+  bookId: 'book-1',
+  title: 'Mixed Book',
+  kind: 'MIXED_CONTENT_SEQUENCE',
+  sourceFormat: 'ZIP',
+  contentFingerprint: 'komga-file-state:mixed-book',
+  pageCount: 3,
+  items: [
+    {
+      itemId: 'text-item',
+      index: 0,
+      kind: 'TEXT_REFLOW',
+      label: '001.txt',
+      contentFingerprint: 'komga-file-state:mixed-book:text-item',
+      sourceFormat: 'TXT',
+      text: {
+        endpoint: '/api/shelfview/v1/books/book-1/mixed/text-item/text',
+        detectedEncoding: 'UTF-8',
+        normalizationVersion: 1,
+      },
+    },
+    {
+      itemId: 'image-item',
+      index: 1,
+      kind: 'FIXED_PAGE_SEQUENCE',
+      label: '002.jpg',
+      contentFingerprint: 'komga-file-state:mixed-book:image-item',
+      sourceFormat: 'JPG',
+      pageCount: 1,
+      pages: {
+        endpointTemplate: '/api/shelfview/v1/books/book-1/mixed/image-item/pages/{page}?zero_based=true',
+      },
+    },
+  ],
+  capabilities: {
+    search: false,
+    textSelection: true,
+    doublePage: true,
+    continuousScroll: true,
+    rtl: false,
+    imageFilters: true,
+  },
+}
+
+const mixedTextContent: ShelfViewTextContent = {
+  schemaVersion: 1,
+  bookId: 'book-1',
+  contentFingerprint: 'komga-file-state:mixed-book:text-item',
+  encoding: 'UTF-8',
+  normalizationVersion: 1,
+  paragraphs: ['ZIP text opening', 'ZIP image follows'],
+}
+
 const pageLocator = (page: number): ShelfViewPageLocator => ({
   schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
   kind: 'PAGE',
@@ -69,6 +155,28 @@ const pageLocator = (page: number): ShelfViewPageLocator => ({
   offset: 0,
   contentFingerprint: manifest.contentFingerprint,
 })
+
+const textLocator = (
+  paragraph: number,
+  characterOffset = 0,
+): ShelfViewTextLocator => ({
+  schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+  kind: 'TEXT',
+  paragraph,
+  characterOffset,
+  progression: textProgression(paragraph, characterOffset),
+  normalizationVersion: textManifest.text?.normalizationVersion ?? 1,
+  contentFingerprint: textManifest.contentFingerprint,
+})
+
+function textProgression(
+  paragraph: number,
+  characterOffset: number,
+): number {
+  const text = textContent.paragraphs[paragraph] ?? ''
+  const paragraphProgression = text.length > 0 ? characterOffset / text.length : 0
+  return (paragraph + paragraphProgression) / textContent.paragraphs.length
+}
 
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0))
 const mountedWrappers: Wrapper<Vue>[] = []
@@ -97,6 +205,276 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('role')).toBe('application')
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('page 1 of 2')
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Page 1 of 2')
+  })
+
+  it('loads a text manifest and renders escaped paragraphs', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const getPreference = jest.fn()
+    const getTextContent = jest.fn().mockResolvedValue(textContent)
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {getPreference},
+      shelfViewText: {getTextContent},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(getTextContent).toHaveBeenCalledWith(textManifest)
+    expect(getPreference).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="shelfview-reader-text-paragraph"]').wrappers.map(paragraph => paragraph.text())).toEqual(['첫 번째 문단입니다.'])
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-fit-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-direction-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-theme-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('paragraph 1 of 3')
+    expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Paragraph 1 of 3')
+
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-reader-text-paragraph"]').wrappers.map(paragraph => paragraph.text())).toEqual([
+      '첫 번째 문단입니다.',
+      '<script>alert("x")</script>',
+      '마지막 문단입니다.',
+    ])
+    expect(wrapper.find('script').exists()).toBe(false)
+  })
+
+  it('loads a mixed ZIP manifest and moves from text to image content', async () => {
+    const getManifest = jest.fn().mockResolvedValue(mixedManifest)
+    const getTextContent = jest.fn().mockResolvedValue(mixedTextContent)
+    const savePosition = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewText: {getTextContent},
+      shelfViewState: {savePosition},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(getTextContent).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'TEXT_REFLOW',
+      contentFingerprint: 'komga-file-state:mixed-book:text-item',
+    }))
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').text()).toBe('ZIP text opening')
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').text()).toBe('ZIP image follows')
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(false)
+    const page = wrapper.find('[data-testid="shelfview-reader-page"]')
+    expect(page.exists()).toBe(true)
+    expect(page.attributes('src')).toBe('http://api.test/api/shelfview/v1/books/book-1/mixed/image-item/pages/0?zero_based=true')
+
+    await (wrapper.vm as any).flushPositionSave()
+    await Vue.nextTick()
+
+    expect(savePosition).toHaveBeenCalledWith('book-1', {
+      locator: expect.objectContaining({
+        kind: 'MIXED',
+        itemId: 'image-item',
+        itemIndex: 1,
+        contentFingerprint: mixedManifest.contentFingerprint,
+        itemLocator: expect.objectContaining({
+          kind: 'PAGE',
+          page: 0,
+          contentFingerprint: 'komga-file-state:mixed-book:image-item',
+        }),
+      }),
+      progression: 1,
+    })
+  })
+
+  it('moves between text paragraphs and saves text position', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const getTextContent = jest.fn().mockResolvedValue(textContent)
+    const savePosition = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewText: {getTextContent},
+      shelfViewState: {savePosition},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').text()).toBe('<script>alert("x")</script>')
+
+    await (wrapper.vm as any).flushPositionSave()
+    await Vue.nextTick()
+
+    expect(savePosition).toHaveBeenCalledWith('book-1', {
+      locator: textLocator(1),
+      progression: 1 / 3,
+    })
+  })
+
+  it('restores saved text paragraph and character offset', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const savedLocator = textLocator(2, 4)
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getPosition: jest.fn().mockResolvedValue({
+          bookId: 'book-1',
+          locator: savedLocator,
+          progression: savedLocator.progression,
+          contentFingerprint: textManifest.contentFingerprint,
+          updatedAt: '2026-06-19T00:00:00Z',
+        }),
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 3')
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').text()).toBe(textContent.paragraphs[2])
+    expect((wrapper.vm as any).currentLocator).toMatchObject({
+      kind: 'TEXT',
+      paragraph: 2,
+      characterOffset: 4,
+      normalizationVersion: 1,
+      contentFingerprint: textManifest.contentFingerprint,
+    })
+  })
+
+  it('updates text character offset while scrolling', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
+    stage.getBoundingClientRect = jest.fn(() => ({top: 0, bottom: 480, left: 0, right: 320, width: 320, height: 480} as DOMRect))
+
+    const paragraphs = wrapper.findAll('[data-testid="shelfview-reader-text-paragraph"]').wrappers
+    paragraphs[0].element.getBoundingClientRect = jest.fn(() => ({top: -220, bottom: -120, left: 0, right: 320, width: 320, height: 100} as DOMRect))
+    paragraphs[1].element.getBoundingClientRect = jest.fn(() => ({top: -50, bottom: 50, left: 0, right: 320, width: 320, height: 100} as DOMRect))
+    paragraphs[2].element.getBoundingClientRect = jest.fn(() => ({top: 120, bottom: 220, left: 0, right: 320, width: 320, height: 100} as DOMRect))
+
+    await (wrapper.vm as any).onReaderStageScroll()
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).currentLocator).toMatchObject({
+      kind: 'TEXT',
+      paragraph: 1,
+      characterOffset: Math.floor(textContent.paragraphs[1].length / 2),
+    })
+    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('Saving')
+  })
+
+  it('uses the saved character offset when restoring text scroll position after display changes', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const savedLocator = textLocator(1, 6)
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getPosition: jest.fn().mockResolvedValue({
+          bookId: 'book-1',
+          locator: savedLocator,
+          progression: savedLocator.progression,
+          contentFingerprint: textManifest.contentFingerprint,
+          updatedAt: '2026-06-19T00:00:00Z',
+        }),
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
+    Object.defineProperty(stage, 'scrollTop', {value: 0, writable: true, configurable: true})
+
+    const paragraph = wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').element as HTMLElement
+    Object.defineProperty(paragraph, 'offsetTop', {value: 120, configurable: true})
+    Object.defineProperty(paragraph, 'offsetHeight', {value: 80, configurable: true})
+
+    void (wrapper.vm as any).restoreCurrentTextScrollPosition()
+
+    expect(stage.scrollTop).toBeCloseTo(120 + (80 * (6 / textContent.paragraphs[1].length)))
+  })
+
+  it('restores text scroll position after browser viewport resize', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const savedLocator = textLocator(1, 6)
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getPosition: jest.fn().mockResolvedValue({
+          bookId: 'book-1',
+          locator: savedLocator,
+          progression: savedLocator.progression,
+          contentFingerprint: textManifest.contentFingerprint,
+          updatedAt: '2026-06-19T00:00:00Z',
+        }),
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
+    Object.defineProperty(stage, 'scrollTop', {value: 0, writable: true, configurable: true})
+
+    const paragraph = wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').element as HTMLElement
+    Object.defineProperty(paragraph, 'offsetTop', {value: 180, configurable: true})
+    Object.defineProperty(paragraph, 'offsetHeight', {value: 100, configurable: true})
+
+    window.dispatchEvent(new Event('resize'))
+    await Vue.nextTick()
+
+    expect(stage.scrollTop).toBeCloseTo(180 + (100 * (6 / textContent.paragraphs[1].length)))
+  })
+
+  it('cycles text themes and can show every text paragraph in continuous mode', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const getTextContent = jest.fn().mockResolvedValue(textContent)
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewText: {getTextContent},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').classes()).toContain('shelfview-reader-shell__text--paper')
+
+    await wrapper.find('[data-testid="shelfview-reader-text-theme-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').classes()).toContain('shelfview-reader-shell__text--dark')
+
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-reader-text-paragraph"]').wrappers.map(paragraph => paragraph.attributes('data-text-paragraph-index'))).toEqual(['0', '1', '2'])
   })
 
   it('restores saved position, bookmarks and effective settings', async () => {
@@ -165,6 +543,37 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
+  })
+
+  it('keeps the current continuous page visible after mobile orientation changes', async () => {
+    const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 3})
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    const currentPage = wrapper
+      .findAll('[data-testid="shelfview-reader-page"]')
+      .wrappers
+      .find(page => page.attributes('data-page-index') === '1')
+    expect(currentPage).toBeTruthy()
+
+    const scrollIntoView = jest.fn()
+    Object.defineProperty(currentPage!.element, 'scrollIntoView', {value: scrollIntoView, configurable: true})
+
+    window.dispatchEvent(new Event('orientationchange'))
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
+    expect(scrollIntoView).toHaveBeenCalledWith({block: 'start', inline: 'nearest'})
   })
 
   it('moves pages with keyboard shortcuts and preserves editable target input', async () => {
@@ -467,6 +876,74 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').exists()).toBe(false)
   })
 
+  it('retries opening the reader after a temporary manifest failure', async () => {
+    const getManifest = jest
+      .fn()
+      .mockRejectedValueOnce(new ShelfViewApiError('Temporary outage', 'UNAVAILABLE', 503))
+      .mockResolvedValueOnce(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('Connection interrupted')
+
+    await wrapper.find('[data-testid="shelfview-reader-retry"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(getManifest).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').exists()).toBe(true)
+  })
+
+  it('retries a failed page image without reopening the whole book', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-page"]').trigger('error')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('Page could not be loaded')
+
+    await wrapper.find('[data-testid="shelfview-reader-retry"]').trigger('click')
+    await Vue.nextTick()
+
+    const page = wrapper.find('[data-testid="shelfview-reader-page"]')
+    expect(getManifest).toHaveBeenCalledTimes(1)
+    expect(page.exists()).toBe(true)
+    expect(page.attributes('data-page-reload')).toBe('1')
+  })
+
+  it('retries text content with a manual encoding when automatic decoding fails', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const getTextContent = jest
+      .fn()
+      .mockRejectedValueOnce(new ShelfViewApiError('SHELFVIEW_TEXT_ENCODING_UNREADABLE', 'BAD_REQUEST', 400))
+      .mockResolvedValueOnce({...textContent, encoding: 'euc-kr'})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewText: {getTextContent},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('Text encoding could not be read')
+    expect(wrapper.find('[data-testid="shelfview-reader-retry-euckr"]').exists()).toBe(true)
+
+    await wrapper.find('[data-testid="shelfview-reader-retry-euckr"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(getTextContent).toHaveBeenNthCalledWith(2, textManifest, 'euc-kr')
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(true)
+  })
+
   it('shows an empty state when the manifest has no readable pages', async () => {
     const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 0})
     const wrapper = mountShell({getManifest})
@@ -482,9 +959,11 @@ describe('ShelfViewReaderShell', () => {
 function mountShell({
   getManifest,
   shelfViewState = {},
+  shelfViewText = {},
 }: {
   getManifest: jest.Mock,
   shelfViewState?: Record<string, jest.Mock>,
+  shelfViewText?: Record<string, jest.Mock>,
 }) {
   const stateService = {
     getPosition: jest.fn().mockResolvedValue(undefined),
@@ -508,6 +987,10 @@ function mountShell({
     savePreference: jest.fn().mockResolvedValue({}),
     ...shelfViewState,
   }
+  const textService = {
+    getTextContent: jest.fn().mockResolvedValue(textContent),
+    ...shelfViewText,
+  }
 
   const wrapper = shallowMount(ShelfViewReaderShell, {
     propsData: {
@@ -524,6 +1007,7 @@ function mountShell({
         getManifest,
       },
       $shelfViewState: stateService,
+      $shelfViewText: textService,
       $route: {
         query: {},
       },

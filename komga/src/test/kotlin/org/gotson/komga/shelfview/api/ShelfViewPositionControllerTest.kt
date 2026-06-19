@@ -1,9 +1,12 @@
 package org.gotson.komga.shelfview.api
 
+import org.assertj.core.api.Assertions.assertThat
 import org.gotson.komga.domain.model.Book
 import org.gotson.komga.domain.model.BookPage
 import org.gotson.komga.domain.model.KomgaUser
 import org.gotson.komga.domain.model.Media
+import org.gotson.komga.domain.model.MediaFile
+import org.gotson.komga.domain.model.ReadProgress
 import org.gotson.komga.domain.model.makeBook
 import org.gotson.komga.domain.model.makeLibrary
 import org.gotson.komga.domain.model.makeSeries
@@ -11,6 +14,7 @@ import org.gotson.komga.domain.persistence.BookRepository
 import org.gotson.komga.domain.persistence.KomgaUserRepository
 import org.gotson.komga.domain.persistence.LibraryRepository
 import org.gotson.komga.domain.persistence.MediaRepository
+import org.gotson.komga.domain.persistence.ReadProgressRepository
 import org.gotson.komga.domain.persistence.SeriesRepository
 import org.gotson.komga.domain.service.LibraryLifecycle
 import org.gotson.komga.domain.service.SeriesLifecycle
@@ -42,6 +46,7 @@ class ShelfViewPositionControllerTest(
   @Autowired private val libraryLifecycle: LibraryLifecycle,
   @Autowired private val bookRepository: BookRepository,
   @Autowired private val userRepository: KomgaUserRepository,
+  @Autowired private val readProgressRepository: ReadProgressRepository,
   @Autowired private val readerStateDao: ShelfViewReaderStateDao,
   @Autowired private val mockMvc: MockMvc,
 ) {
@@ -59,6 +64,7 @@ class ShelfViewPositionControllerTest(
   @AfterEach
   fun `clear repository`() {
     readerStateDao.deleteAllPositions()
+    readProgressRepository.deleteAll()
     seriesLifecycle.deleteMany(seriesRepository.findAll())
   }
 
@@ -121,6 +127,83 @@ class ShelfViewPositionControllerTest(
         jsonPath("$.locator.page") { value(1) }
         jsonPath("$.progression") { value(1.0) }
       }
+
+    val readProgress = readProgressRepository.findByBookIdAndUserIdOrNull(book.id, USER_1_ID)
+    assertThat(readProgress).isNotNull
+    assertThat(readProgress!!.page).isEqualTo(2)
+    assertThat(readProgress.completed).isTrue()
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given existing Komga progress when getting fixed page position then returns page locator`() {
+    val book = createBookWithMedia()
+    readProgressRepository.save(ReadProgress(book.id, USER_1_ID, page = 2, completed = true))
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/position")
+      .andExpect {
+        status { isOk() }
+        jsonPath("$.locator.schemaVersion") { value(1) }
+        jsonPath("$.locator.kind") { value("PAGE") }
+        jsonPath("$.locator.page") { value(1) }
+        jsonPath("$.locator.offset") { value(0.0) }
+        jsonPath("$.locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.progression") { value(1.0) }
+        jsonPath("$.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given mixed zip Komga progress when getting position then returns no content`() {
+    val book =
+      createBookWithMedia(
+        bookName = "Mixed.zip",
+        files =
+          listOf(
+            MediaFile("001.jpg", "image/jpeg"),
+            MediaFile("chapter.txt", "text/plain"),
+          ),
+      )
+    readProgressRepository.save(ReadProgress(book.id, USER_1_ID, page = 1, completed = false))
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/position")
+      .andExpect {
+        status { isNoContent() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given mixed locator when saving position then it can be fetched`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/books/${book.id}/position") {
+        contentType = MediaType.APPLICATION_JSON
+        content = mixedPositionJson(progression = 0.75F)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.locator.kind") { value("MIXED") }
+        jsonPath("$.locator.itemId") { value("opaque-item") }
+        jsonPath("$.locator.itemIndex") { value(1) }
+        jsonPath("$.locator.itemLocator.kind") { value("PAGE") }
+        jsonPath("$.locator.itemLocator.page") { value(0) }
+        jsonPath("$.locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.progression") { value(0.75) }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/position")
+      .andExpect {
+        status { isOk() }
+        jsonPath("$.locator.kind") { value("MIXED") }
+        jsonPath("$.locator.itemId") { value("opaque-item") }
+      }
+
+    assertThat(readProgressRepository.findByBookIdAndUserIdOrNull(book.id, USER_1_ID)).isNull()
   }
 
   @Test
@@ -163,6 +246,9 @@ class ShelfViewPositionControllerTest(
       """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":1.5,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
       """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"stale"},"progression":0.5}""",
       """{"locator":{"schemaVersion":1,"kind":"TEXT","paragraph":0,"characterOffset":0,"progression":1.5,"normalizationVersion":1,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"TEXT","paragraph":0,"characterOffset":0,"progression":0.5,"normalizationVersion":2,"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"MIXED","itemId":"opaque","itemIndex":-1,"itemLocator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"komga-file-hash:position-hash:item"},"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
+      """{"locator":{"schemaVersion":1,"kind":"MIXED","itemId":"opaque","itemIndex":0,"itemLocator":{"schemaVersion":1,"kind":"UNKNOWN","contentFingerprint":"komga-file-hash:position-hash:item"},"contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
       """{"locator":{"schemaVersion":1,"kind":"UNKNOWN","contentFingerprint":"komga-file-hash:position-hash"},"progression":0.5}""",
       """{"locator":{"schemaVersion":1,"kind":"PAGE","page":0,"offset":0,"contentFingerprint":"komga-file-hash:position-hash"},"progression":1.5}""",
     ],
@@ -194,9 +280,12 @@ class ShelfViewPositionControllerTest(
       }
   }
 
-  private fun createBookWithMedia(): Book {
+  private fun createBookWithMedia(
+    bookName: String = "Book One.cbz",
+    files: List<MediaFile> = emptyList(),
+  ): Book {
     val createdSeries = seriesLifecycle.createSeries(makeSeries(name = "series", libraryId = library.id))
-    seriesLifecycle.addBooks(createdSeries, listOf(makeBook("Book One.cbz", libraryId = library.id)))
+    seriesLifecycle.addBooks(createdSeries, listOf(makeBook(bookName, libraryId = library.id)))
 
     val book = bookRepository.findAll().first { it.libraryId == library.id }.copy(fileHash = "position-hash")
     bookRepository.update(book)
@@ -211,6 +300,7 @@ class ShelfViewPositionControllerTest(
               BookPage("001.jpg", "image/jpeg"),
               BookPage("002.jpg", "image/jpeg"),
             ),
+          files = files,
         ),
       )
     }
@@ -228,6 +318,27 @@ class ShelfViewPositionControllerTest(
         "kind": "PAGE",
         "page": $page,
         "offset": 0,
+        "contentFingerprint": "$CONTENT_FINGERPRINT"
+      },
+      "progression": $progression
+    }
+    """.trimIndent()
+
+  private fun mixedPositionJson(progression: Float) =
+    """
+    {
+      "locator": {
+        "schemaVersion": 1,
+        "kind": "MIXED",
+        "itemId": "opaque-item",
+        "itemIndex": 1,
+        "itemLocator": {
+          "schemaVersion": 1,
+          "kind": "PAGE",
+          "page": 0,
+          "offset": 0,
+          "contentFingerprint": "$CONTENT_FINGERPRINT:opaque-item"
+        },
         "contentFingerprint": "$CONTENT_FINGERPRINT"
       },
       "progression": $progression

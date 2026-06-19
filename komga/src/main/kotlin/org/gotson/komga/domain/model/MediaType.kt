@@ -13,6 +13,7 @@ enum class MediaType(
   EPUB("application/epub+zip", MediaProfile.EPUB, "epub"),
   PDF("application/pdf", MediaProfile.PDF, "pdf"),
   TXT("text/plain", MediaProfile.TXT, "txt"),
+  IMAGE_DIRECTORY("application/vnd.shelfview.image-directory", MediaProfile.IMAGE_DIRECTORY, "shelfview-book"),
   ;
 
   companion object {

@@ -15,6 +15,7 @@ import java.nio.file.FileVisitOption
 import java.nio.file.FileVisitResult
 import java.nio.file.FileVisitor
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
@@ -31,6 +32,8 @@ import kotlin.time.measureTime
 
 private val logger = KotlinLogging.logger {}
 
+const val SHELFVIEW_IMAGE_DIRECTORY_MARKER = ".shelfview-book"
+
 @Service
 class FileSystemScanner(
   private val sidecarBookConsumers: List<SidecarBookConsumer>,
@@ -43,6 +46,11 @@ class FileSystemScanner(
     val type: Sidecar.Type? = null,
   )
 
+  private data class ImageDirectoryStateFile(
+    val size: Long,
+    val lastModifiedTime: LocalDateTime,
+  )
+
   private val sidecarBookPrefilter = sidecarBookConsumers.flatMap { it.getSidecarBookPrefilter() }
 
   fun scanRootFolder(
@@ -53,6 +61,7 @@ class FileSystemScanner(
     scanPdf: Boolean = true,
     scanEpub: Boolean = true,
     scanTxt: Boolean = false,
+    scanImageDirectory: Boolean = false,
     directoryExclusions: Set<String> = emptySet(),
   ): ScanResult {
     val scanForExtensions =
@@ -64,6 +73,7 @@ class FileSystemScanner(
       }
     logger.info { "Scanning folder: $root" }
     logger.info { "Scan for extensions: $scanForExtensions" }
+    logger.info { "Scan ShelfView image directories: $scanImageDirectory" }
     logger.info { "Excluded directory patterns: $directoryExclusions" }
     logger.info { "Force directory modified time: $forceDirectoryModifiedTime" }
 
@@ -104,6 +114,13 @@ class FileSystemScanner(
                 url = dir.toUri().toURL(),
                 fileLastModified = attrs.getUpdatedTime(),
               )
+
+            if (scanImageDirectory && dir.isShelfViewImageDirectory()) {
+              val book = pathToImageDirectoryBook(dir, attrs)
+              val parent = dir.parent ?: dir
+              pathToBooks.merge(parent, mutableListOf(book)) { prev, one -> prev.union(one).toMutableList() }
+              return FileVisitResult.SKIP_SUBTREE
+            }
 
             return FileVisitResult.CONTINUE
           }
@@ -240,6 +257,42 @@ class FileSystemScanner(
       fileLastModified = attrs.getUpdatedTime(),
       fileSize = attrs.size(),
     )
+
+  private fun pathToImageDirectoryBook(
+    path: Path,
+    attrs: BasicFileAttributes,
+  ): Book {
+    val stateFiles = path.listImageDirectoryStateFiles()
+    val directoryLastModified = attrs.getUpdatedTime()
+
+    return Book(
+      name = path.nameWithoutExtension,
+      url = path.toUri().toURL(),
+      fileLastModified = maxOf(directoryLastModified, stateFiles.maxOfOrNull { it.lastModifiedTime } ?: directoryLastModified),
+      fileSize = stateFiles.sumOf { it.size },
+    )
+  }
+
+  private fun Path.listImageDirectoryStateFiles(): List<ImageDirectoryStateFile> =
+    Files
+      .list(this)
+      .use { stream -> stream.toList() }
+      .filter { candidate -> Files.isRegularFile(candidate, LinkOption.NOFOLLOW_LINKS) }
+      .filterNot { candidate -> candidate.name == SHELFVIEW_IMAGE_DIRECTORY_MARKER || candidate.name.startsWith(".") }
+      .mapNotNull { candidate ->
+        try {
+          val attrs = Files.readAttributes(candidate, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+          ImageDirectoryStateFile(
+            size = attrs.size(),
+            lastModifiedTime = attrs.getUpdatedTime(),
+          )
+        } catch (ex: IOException) {
+          logger.warn(ex) { "Could not read image-directory state file: $candidate" }
+          null
+        }
+      }
+
+  private fun Path.isShelfViewImageDirectory(): Boolean = Files.isRegularFile(resolve(SHELFVIEW_IMAGE_DIRECTORY_MARKER), LinkOption.NOFOLLOW_LINKS)
 }
 
 fun BasicFileAttributes.getUpdatedTime(): LocalDateTime = maxOf(creationTime(), lastModifiedTime()).toLocalDateTime()

@@ -82,6 +82,7 @@ class LibraryContentLifecycle(
             library.scanPdf,
             library.scanEpub,
             library.scanTxt,
+            library.scanImageDirectory,
             library.scanDirectoryExclusions,
           )
         } catch (e: DirectoryNotFoundException) {
@@ -155,14 +156,18 @@ class LibraryContentLifecycle(
         } else {
           // if series already exists, update it
           logger.debug { "Scanned series already exists. Scanned: $newSeries, Existing: $existingSeries" }
-          val seriesChanged = newSeries.fileLastModified.notEquals(existingSeries.fileLastModified) || existingSeries.deletedDate != null || seriesUrlWithDeletedBooks.contains(newSeries.url)
+          val existingBooks = bookRepository.findAllBySeriesId(existingSeries.id)
+          val seriesChanged =
+            newSeries.fileLastModified.notEquals(existingSeries.fileLastModified) ||
+              existingSeries.deletedDate != null ||
+              seriesUrlWithDeletedBooks.contains(newSeries.url) ||
+              booksChangedOnDisk(newBooks, existingBooks)
           if (seriesChanged) {
             logger.info { "Series changed on disk, updating: $existingSeries" }
             seriesRepository.update(existingSeries.copy(fileLastModified = newSeries.fileLastModified, deletedDate = null))
           }
           if (scanDeep || seriesChanged) {
             // update list of books with existing entities if they exist
-            val existingBooks = bookRepository.findAllBySeriesId(existingSeries.id)
             logger.debug { "Existing books: $existingBooks" }
 
             // update existing books
@@ -170,7 +175,7 @@ class LibraryContentLifecycle(
               logger.debug { "Trying to match scanned book by url: $newBook" }
               existingBooks.find { it.url == newBook.url && it.deletedDate == null }?.let { existingBook ->
                 logger.debug { "Matched existing book: $existingBook" }
-                if (newBook.fileLastModified.notEquals(existingBook.fileLastModified)) {
+                if (newBook.hasChangedOnDiskComparedTo(existingBook)) {
                   val hash =
                     if (existingBook.fileSize == newBook.fileSize && existingBook.fileHash.isNotBlank()) {
                       hasher.computeHash(newBook.path)
@@ -471,4 +476,17 @@ class LibraryContentLifecycle(
       readListLifecycle.deleteEmptyReadLists()
     }
   }
+
+  private fun booksChangedOnDisk(
+    newBooks: Collection<Book>,
+    existingBooks: Collection<Book>,
+  ): Boolean =
+    newBooks.any { newBook ->
+      existingBooks
+        .find { existingBook -> existingBook.url == newBook.url && existingBook.deletedDate == null }
+        ?.let { existingBook -> newBook.hasChangedOnDiskComparedTo(existingBook) }
+        ?: true
+    }
+
+  private fun Book.hasChangedOnDiskComparedTo(existingBook: Book): Boolean = fileLastModified.notEquals(existingBook.fileLastModified) || fileSize != existingBook.fileSize
 }

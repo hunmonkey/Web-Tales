@@ -199,4 +199,49 @@ class LibraryControllerTest(
         }
     }
   }
+
+  @Nested
+  inner class ImageDirectoryScan {
+    @Test
+    @WithMockCustomUser
+    fun `given library when getting library then image directory scan flag is present`() {
+      mockMvc
+        .get("$route/${library.id}")
+        .andExpect {
+          status { isOk() }
+          jsonPath("$.scanImageDirectory") { value(false) }
+        }
+    }
+
+    @Test
+    @WithMockCustomUser(roles = ["ADMIN"])
+    fun `given admin when updating library then image directory scan flag is saved`(
+      @TempDir tmp: Path,
+    ) {
+      libraryRepository.update(library.copy(root = tmp.toUri().toURL()))
+
+      // language=JSON
+      val jsonString =
+        """
+        {
+          "scanImageDirectory": true
+        }
+        """.trimIndent()
+
+      mockMvc
+        .patch("$route/${library.id}") {
+          contentType = MediaType.APPLICATION_JSON
+          content = jsonString
+        }.andExpect {
+          status { isNoContent() }
+        }
+
+      mockMvc
+        .get("$route/${library.id}")
+        .andExpect {
+          status { isOk() }
+          jsonPath("$.scanImageDirectory") { value(true) }
+        }
+    }
+  }
 }
