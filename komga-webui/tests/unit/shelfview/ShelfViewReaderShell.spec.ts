@@ -467,7 +467,7 @@ describe('ShelfViewReaderShell', () => {
       paragraph: 1,
       characterOffset: Math.floor(textContent.paragraphs[1].length / 2),
     })
-    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('Saving')
+    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('shelfview_reader.status_saving')
   })
 
   it('uses the saved character offset when restoring text scroll position after display changes', async () => {
@@ -773,7 +773,7 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(savePosition).not.toHaveBeenCalled()
-    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('Saving')
+    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('shelfview_reader.status_saving')
 
     await (wrapper.vm as any).flushPositionSave()
     await Vue.nextTick()
@@ -783,7 +783,7 @@ describe('ShelfViewReaderShell', () => {
       locator: pageLocator(1),
       progression: 1,
     })
-    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('Saved')
+    expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('shelfview_reader.status_saved')
   })
 
   it('renders double page spreads and keeps the current location in the spread', async () => {
@@ -919,7 +919,7 @@ describe('ShelfViewReaderShell', () => {
 
     expect(createBookmark).toHaveBeenCalledWith('book-1', {
       locator: pageLocator(1),
-      label: 'Page 2',
+      label: 'shelfview_reader.bookmark_page',
     })
 
     await wrapper.find('[data-testid="shelfview-bookmark-delete"]').trigger('click')
@@ -967,7 +967,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('Connection interrupted')
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('shelfview_reader.error_unavailable_title')
 
     await wrapper.find('[data-testid="shelfview-reader-retry"]').trigger('click')
     await flushPromises()
@@ -988,7 +988,7 @@ describe('ShelfViewReaderShell', () => {
     await wrapper.find('[data-testid="shelfview-reader-page"]').trigger('error')
     await Vue.nextTick()
 
-    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('Page could not be loaded')
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('shelfview_reader.error_page_failed_title')
 
     await wrapper.find('[data-testid="shelfview-reader-retry"]').trigger('click')
     await Vue.nextTick()
@@ -1013,7 +1013,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('Text encoding could not be read')
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('shelfview_reader.error_encoding_title')
     expect(wrapper.find('[data-testid="shelfview-reader-retry-euckr"]').exists()).toBe(true)
 
     await wrapper.find('[data-testid="shelfview-reader-retry-euckr"]').trigger('click')

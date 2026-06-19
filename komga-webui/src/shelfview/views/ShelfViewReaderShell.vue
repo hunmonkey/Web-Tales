@@ -12,7 +12,7 @@
     >
       <v-btn
         icon
-        aria-label="Close reader"
+        :aria-label="$t('shelfview_reader.close')"
         @click="closeBook"
       >
         <v-icon>mdi-arrow-left</v-icon>
@@ -62,7 +62,7 @@
             <v-btn
               v-if="textControlsVisible"
               icon
-              aria-label="Text display settings"
+              :aria-label="$t('shelfview_reader.text_settings')"
               data-testid="shelfview-reader-text-settings-toggle"
               v-on="on"
               @click="openTextSettings"
@@ -70,7 +70,7 @@
               <v-icon>mdi-format-size</v-icon>
             </v-btn>
           </template>
-          <span>Text settings</span>
+          <span>{{ $t('shelfview_reader.text_settings') }}</span>
         </v-tooltip>
 
         <v-tooltip bottom>
@@ -127,7 +127,7 @@
           <template v-slot:activator="{ on }">
             <v-btn
               icon
-              aria-label="Bookmarks"
+              :aria-label="$t('shelfview_reader.bookmarks')"
               data-testid="shelfview-reader-bookmarks-toggle"
               v-on="on"
               @click="bookmarksDrawerOpen = true"
@@ -135,14 +135,14 @@
               <v-icon>mdi-bookmark-multiple-outline</v-icon>
             </v-btn>
           </template>
-          <span>Bookmarks</span>
+          <span>{{ $t('shelfview_reader.bookmarks') }}</span>
         </v-tooltip>
 
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
               icon
-              aria-label="Add bookmark"
+              :aria-label="$t('shelfview_reader.add_bookmark')"
               data-testid="shelfview-reader-bookmark-add"
               v-on="on"
               @click="addBookmarkForCurrentPage"
@@ -150,14 +150,14 @@
               <v-icon>mdi-bookmark-plus-outline</v-icon>
             </v-btn>
           </template>
-          <span>Add bookmark</span>
+          <span>{{ $t('shelfview_reader.add_bookmark') }}</span>
         </v-tooltip>
 
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
               icon
-              aria-label="Show keyboard shortcuts"
+              :aria-label="$t('shelfview_reader.shortcuts')"
               data-testid="shelfview-reader-shortcuts-toggle"
               v-on="on"
               @click="showShortcutHelp = true"
@@ -165,13 +165,13 @@
               <v-icon>mdi-keyboard-outline</v-icon>
             </v-btn>
           </template>
-          <span>Shortcuts</span>
+          <span>{{ $t('shelfview_reader.shortcuts') }}</span>
         </v-tooltip>
 
         <v-btn
           icon
           :disabled="!canGoPrevious"
-          aria-label="Previous page"
+          :aria-label="$t('shelfview_reader.previous_page')"
           data-testid="shelfview-reader-previous"
           @click="previousPage"
         >
@@ -188,7 +188,7 @@
         <v-btn
           icon
           :disabled="!canGoNext"
-          aria-label="Next page"
+          :aria-label="$t('shelfview_reader.next_page')"
           data-testid="shelfview-reader-next"
           @click="nextPage"
         >
@@ -209,7 +209,7 @@
         <template v-slot:activator="{ on }">
           <v-btn
             icon
-            aria-label="Open legacy reader"
+            :aria-label="$t('shelfview_reader.open_legacy_reader')"
             :to="legacyReaderLocation"
             v-on="on"
           >
@@ -238,7 +238,7 @@
     <main
       ref="readerStage"
       class="shelfview-reader-shell__stage"
-      :class="stageClasses"
+      :class="[stageClasses, textStageThemeClass]"
       tabindex="0"
       role="application"
       :aria-label="readerAriaLabel"
@@ -275,7 +275,7 @@
             data-testid="shelfview-reader-retry"
             @click="retryReader"
           >
-            Try again
+            {{ $t('shelfview_reader.try_again') }}
           </v-btn>
           <v-btn
             v-if="encodingRecoveryVisible"
@@ -296,7 +296,7 @@
             data-testid="shelfview-reader-retry-auto"
             @click="retryTextEncoding()"
           >
-            Auto
+            {{ $t('shelfview_reader.encoding_auto') }}
           </v-btn>
           <v-btn
             color="secondary"
@@ -311,7 +311,7 @@
           class="shelfview-reader-shell__status-note"
           data-testid="shelfview-reader-encoding-note"
         >
-          Current text decoding: {{ textEncodingLabel }}
+          {{ $t('shelfview_reader.encoding_current', { encoding: textEncodingLabel }) }}
         </p>
       </section>
 
@@ -379,10 +379,10 @@
       data-testid="shelfview-bookmarks-drawer"
     >
       <header class="shelfview-reader-shell__bookmarks-header">
-        <h2 id="shelfview-bookmarks-title">Bookmarks</h2>
+        <h2 id="shelfview-bookmarks-title">{{ $t('shelfview_reader.bookmarks') }}</h2>
         <v-btn
           icon
-          aria-label="Close bookmarks"
+          :aria-label="$t('shelfview_reader.close')"
           data-testid="shelfview-bookmarks-close"
           @click="closeBookmarksDrawer"
         >
@@ -397,7 +397,7 @@
         @click="addBookmarkForCurrentPage"
       >
         <v-icon left>mdi-bookmark-plus-outline</v-icon>
-        Save page
+        {{ $t('shelfview_reader.save_page') }}
       </v-btn>
 
       <p
@@ -405,7 +405,7 @@
         class="shelfview-reader-shell__bookmarks-empty"
         data-testid="shelfview-bookmarks-empty"
       >
-        No bookmarks
+        {{ $t('shelfview_reader.no_bookmarks') }}
       </p>
 
       <ul
@@ -428,7 +428,7 @@
           <v-btn
             icon
             small
-            aria-label="Delete bookmark"
+            :aria-label="$t('shelfview_reader.delete_bookmark')"
             data-testid="shelfview-bookmark-delete"
             @click="deleteBookmark(bookmark)"
           >
@@ -447,10 +447,10 @@
       data-testid="shelfview-reader-text-settings"
     >
       <header class="shelfview-reader-shell__text-settings-header">
-        <h2 id="shelfview-text-settings-title">Text settings</h2>
+        <h2 id="shelfview-text-settings-title">{{ $t('shelfview_reader.text_settings') }}</h2>
         <v-btn
           icon
-          aria-label="Close text settings"
+          :aria-label="$t('shelfview_reader.text_settings_close')"
           data-testid="shelfview-reader-text-settings-close"
           @click="closeTextSettings"
         >
@@ -467,7 +467,7 @@
           dense
           outlined
           hide-details
-          label="Font"
+          :label="$t('shelfview_reader.font')"
           data-testid="shelfview-reader-text-font-family"
           @change="onTextDisplaySettingChanged"
         />
@@ -480,14 +480,14 @@
           dense
           outlined
           hide-details
-          label="Align"
+          :label="$t('shelfview_reader.align')"
           data-testid="shelfview-reader-text-align"
           @change="onTextDisplaySettingChanged"
         />
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-font-size">
-            Font size
+            {{ $t('shelfview_reader.font_size') }}
             <span>{{ textFontSize }}px</span>
           </label>
           <v-slider
@@ -504,7 +504,7 @@
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-line-height">
-            Line height
+            {{ $t('shelfview_reader.line_height') }}
             <span>{{ textLineHeight.toFixed(2) }}</span>
           </label>
           <v-slider
@@ -521,7 +521,7 @@
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-letter-spacing">
-            Letter spacing
+            {{ $t('shelfview_reader.letter_spacing') }}
             <span>{{ textLetterSpacing.toFixed(1) }}px</span>
           </label>
           <v-slider
@@ -538,7 +538,7 @@
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-word-spacing">
-            Word spacing
+            {{ $t('shelfview_reader.word_spacing') }}
             <span>{{ textWordSpacing.toFixed(1) }}px</span>
           </label>
           <v-slider
@@ -555,7 +555,7 @@
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-content-width">
-            Width
+            {{ $t('shelfview_reader.width') }}
             <span>{{ textContentWidth }}px</span>
           </label>
           <v-slider
@@ -572,7 +572,7 @@
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-page-margin">
-            Margin
+            {{ $t('shelfview_reader.margin') }}
             <span>{{ textPageMargin }}px</span>
           </label>
           <v-slider
@@ -589,7 +589,7 @@
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-paragraph-spacing">
-            Paragraph
+            {{ $t('shelfview_reader.paragraph') }}
             <span>{{ textParagraphSpacing.toFixed(2) }}em</span>
           </label>
           <v-slider
@@ -606,7 +606,7 @@
 
         <div class="shelfview-reader-shell__text-setting-row">
           <label for="shelfview-text-font-weight">
-            Weight
+            {{ $t('shelfview_reader.weight') }}
             <span>{{ textFontWeight }}</span>
           </label>
           <v-slider
@@ -627,7 +627,7 @@
           data-testid="shelfview-reader-text-settings-reset"
           @click="resetTextDisplaySettings"
         >
-          Reset
+          {{ $t('shelfview_reader.reset') }}
         </v-btn>
       </div>
     </aside>
@@ -641,7 +641,7 @@
       data-testid="shelfview-reader-shortcuts"
     >
       <div class="shelfview-reader-shell__shortcut-panel">
-        <h2 id="shelfview-reader-shortcuts-title">Shortcuts</h2>
+        <h2 id="shelfview-reader-shortcuts-title">{{ $t('shelfview_reader.shortcuts') }}</h2>
         <dl>
           <template v-for="shortcut in shortcutRows">
             <dt :key="`${shortcut.keys}-keys`">{{ shortcut.keys }}</dt>
@@ -653,7 +653,7 @@
           data-testid="shelfview-reader-shortcuts-close"
           @click="closeShortcutHelp"
         >
-          Close
+          {{ $t('shelfview_reader.shortcuts_close') }}
         </v-btn>
       </div>
     </section>
@@ -913,11 +913,11 @@ export default Vue.extend({
     },
     shortcutRows(): Array<{ keys: string, label: string }> {
       return [
-        {keys: 'Arrow Left / Arrow Right', label: 'Move pages'},
-        {keys: 'Page Up / Page Down', label: 'Move pages'},
-        {keys: 'Space', label: 'Next page'},
-        {keys: 'Home / End', label: 'First or last page'},
-        {keys: '? / F1', label: 'Show shortcuts'},
+        {keys: this.$t('shelfview_reader.shortcut_keys_move') as string, label: this.$t('shelfview_reader.shortcut_move_pages') as string},
+        {keys: this.$t('shelfview_reader.shortcut_keys_page') as string, label: this.$t('shelfview_reader.shortcut_move_pages') as string},
+        {keys: this.$t('shelfview_reader.shortcut_keys_space') as string, label: this.$t('shelfview_reader.shortcut_next_page') as string},
+        {keys: this.$t('shelfview_reader.shortcut_keys_home_end') as string, label: this.$t('shelfview_reader.shortcut_first_last') as string},
+        {keys: this.$t('shelfview_reader.shortcut_keys_help') as string, label: this.$t('shelfview_reader.shortcut_show') as string},
       ]
     },
     canGoPrevious(): boolean {
@@ -963,6 +963,9 @@ export default Vue.extend({
         'shelfview-reader-shell__stage--text': this.textControlsVisible,
       }
     },
+    textStageThemeClass(): string {
+      return this.textControlsVisible ? `shelfview-reader-shell__stage--theme-${this.textTheme.toLowerCase()}` : ''
+    },
     readerPagesClasses(): object {
       return {
         'shelfview-reader-shell__pages--single': this.readerLayout === 'SINGLE_PAGE',
@@ -988,26 +991,26 @@ export default Vue.extend({
       return shelfViewImageFilterPreset(this.imageFilterPreset).icon
     },
     imageFilterPresetLabel(): string {
-      return shelfViewImageFilterPreset(this.imageFilterPreset).label
+      return this.$t(`shelfview_reader.filter_${this.imageFilterPreset.toLowerCase()}`) as string
     },
     textThemeIcon(): string {
       return shelfViewTextTheme(this.textTheme).icon
     },
     textThemeLabel(): string {
-      return shelfViewTextTheme(this.textTheme).label
+      return this.$t(`shelfview_reader.theme_${this.textTheme.toLowerCase()}`) as string
     },
     textThemeClass(): string {
       return shelfViewTextTheme(this.textTheme).className
     },
     textFontFamilyOptions(): Array<{ text: string, value: ShelfViewTextFontFamily }> {
       return SHELFVIEW_TEXT_FONT_FAMILIES.map(value => ({
-        text: shelfViewTextFontFamily(value).label,
+        text: this.$t(`shelfview_reader.font_${value.toLowerCase()}`) as string,
         value,
       }))
     },
     textAlignOptions(): Array<{ text: string, value: ShelfViewTextAlign }> {
       return SHELFVIEW_TEXT_ALIGNS.map(value => ({
-        text: shelfViewTextAlign(value).label,
+        text: this.$t(`shelfview_reader.align_${value.toLowerCase()}`) as string,
         value,
       }))
     },
@@ -1039,18 +1042,20 @@ export default Vue.extend({
     readerLayoutLabel(): string {
       switch (this.readerLayout) {
         case 'DOUBLE_PAGE':
-          return 'Double page'
+          return this.$t('shelfview_reader.layout_double') as string
         case 'CONTINUOUS_SCROLL':
-          return 'Continuous scroll'
+          return this.$t('shelfview_reader.layout_continuous') as string
         default:
-          return 'Single page'
+          return this.$t('shelfview_reader.layout_single') as string
       }
     },
     readingDirectionIcon(): string {
       return this.readingDirection === 'RTL' ? 'mdi-format-textdirection-r-to-l' : 'mdi-format-textdirection-l-to-r'
     },
     readingDirectionLabel(): string {
-      return this.readingDirection === 'RTL' ? 'Right to left' : 'Left to right'
+      return this.readingDirection === 'RTL'
+        ? this.$t('shelfview_reader.direction_rtl') as string
+        : this.$t('shelfview_reader.direction_ltr') as string
     },
     pageFitIcon(): string {
       switch (this.pageFit) {
@@ -1067,13 +1072,13 @@ export default Vue.extend({
     pageFitLabel(): string {
       switch (this.pageFit) {
         case 'WIDTH':
-          return 'Fit width'
+          return this.$t('shelfview_reader.fit_width') as string
         case 'HEIGHT':
-          return 'Fit height'
+          return this.$t('shelfview_reader.fit_height') as string
         case 'ORIGINAL':
-          return 'Original size'
+          return this.$t('shelfview_reader.fit_original') as string
         default:
-          return 'Fit screen'
+          return this.$t('shelfview_reader.fit_screen') as string
       }
     },
     empty(): boolean {
@@ -1081,9 +1086,9 @@ export default Vue.extend({
     },
     emptyMessage(): string {
       if (this.manifest?.kind === 'TEXT_REFLOW') {
-        return 'No readable text is available for this book.'
+        return this.$t('shelfview_reader.empty_text') as string
       }
-      return 'No readable pages are available for this book.'
+      return this.$t('shelfview_reader.empty_pages') as string
     },
     hasDisplayError(): boolean {
       return !!this.error || this.pageImageFailed
@@ -1092,61 +1097,61 @@ export default Vue.extend({
       return !!this.error && this.textRecoveryAvailable && this.errorLooksEncodingRelated(this.error)
     },
     textEncodingLabel(): string {
-      return this.textEncodingOverride?.toUpperCase() ?? 'Auto'
+      return this.textEncodingOverride?.toUpperCase() ?? this.$t('shelfview_reader.encoding_auto') as string
     },
     displayErrorTitle(): string {
-      if (this.pageImageFailed) return 'Page could not be loaded'
+      if (this.pageImageFailed) return this.$t('shelfview_reader.error_page_failed_title') as string
       if (this.error instanceof ShelfViewApiError) {
         switch (this.error.code) {
           case 'FORBIDDEN':
-            return 'You do not have access to this book'
+            return this.$t('shelfview_reader.error_forbidden_title') as string
           case 'NOT_FOUND':
-            return 'This book or page is missing'
+            return this.$t('shelfview_reader.error_not_found_title') as string
           case 'PAYLOAD_TOO_LARGE':
-            return 'This text file is too large'
+            return this.$t('shelfview_reader.error_too_large_title') as string
           case 'UNAVAILABLE':
-            return 'Connection interrupted'
+            return this.$t('shelfview_reader.error_unavailable_title') as string
           case 'UNSUPPORTED_SCHEMA':
-            return 'Tales needs an update'
+            return this.$t('shelfview_reader.error_unsupported_schema_title') as string
           default:
             return this.errorLooksEncodingRelated(this.error)
-              ? 'Text encoding could not be read'
-              : 'Unable to open this book'
+              ? this.$t('shelfview_reader.error_encoding_title') as string
+              : this.$t('shelfview_reader.error_generic_title') as string
         }
       }
-      return 'Unable to open this book'
+      return this.$t('shelfview_reader.error_generic_title') as string
     },
     displayErrorMessage(): string {
       if (this.pageImageFailed) {
-        return 'The page file may be missing, corrupt, or temporarily unreachable. Try again, or open the old reader if this format supports it.'
+        return this.$t('shelfview_reader.error_page_failed_message') as string
       }
       if (this.error instanceof ShelfViewApiError) {
         switch (this.error.code) {
           case 'FORBIDDEN':
-            return 'Your account is signed in, but this library or book is not shared with you.'
+            return this.$t('shelfview_reader.error_forbidden_message') as string
           case 'NOT_FOUND':
-            return 'The file, page, or archive entry is no longer available. If the file was moved, rescan the library and try again.'
+            return this.$t('shelfview_reader.error_not_found_message') as string
           case 'PAYLOAD_TOO_LARGE':
-            return 'The text is over Tales limits for file size or line length. Try a smaller source file, or open the old reader if this format supports it.'
+            return this.$t('shelfview_reader.error_too_large_message') as string
           case 'UNAVAILABLE':
             return this.browserOffline()
-              ? 'Your browser is offline. Reconnect and try again.'
-              : 'The server did not answer. Check the connection and try again.'
+              ? this.$t('shelfview_reader.error_unavailable_offline_message') as string
+              : this.$t('shelfview_reader.error_unavailable_message') as string
           case 'UNSUPPORTED_SCHEMA':
-            return 'This saved Tales response uses a newer format than this web app understands.'
+            return this.$t('shelfview_reader.error_unsupported_schema_message') as string
           default:
             if (this.errorLooksEncodingRelated(this.error)) {
-              return 'Tales could not decode this text automatically. Try UTF-8 or EUC-KR and then retry.'
+              return this.$t('shelfview_reader.error_encoding_message') as string
             }
             if (this.error.code === 'BAD_REQUEST') {
-              return 'This book is not supported by the Tales reader yet, or the file needs to be analyzed again.'
+              return this.$t('shelfview_reader.error_bad_request_message') as string
             }
         }
       }
       if (this.error instanceof Error && this.error.message.toLowerCase().includes('different book version')) {
-        return 'The book changed while Tales was opening it. Try again after the library finishes rescanning.'
+        return this.$t('shelfview_reader.error_book_changed_message') as string
       }
-      return this.error?.message || 'Tales could not load this book.'
+      return this.error?.message || this.$t('shelfview_reader.error_generic_message') as string
     },
     legacyReaderLocation(): RawLocation {
       return {
@@ -1233,11 +1238,11 @@ export default Vue.extend({
 
         this.bookmarks = bookmarks
         preferences.forEach(preference => this.applyPreferenceSettings(preference.effectiveSettings, false, preference.format))
-        this.setReaderStateStatus('SAVED', 'Restored')
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_restored') as string)
 
         return savedPosition
       } catch (e) {
-        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Reader state unavailable')
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_unavailable') as string)
         return undefined
       }
     },
@@ -1306,9 +1311,9 @@ export default Vue.extend({
     },
     savedLocationErrorMessage(e: unknown): string {
       if (e instanceof Error && e.message.toLowerCase().includes('different book version')) {
-        return 'Book changed, saved location unavailable'
+        return this.$t('shelfview_reader.status_book_changed') as string
       }
-      return 'Saved location unavailable'
+      return this.$t('shelfview_reader.status_saved_location_unavailable') as string
     },
     loadTextContent(manifest: ShelfViewManifest) {
       return this.textEncodingOverride
@@ -1563,7 +1568,7 @@ export default Vue.extend({
       if (!this.adapter || !this.currentLocator) return
 
       if (this.positionSaveTimer !== undefined) window.clearTimeout(this.positionSaveTimer)
-      this.setReaderStateStatus('PENDING', 'Saving')
+      this.setReaderStateStatus('PENDING', this.$t('shelfview_reader.status_saving') as string)
       this.positionSaveTimer = window.setTimeout(() => {
         void this.flushPositionSave()
       }, POSITION_SAVE_DEBOUNCE_MS)
@@ -1572,7 +1577,7 @@ export default Vue.extend({
       if (!this.bookId || !this.currentPreferenceFormat()) return
 
       if (this.preferenceSaveTimer !== undefined) window.clearTimeout(this.preferenceSaveTimer)
-      this.setReaderStateStatus('PENDING', 'Saving')
+      this.setReaderStateStatus('PENDING', this.$t('shelfview_reader.status_saving') as string)
       this.preferenceSaveTimer = window.setTimeout(() => {
         void this.flushPreferenceSave()
       }, PREFERENCE_SAVE_DEBOUNCE_MS)
@@ -1590,19 +1595,19 @@ export default Vue.extend({
       }
       if (!this.adapter || !this.currentLocator) return
       if (this.browserOffline()) {
-        this.setReaderStateStatus('OFFLINE', 'Offline')
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
         return
       }
 
       try {
-        this.setReaderStateStatus('SAVING', 'Saving')
+        this.setReaderStateStatus('SAVING', this.$t('shelfview_reader.status_saving') as string)
         await this.$shelfViewState.savePosition(this.bookId, {
           locator: this.currentLocator,
           progression: this.adapter.getProgression(),
         })
-        this.setReaderStateStatus('SAVED', 'Saved')
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_saved') as string)
       } catch (e) {
-        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Save failed')
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_save_failed') as string)
       }
     },
     async flushPreferenceSave() {
@@ -1613,21 +1618,21 @@ export default Vue.extend({
       const format = this.currentPreferenceFormat()
       if (!this.bookId || !format) return
       if (this.browserOffline()) {
-        this.setReaderStateStatus('OFFLINE', 'Offline')
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
         return
       }
 
       try {
-        this.setReaderStateStatus('SAVING', 'Saving')
+        this.setReaderStateStatus('SAVING', this.$t('shelfview_reader.status_saving') as string)
         await this.$shelfViewState.savePreference({
           scopeType: 'BOOK',
           scopeId: this.bookId,
           format,
           settings: this.currentPreferenceSettings(format),
         })
-        this.setReaderStateStatus('SAVED', 'Saved')
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_saved') as string)
       } catch (e) {
-        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Save failed')
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_save_failed') as string)
       }
     },
     clearReaderStateTimers() {
@@ -1665,22 +1670,24 @@ export default Vue.extend({
     async addBookmarkForCurrentPage() {
       if (!this.currentLocator) return
       if (this.browserOffline()) {
-        this.setReaderStateStatus('OFFLINE', 'Offline')
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
         return
       }
 
       try {
         const bookmark = await this.$shelfViewState.createBookmark(this.bookId, {
           locator: this.currentLocator,
-          label: `${this.currentLocationUnitLabel} ${this.currentPageNumber}`,
+          label: (this.textControlsVisible
+            ? this.$t('shelfview_reader.bookmark_paragraph', {n: this.currentPageNumber})
+            : this.$t('shelfview_reader.bookmark_page', {n: this.currentPageNumber})) as string,
         })
         this.bookmarks = [
           ...this.bookmarks.filter(existing => existing.id !== bookmark.id),
           bookmark,
         ]
-        this.setReaderStateStatus('SAVED', 'Bookmark saved')
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_bookmark_saved') as string)
       } catch (e) {
-        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Bookmark failed')
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_bookmark_failed') as string)
       }
     },
     async goToBookmark(bookmark: ShelfViewBookmarkDto) {
@@ -1692,44 +1699,44 @@ export default Vue.extend({
         this.schedulePositionSave()
         this.closeBookmarksDrawer()
       } catch (e) {
-        this.setReaderStateStatus('ERROR', 'Bookmark unavailable')
+        this.setReaderStateStatus('ERROR', this.$t('shelfview_reader.status_bookmark_unavailable') as string)
       }
     },
     async deleteBookmark(bookmark: ShelfViewBookmarkDto) {
       if (this.browserOffline()) {
-        this.setReaderStateStatus('OFFLINE', 'Offline')
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
         return
       }
 
       try {
         await this.$shelfViewState.deleteBookmark(bookmark.id)
         this.bookmarks = this.bookmarks.filter(existing => existing.id !== bookmark.id)
-        this.setReaderStateStatus('SAVED', 'Bookmark deleted')
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_bookmark_deleted') as string)
       } catch (e) {
-        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Bookmark failed')
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_bookmark_failed') as string)
       }
     },
     bookmarkLabel(bookmark: ShelfViewBookmarkDto): string {
       if (bookmark.label) return bookmark.label
-      if (bookmark.locator.kind === 'PAGE') return `Page ${bookmark.locator.page + 1}`
+      if (bookmark.locator.kind === 'PAGE') return this.$t('shelfview_reader.bookmark_page', {n: bookmark.locator.page + 1}) as string
       if (bookmark.locator.kind === 'MIXED') return this.mixedBookmarkLabel(bookmark.locator)
-      return `Paragraph ${bookmark.locator.paragraph + 1}`
+      return this.$t('shelfview_reader.bookmark_paragraph', {n: bookmark.locator.paragraph + 1}) as string
     },
     mixedBookmarkLabel(locator: ShelfViewLocator): string {
-      if (locator.kind !== 'MIXED') return 'Item'
+      if (locator.kind !== 'MIXED') return this.$t('shelfview_reader.bookmark_item') as string
 
       const itemNumber = locator.itemIndex + 1
-      if (locator.itemLocator.kind === 'PAGE') return `Item ${itemNumber}, page ${locator.itemLocator.page + 1}`
-      return `Item ${itemNumber}, paragraph ${locator.itemLocator.paragraph + 1}`
+      if (locator.itemLocator.kind === 'PAGE') return this.$t('shelfview_reader.bookmark_mixed_item_page', {item: itemNumber, n: locator.itemLocator.page + 1}) as string
+      return this.$t('shelfview_reader.bookmark_mixed_item_paragraph', {item: itemNumber, n: locator.itemLocator.paragraph + 1}) as string
     },
     onReaderOnline() {
       if (this.readerStateStatus === 'OFFLINE') {
-        this.setReaderStateStatus('PENDING', 'Saving')
+        this.setReaderStateStatus('PENDING', this.$t('shelfview_reader.status_saving') as string)
         void this.flushReaderState()
       }
     },
     onReaderOffline() {
-      this.setReaderStateStatus('OFFLINE', 'Offline')
+      this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
     },
     onVisibilityChange() {
       if (document.visibilityState === 'hidden') void this.flushReaderState()
@@ -2160,6 +2167,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__text {
+  color: #e8ebf0;
   font-family: var(--sv-text-font-family, Roboto, Arial, sans-serif);
   font-size: var(--sv-text-font-size, 20px);
   font-weight: var(--sv-text-font-weight, 400);
@@ -2177,19 +2185,34 @@ function isFiniteNumber(value: unknown): value is number {
   overflow-wrap: anywhere;
 }
 
+/* The active text theme paints the whole reading area (stage); the text column
+   stays transparent so the page reads as one consistent surface with no
+   mismatched gutters. Colors are kept high-contrast for legibility. */
 .shelfview-reader-shell__text--paper {
-  background: #f7f2e8;
-  color: #24211c;
+  background: transparent;
+  color: #1b1813;
 }
 
 .shelfview-reader-shell__text--dark {
-  background: #171a1f;
-  color: #e7eaf0;
+  background: transparent;
+  color: #f3f6fb;
 }
 
 .shelfview-reader-shell__text--oled {
+  background: transparent;
+  color: #fdfdfd;
+}
+
+.shelfview-reader-shell__stage--theme-paper {
+  background: #f4ecd9;
+}
+
+.shelfview-reader-shell__stage--theme-dark {
+  background: #14171c;
+}
+
+.shelfview-reader-shell__stage--theme-oled {
   background: #000000;
-  color: #f0f0f0;
 }
 
 .shelfview-reader-shell__text-paragraph {
