@@ -67,7 +67,7 @@ Work in order unless an ADR explicitly changes dependencies.
 
 ## M8 Release
 
-- [ ] SV-800 Threat model
+- [x] SV-800 Threat model
 - [ ] SV-801 Performance baseline
 - [ ] SV-802 Dependency/license/notice audit
 - [ ] SV-803 v1.0 release candidate
