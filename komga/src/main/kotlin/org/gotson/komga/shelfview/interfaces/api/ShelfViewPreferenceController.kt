@@ -106,7 +106,7 @@ class ShelfViewPreferenceController(
       format = format,
       settings = direct?.let { mapper.readTree(it.settingsJson) },
       updatedAt = direct?.updatedAt?.toUTC(),
-      effectiveSettings = effectiveSettings(sources),
+      effectiveSettings = effectiveSettings(format, sources),
       sources = sources.map { it.toDto(mapper) },
     )
   }
@@ -183,8 +183,8 @@ class ShelfViewPreferenceController(
 
   private fun validateFormat(format: String?): String {
     val normalizedFormat = format?.ifBlank { null } ?: invalid("format is required")
-    if (normalizedFormat != FORMAT_FIXED_PAGE_SEQUENCE) {
-      invalid("format must be $FORMAT_FIXED_PAGE_SEQUENCE")
+    if (normalizedFormat !in SUPPORTED_FORMATS) {
+      invalid("format must be one of ${SUPPORTED_FORMATS.joinToString(", ")}")
     }
     return normalizedFormat
   }
@@ -193,18 +193,37 @@ class ShelfViewPreferenceController(
     settings: JsonNode?,
     format: String,
   ): ObjectNode {
-    if (format != FORMAT_FIXED_PAGE_SEQUENCE) invalid("format must be $FORMAT_FIXED_PAGE_SEQUENCE")
     if (settings == null || !settings.isObject) invalid("settings must be an object")
 
+    val allowedFields = settingsFields(format)
     settings.fieldNames().asSequence().forEach {
-      if (it !in SETTINGS_FIELDS) invalid("settings contains unsupported field $it")
+      if (it !in allowedFields) invalid("settings contains unsupported field $it")
     }
 
-    return mapper.createObjectNode().also {
-      copyTextSetting(settings, it, "layout", setOf("SINGLE_PAGE", "DOUBLE_PAGE", "CONTINUOUS_SCROLL"))
-      copyTextSetting(settings, it, "readingDirection", setOf("LTR", "RTL"))
-      copyTextSetting(settings, it, "pageFit", setOf("SCREEN", "WIDTH", "HEIGHT", "ORIGINAL"))
-      copyTextSetting(settings, it, "imageFilterPreset", setOf("ORIGINAL", "EYE_COMFORT", "MONO_COMIC", "LOW_LIGHT", "NIGHT_INVERT", "OLED_TEXT"))
+    return mapper.createObjectNode().also { target ->
+      when (format) {
+        FORMAT_FIXED_PAGE_SEQUENCE -> {
+          copyTextSetting(settings, target, "layout", setOf("SINGLE_PAGE", "DOUBLE_PAGE", "CONTINUOUS_SCROLL"))
+          copyTextSetting(settings, target, "readingDirection", setOf("LTR", "RTL"))
+          copyTextSetting(settings, target, "pageFit", setOf("SCREEN", "WIDTH", "HEIGHT", "ORIGINAL"))
+          copyTextSetting(settings, target, "imageFilterPreset", setOf("ORIGINAL", "EYE_COMFORT", "MONO_COMIC", "LOW_LIGHT", "NIGHT_INVERT", "OLED_TEXT"))
+        }
+
+        FORMAT_TEXT_REFLOW -> {
+          copyTextSetting(settings, target, "layout", setOf("SINGLE_PAGE", "CONTINUOUS_SCROLL"))
+          copyTextSetting(settings, target, "textTheme", setOf("PAPER", "DARK", "OLED"))
+          copyTextSetting(settings, target, "textFontFamily", setOf("SYSTEM", "READABLE_KR", "SERIF", "SANS", "MONO"))
+          copyIntegerSetting(settings, target, "textFontSize", 14, 32)
+          copyDecimalSetting(settings, target, "textLineHeight", 1.35, 2.4)
+          copyDecimalSetting(settings, target, "textLetterSpacing", 0.0, 2.5)
+          copyDecimalSetting(settings, target, "textWordSpacing", 0.0, 8.0)
+          copyIntegerSetting(settings, target, "textContentWidth", 520, 1180)
+          copyIntegerSetting(settings, target, "textPageMargin", 16, 120)
+          copyDecimalSetting(settings, target, "textParagraphSpacing", 0.6, 2.6)
+          copyTextSetting(settings, target, "textAlign", setOf("LEFT", "JUSTIFY"))
+          copyIntegerSetting(settings, target, "textFontWeight", 300, 700)
+        }
+      }
     }
   }
 
@@ -219,22 +238,76 @@ class ShelfViewPreferenceController(
     target.put(field, value.asText())
   }
 
-  private fun effectiveSettings(sources: Collection<ShelfViewReaderPreference>): ObjectNode =
-    defaultSettings().also { effective ->
+  private fun copyIntegerSetting(
+    source: JsonNode,
+    target: ObjectNode,
+    field: String,
+    min: Int,
+    max: Int,
+  ) {
+    val value = source.get(field) ?: return
+    if (!value.isIntegralNumber || value.asInt() !in min..max) invalid("$field has an invalid value")
+    target.put(field, value.asInt())
+  }
+
+  private fun copyDecimalSetting(
+    source: JsonNode,
+    target: ObjectNode,
+    field: String,
+    min: Double,
+    max: Double,
+  ) {
+    val value = source.get(field) ?: return
+    val number = value.asDouble()
+    if (!value.isNumber || !number.isFinite() || number < min || number > max) invalid("$field has an invalid value")
+    target.put(field, number)
+  }
+
+  private fun effectiveSettings(
+    format: String,
+    sources: Collection<ShelfViewReaderPreference>,
+  ): ObjectNode =
+    defaultSettings(format).also { effective ->
+      val allowedFields = settingsFields(format)
       sources.forEach { preference ->
         val settings = mapper.readTree(preference.settingsJson)
-        SETTINGS_FIELDS.forEach { field ->
+        allowedFields.forEach { field ->
           settings.get(field)?.let { effective.set<JsonNode>(field, it.deepCopy()) }
         }
       }
     }
 
-  private fun defaultSettings(): ObjectNode =
+  private fun defaultSettings(format: String): ObjectNode =
     mapper.createObjectNode().apply {
-      put("layout", "SINGLE_PAGE")
-      put("readingDirection", "LTR")
-      put("pageFit", "SCREEN")
-      put("imageFilterPreset", "ORIGINAL")
+      when (format) {
+        FORMAT_TEXT_REFLOW -> {
+          put("layout", "SINGLE_PAGE")
+          put("textTheme", "PAPER")
+          put("textFontFamily", "SYSTEM")
+          put("textFontSize", 20)
+          put("textLineHeight", 1.75)
+          put("textLetterSpacing", 0.0)
+          put("textWordSpacing", 0.0)
+          put("textContentWidth", 760)
+          put("textPageMargin", 56)
+          put("textParagraphSpacing", 1.35)
+          put("textAlign", "LEFT")
+          put("textFontWeight", 400)
+        }
+
+        else -> {
+          put("layout", "SINGLE_PAGE")
+          put("readingDirection", "LTR")
+          put("pageFit", "SCREEN")
+          put("imageFilterPreset", "ORIGINAL")
+        }
+      }
+    }
+
+  private fun settingsFields(format: String): Set<String> =
+    when (format) {
+      FORMAT_TEXT_REFLOW -> TEXT_REFLOW_SETTINGS_FIELDS
+      else -> FIXED_PAGE_SETTINGS_FIELDS
     }
 
   private fun invalid(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_INVALID_PREFERENCE: $message")
@@ -266,7 +339,24 @@ class ShelfViewPreferenceController(
     const val SCOPE_BOOK = "BOOK"
     const val GLOBAL_SCOPE_ID = "GLOBAL"
     const val FORMAT_FIXED_PAGE_SEQUENCE = "FIXED_PAGE_SEQUENCE"
+    const val FORMAT_TEXT_REFLOW = "TEXT_REFLOW"
 
-    val SETTINGS_FIELDS = setOf("layout", "readingDirection", "pageFit", "imageFilterPreset")
+    val SUPPORTED_FORMATS = setOf(FORMAT_FIXED_PAGE_SEQUENCE, FORMAT_TEXT_REFLOW)
+    val FIXED_PAGE_SETTINGS_FIELDS = setOf("layout", "readingDirection", "pageFit", "imageFilterPreset")
+    val TEXT_REFLOW_SETTINGS_FIELDS =
+      setOf(
+        "layout",
+        "textTheme",
+        "textFontFamily",
+        "textFontSize",
+        "textLineHeight",
+        "textLetterSpacing",
+        "textWordSpacing",
+        "textContentWidth",
+        "textPageMargin",
+        "textParagraphSpacing",
+        "textAlign",
+        "textFontWeight",
+      )
   }
 }

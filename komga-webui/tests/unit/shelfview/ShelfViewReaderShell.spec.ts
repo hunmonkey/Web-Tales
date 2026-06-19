@@ -209,7 +209,13 @@ describe('ShelfViewReaderShell', () => {
 
   it('loads a text manifest and renders escaped paragraphs', async () => {
     const getManifest = jest.fn().mockResolvedValue(textManifest)
-    const getPreference = jest.fn()
+    const getPreference = jest.fn().mockResolvedValue({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'TEXT_REFLOW',
+      effectiveSettings: {},
+      sources: [],
+    })
     const getTextContent = jest.fn().mockResolvedValue(textContent)
     const wrapper = mountShell({
       getManifest,
@@ -221,7 +227,11 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(getTextContent).toHaveBeenCalledWith(textManifest)
-    expect(getPreference).not.toHaveBeenCalled()
+    expect(getPreference).toHaveBeenCalledWith({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'TEXT_REFLOW',
+    })
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-testid="shelfview-reader-text-paragraph"]').wrappers.map(paragraph => paragraph.text())).toEqual(['첫 번째 문단입니다.'])
@@ -229,6 +239,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-fit-toggle"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shelfview-reader-direction-toggle"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shelfview-reader-text-theme-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-settings-toggle"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('paragraph 1 of 3')
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Paragraph 1 of 3')
 
@@ -242,6 +253,76 @@ describe('ShelfViewReaderShell', () => {
       '마지막 문단입니다.',
     ])
     expect(wrapper.find('script').exists()).toBe(false)
+  })
+
+  it('applies and saves text display settings', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const savePreference = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getPreference: jest.fn().mockResolvedValue({
+          scopeType: 'BOOK',
+          scopeId: 'book-1',
+          format: 'TEXT_REFLOW',
+          effectiveSettings: {
+            layout: 'CONTINUOUS_SCROLL',
+            textTheme: 'DARK',
+            textFontFamily: 'READABLE_KR',
+            textFontSize: 22,
+            textLineHeight: 1.9,
+            textLetterSpacing: 0.8,
+            textWordSpacing: 2,
+            textContentWidth: 680,
+            textPageMargin: 64,
+            textParagraphSpacing: 1.55,
+            textAlign: 'JUSTIFY',
+            textFontWeight: 500,
+          },
+          sources: [],
+        }),
+        savePreference,
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const text = wrapper.find('[data-testid="shelfview-reader-text"]')
+    expect(text.classes()).toContain('shelfview-reader-shell__text--dark')
+    expect(text.attributes('style')).toContain('--sv-text-font-size: 22px;')
+    expect(text.attributes('style')).toContain('--sv-text-content-width: 680px;')
+    expect(text.attributes('style')).toContain('--sv-text-align: justify;')
+
+    await wrapper.find('[data-testid="shelfview-reader-text-settings-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-text-settings"]').exists()).toBe(true)
+
+    await wrapper.setData({
+      textFontSize: 26,
+      textLetterSpacing: 1.2,
+      textContentWidth: 640,
+    })
+    const vm = wrapper.vm as any
+    vm.onTextDisplaySettingChanged()
+    await Vue.nextTick()
+    await vm.flushPreferenceSave()
+
+    expect(savePreference).toHaveBeenCalledWith({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'TEXT_REFLOW',
+      settings: expect.objectContaining({
+        layout: 'CONTINUOUS_SCROLL',
+        textTheme: 'DARK',
+        textFontFamily: 'READABLE_KR',
+        textFontSize: 26,
+        textLetterSpacing: 1.2,
+        textContentWidth: 640,
+        textAlign: 'JUSTIFY',
+      }),
+    })
   })
 
   it('loads a mixed ZIP manifest and moves from text to image content', async () => {
@@ -1024,6 +1105,8 @@ function mountShell({
       'v-btn': {template: '<button v-bind="$attrs" v-on="$listeners"><slot /></button>'},
       'v-icon': {template: '<i><slot /></i>'},
       'v-tooltip': {template: '<div><slot name="activator" :on="{}" /><slot /></div>'},
+      'v-select': {template: '<select v-bind="$attrs" v-on="$listeners"><slot /></select>'},
+      'v-slider': {template: '<input type="range" v-bind="$attrs" v-on="$listeners" />'},
       'v-progress-circular': {template: '<span />'},
     },
   })

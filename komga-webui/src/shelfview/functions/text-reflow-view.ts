@@ -3,6 +3,17 @@ export type ShelfViewTextTheme =
   | 'DARK'
   | 'OLED'
 
+export type ShelfViewTextFontFamily =
+  | 'SYSTEM'
+  | 'READABLE_KR'
+  | 'SERIF'
+  | 'SANS'
+  | 'MONO'
+
+export type ShelfViewTextAlign =
+  | 'LEFT'
+  | 'JUSTIFY'
+
 export interface ShelfViewTextThemeDefinition {
   value: ShelfViewTextTheme,
   label: string,
@@ -10,7 +21,21 @@ export interface ShelfViewTextThemeDefinition {
   className: string,
 }
 
+export interface ShelfViewTextFontFamilyDefinition {
+  value: ShelfViewTextFontFamily,
+  label: string,
+  cssValue: string,
+}
+
+export interface ShelfViewTextAlignDefinition {
+  value: ShelfViewTextAlign,
+  label: string,
+  cssValue: string,
+}
+
 export const SHELFVIEW_TEXT_THEMES: ShelfViewTextTheme[] = ['PAPER', 'DARK', 'OLED']
+export const SHELFVIEW_TEXT_FONT_FAMILIES: ShelfViewTextFontFamily[] = ['SYSTEM', 'READABLE_KR', 'SERIF', 'SANS', 'MONO']
+export const SHELFVIEW_TEXT_ALIGNS: ShelfViewTextAlign[] = ['LEFT', 'JUSTIFY']
 
 const TEXT_THEME_DEFINITIONS: Record<ShelfViewTextTheme, ShelfViewTextThemeDefinition> = {
   PAPER: {
@@ -33,6 +58,47 @@ const TEXT_THEME_DEFINITIONS: Record<ShelfViewTextTheme, ShelfViewTextThemeDefin
   },
 }
 
+const TEXT_FONT_FAMILY_DEFINITIONS: Record<ShelfViewTextFontFamily, ShelfViewTextFontFamilyDefinition> = {
+  SYSTEM: {
+    value: 'SYSTEM',
+    label: 'System',
+    cssValue: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+  READABLE_KR: {
+    value: 'READABLE_KR',
+    label: 'Korean readable',
+    cssValue: '"Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
+  },
+  SERIF: {
+    value: 'SERIF',
+    label: 'Serif',
+    cssValue: 'Georgia, "Times New Roman", "Noto Serif KR", serif',
+  },
+  SANS: {
+    value: 'SANS',
+    label: 'Sans',
+    cssValue: 'Roboto, Arial, "Noto Sans KR", sans-serif',
+  },
+  MONO: {
+    value: 'MONO',
+    label: 'Mono',
+    cssValue: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+  },
+}
+
+const TEXT_ALIGN_DEFINITIONS: Record<ShelfViewTextAlign, ShelfViewTextAlignDefinition> = {
+  LEFT: {
+    value: 'LEFT',
+    label: 'Left',
+    cssValue: 'left',
+  },
+  JUSTIFY: {
+    value: 'JUSTIFY',
+    label: 'Justify',
+    cssValue: 'justify',
+  },
+}
+
 export function shelfViewTextTheme(theme: ShelfViewTextTheme): ShelfViewTextThemeDefinition {
   return TEXT_THEME_DEFINITIONS[theme]
 }
@@ -40,4 +106,12 @@ export function shelfViewTextTheme(theme: ShelfViewTextTheme): ShelfViewTextThem
 export function shelfViewNextTextTheme(theme: ShelfViewTextTheme): ShelfViewTextTheme {
   const currentIndex = SHELFVIEW_TEXT_THEMES.indexOf(theme)
   return SHELFVIEW_TEXT_THEMES[(currentIndex + 1) % SHELFVIEW_TEXT_THEMES.length]
+}
+
+export function shelfViewTextFontFamily(fontFamily: ShelfViewTextFontFamily): ShelfViewTextFontFamilyDefinition {
+  return TEXT_FONT_FAMILY_DEFINITIONS[fontFamily]
+}
+
+export function shelfViewTextAlign(textAlign: ShelfViewTextAlign): ShelfViewTextAlignDefinition {
+  return TEXT_ALIGN_DEFINITIONS[textAlign]
 }

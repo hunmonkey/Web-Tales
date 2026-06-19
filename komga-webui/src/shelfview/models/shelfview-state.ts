@@ -1,5 +1,6 @@
 import {ShelfViewFixedPageFit, ShelfViewFixedPageLayout, ShelfViewFixedPageReadingDirection} from '@/shelfview/functions/fixed-page-view'
 import {ShelfViewImageFilterPreset} from '@/shelfview/functions/image-filter-presets'
+import {ShelfViewTextAlign, ShelfViewTextFontFamily, ShelfViewTextTheme} from '@/shelfview/functions/text-reflow-view'
 import {ShelfViewLocator} from '@/shelfview/models/shelfview-locator'
 
 export type ShelfViewPreferenceScopeType =
@@ -10,6 +11,7 @@ export type ShelfViewPreferenceScopeType =
 
 export type ShelfViewPreferenceFormat =
   | 'FIXED_PAGE_SEQUENCE'
+  | 'TEXT_REFLOW'
 
 export interface ShelfViewPositionDto {
   locator: ShelfViewLocator,
@@ -44,6 +46,17 @@ export interface ShelfViewFixedPagePreferenceSettings {
   readingDirection?: ShelfViewFixedPageReadingDirection,
   pageFit?: ShelfViewFixedPageFit,
   imageFilterPreset?: ShelfViewImageFilterPreset,
+  textTheme?: ShelfViewTextTheme,
+  textFontFamily?: ShelfViewTextFontFamily,
+  textFontSize?: number,
+  textLineHeight?: number,
+  textLetterSpacing?: number,
+  textWordSpacing?: number,
+  textContentWidth?: number,
+  textPageMargin?: number,
+  textParagraphSpacing?: number,
+  textAlign?: ShelfViewTextAlign,
+  textFontWeight?: number,
 }
 
 export interface ShelfViewPreferenceDto {

@@ -60,6 +60,22 @@
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
+              v-if="textControlsVisible"
+              icon
+              aria-label="Text display settings"
+              data-testid="shelfview-reader-text-settings-toggle"
+              v-on="on"
+              @click="openTextSettings"
+            >
+              <v-icon>mdi-format-size</v-icon>
+            </v-btn>
+          </template>
+          <span>Text settings</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
               v-if="fixedPageControlsVisible"
               icon
               :aria-label="readingDirectionLabel"
@@ -339,6 +355,7 @@
         v-else-if="readerTextVisible"
         class="shelfview-reader-shell__text"
         :class="textThemeClass"
+        :style="textReaderStyle"
         data-testid="shelfview-reader-text"
       >
         <p
@@ -421,6 +438,200 @@
       </ul>
     </aside>
 
+    <aside
+      v-if="textSettingsOpen"
+      class="shelfview-reader-shell__text-settings"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shelfview-text-settings-title"
+      data-testid="shelfview-reader-text-settings"
+    >
+      <header class="shelfview-reader-shell__text-settings-header">
+        <h2 id="shelfview-text-settings-title">Text settings</h2>
+        <v-btn
+          icon
+          aria-label="Close text settings"
+          data-testid="shelfview-reader-text-settings-close"
+          @click="closeTextSettings"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </header>
+
+      <div class="shelfview-reader-shell__text-settings-body">
+        <v-select
+          v-model="textFontFamily"
+          :items="textFontFamilyOptions"
+          item-text="text"
+          item-value="value"
+          dense
+          outlined
+          hide-details
+          label="Font"
+          data-testid="shelfview-reader-text-font-family"
+          @change="onTextDisplaySettingChanged"
+        />
+
+        <v-select
+          v-model="textAlign"
+          :items="textAlignOptions"
+          item-text="text"
+          item-value="value"
+          dense
+          outlined
+          hide-details
+          label="Align"
+          data-testid="shelfview-reader-text-align"
+          @change="onTextDisplaySettingChanged"
+        />
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-font-size">
+            Font size
+            <span>{{ textFontSize }}px</span>
+          </label>
+          <v-slider
+            id="shelfview-text-font-size"
+            v-model.number="textFontSize"
+            min="14"
+            max="32"
+            step="1"
+            hide-details
+            data-testid="shelfview-reader-text-font-size"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-line-height">
+            Line height
+            <span>{{ textLineHeight.toFixed(2) }}</span>
+          </label>
+          <v-slider
+            id="shelfview-text-line-height"
+            v-model.number="textLineHeight"
+            min="1.35"
+            max="2.4"
+            step="0.05"
+            hide-details
+            data-testid="shelfview-reader-text-line-height"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-letter-spacing">
+            Letter spacing
+            <span>{{ textLetterSpacing.toFixed(1) }}px</span>
+          </label>
+          <v-slider
+            id="shelfview-text-letter-spacing"
+            v-model.number="textLetterSpacing"
+            min="0"
+            max="2.5"
+            step="0.1"
+            hide-details
+            data-testid="shelfview-reader-text-letter-spacing"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-word-spacing">
+            Word spacing
+            <span>{{ textWordSpacing.toFixed(1) }}px</span>
+          </label>
+          <v-slider
+            id="shelfview-text-word-spacing"
+            v-model.number="textWordSpacing"
+            min="0"
+            max="8"
+            step="0.5"
+            hide-details
+            data-testid="shelfview-reader-text-word-spacing"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-content-width">
+            Width
+            <span>{{ textContentWidth }}px</span>
+          </label>
+          <v-slider
+            id="shelfview-text-content-width"
+            v-model.number="textContentWidth"
+            min="520"
+            max="1180"
+            step="20"
+            hide-details
+            data-testid="shelfview-reader-text-content-width"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-page-margin">
+            Margin
+            <span>{{ textPageMargin }}px</span>
+          </label>
+          <v-slider
+            id="shelfview-text-page-margin"
+            v-model.number="textPageMargin"
+            min="16"
+            max="120"
+            step="4"
+            hide-details
+            data-testid="shelfview-reader-text-page-margin"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-paragraph-spacing">
+            Paragraph
+            <span>{{ textParagraphSpacing.toFixed(2) }}em</span>
+          </label>
+          <v-slider
+            id="shelfview-text-paragraph-spacing"
+            v-model.number="textParagraphSpacing"
+            min="0.6"
+            max="2.6"
+            step="0.05"
+            hide-details
+            data-testid="shelfview-reader-text-paragraph-spacing"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-font-weight">
+            Weight
+            <span>{{ textFontWeight }}</span>
+          </label>
+          <v-slider
+            id="shelfview-text-font-weight"
+            v-model.number="textFontWeight"
+            min="300"
+            max="700"
+            step="50"
+            hide-details
+            data-testid="shelfview-reader-text-font-weight"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
+        <v-btn
+          block
+          color="secondary"
+          data-testid="shelfview-reader-text-settings-reset"
+          @click="resetTextDisplaySettings"
+        >
+          Reset
+        </v-btn>
+      </div>
+    </aside>
+
     <section
       v-if="showShortcutHelp"
       class="shelfview-reader-shell__shortcut-dialog"
@@ -468,6 +679,7 @@ import {ShelfViewTextParagraph} from '@/shelfview/models/shelfview-text'
 import {
   ShelfViewBookmarkDto,
   ShelfViewFixedPagePreferenceSettings,
+  ShelfViewPreferenceFormat,
   ShelfViewPositionDto,
 } from '@/shelfview/models/shelfview-state'
 import {
@@ -496,8 +708,15 @@ import {
   shelfViewTouchAction,
 } from '@/shelfview/functions/reader-input'
 import {
+  SHELFVIEW_TEXT_ALIGNS,
+  SHELFVIEW_TEXT_FONT_FAMILIES,
+  SHELFVIEW_TEXT_THEMES,
+  ShelfViewTextAlign,
+  ShelfViewTextFontFamily,
   ShelfViewTextTheme,
   shelfViewNextTextTheme,
+  shelfViewTextAlign,
+  shelfViewTextFontFamily,
   shelfViewTextTheme,
 } from '@/shelfview/functions/text-reflow-view'
 
@@ -514,9 +733,24 @@ type ShelfViewReaderStateStatus =
   | 'ERROR'
   | 'OFFLINE'
 
-const SHELFVIEW_FIXED_PAGE_FORMAT = 'FIXED_PAGE_SEQUENCE'
+const SHELFVIEW_FIXED_PAGE_FORMAT: ShelfViewPreferenceFormat = 'FIXED_PAGE_SEQUENCE'
+const SHELFVIEW_TEXT_FORMAT: ShelfViewPreferenceFormat = 'TEXT_REFLOW'
 const POSITION_SAVE_DEBOUNCE_MS = 2000
 const PREFERENCE_SAVE_DEBOUNCE_MS = 600
+
+const TEXT_DISPLAY_DEFAULTS = {
+  textTheme: 'PAPER' as ShelfViewTextTheme,
+  textFontFamily: 'SYSTEM' as ShelfViewTextFontFamily,
+  textFontSize: 20,
+  textLineHeight: 1.75,
+  textLetterSpacing: 0,
+  textWordSpacing: 0,
+  textContentWidth: 760,
+  textPageMargin: 56,
+  textParagraphSpacing: 1.35,
+  textAlign: 'LEFT' as ShelfViewTextAlign,
+  textFontWeight: 400,
+}
 
 export default Vue.extend({
   name: 'ShelfViewReaderShell',
@@ -542,7 +776,18 @@ export default Vue.extend({
     readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
-    textTheme: 'PAPER' as ShelfViewTextTheme,
+    textTheme: TEXT_DISPLAY_DEFAULTS.textTheme,
+    textFontFamily: TEXT_DISPLAY_DEFAULTS.textFontFamily,
+    textFontSize: TEXT_DISPLAY_DEFAULTS.textFontSize,
+    textLineHeight: TEXT_DISPLAY_DEFAULTS.textLineHeight,
+    textLetterSpacing: TEXT_DISPLAY_DEFAULTS.textLetterSpacing,
+    textWordSpacing: TEXT_DISPLAY_DEFAULTS.textWordSpacing,
+    textContentWidth: TEXT_DISPLAY_DEFAULTS.textContentWidth,
+    textPageMargin: TEXT_DISPLAY_DEFAULTS.textPageMargin,
+    textParagraphSpacing: TEXT_DISPLAY_DEFAULTS.textParagraphSpacing,
+    textAlign: TEXT_DISPLAY_DEFAULTS.textAlign,
+    textFontWeight: TEXT_DISPLAY_DEFAULTS.textFontWeight,
+    textSettingsOpen: false,
     showShortcutHelp: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
     bookmarksDrawerOpen: false,
@@ -754,6 +999,33 @@ export default Vue.extend({
     textThemeClass(): string {
       return shelfViewTextTheme(this.textTheme).className
     },
+    textFontFamilyOptions(): Array<{ text: string, value: ShelfViewTextFontFamily }> {
+      return SHELFVIEW_TEXT_FONT_FAMILIES.map(value => ({
+        text: shelfViewTextFontFamily(value).label,
+        value,
+      }))
+    },
+    textAlignOptions(): Array<{ text: string, value: ShelfViewTextAlign }> {
+      return SHELFVIEW_TEXT_ALIGNS.map(value => ({
+        text: shelfViewTextAlign(value).label,
+        value,
+      }))
+    },
+    textReaderStyle(): Record<string, string> {
+      return {
+        '--sv-text-font-family': shelfViewTextFontFamily(this.textFontFamily).cssValue,
+        '--sv-text-font-size': `${this.textFontSize}px`,
+        '--sv-text-line-height': this.textLineHeight.toString(),
+        '--sv-text-letter-spacing': `${this.textLetterSpacing}px`,
+        '--sv-text-word-spacing': `${this.textWordSpacing}px`,
+        '--sv-text-content-width': `${this.textContentWidth}px`,
+        '--sv-text-page-margin-x': `${this.textPageMargin}px`,
+        '--sv-text-page-margin-y': `${Math.max(18, Math.round(this.textPageMargin * 0.75))}px`,
+        '--sv-text-paragraph-spacing': `${this.textParagraphSpacing}em`,
+        '--sv-text-align': shelfViewTextAlign(this.textAlign).cssValue,
+        '--sv-text-font-weight': this.textFontWeight.toString(),
+      }
+    },
     readerLayoutIcon(): string {
       switch (this.readerLayout) {
         case 'DOUBLE_PAGE':
@@ -922,7 +1194,7 @@ export default Vue.extend({
         if (requestId !== this.setupRequestId) return
 
         if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE' || this.manifest.kind === 'TEXT_REFLOW' || this.manifest.kind === 'MIXED_CONTENT_SEQUENCE') {
-          const savedPosition = await this.loadShelfViewState(bookId, this.manifest.kind !== 'TEXT_REFLOW')
+          const savedPosition = await this.loadShelfViewState(bookId, this.preferenceFormatsForManifest())
           if (requestId !== this.setupRequestId) return
 
           if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE') {
@@ -944,29 +1216,41 @@ export default Vue.extend({
     },
     async loadShelfViewState(
       bookId: string,
-      loadFixedPagePreference: boolean,
+      preferenceFormats: ShelfViewPreferenceFormat[],
     ): Promise<ShelfViewPositionDto | undefined> {
       try {
-        const [savedPosition, bookmarks, preference] = await Promise.all([
+        const [savedPosition, bookmarks, preferences] = await Promise.all([
           this.$shelfViewState.getPosition(bookId),
           this.$shelfViewState.getBookmarks(bookId),
-          loadFixedPagePreference
-            ? this.$shelfViewState.getPreference({
+          Promise.all(preferenceFormats.map(format =>
+            this.$shelfViewState.getPreference({
               scopeType: 'BOOK',
               scopeId: bookId,
-              format: SHELFVIEW_FIXED_PAGE_FORMAT,
-            })
-            : Promise.resolve(undefined),
+              format,
+            }),
+          )),
         ])
 
         this.bookmarks = bookmarks
-        if (preference) this.applyPreferenceSettings(preference.effectiveSettings, false)
+        preferences.forEach(preference => this.applyPreferenceSettings(preference.effectiveSettings, false, preference.format))
         this.setReaderStateStatus('SAVED', 'Restored')
 
         return savedPosition
       } catch (e) {
         this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', 'Reader state unavailable')
         return undefined
+      }
+    },
+    preferenceFormatsForManifest(): ShelfViewPreferenceFormat[] {
+      switch (this.manifest?.kind) {
+        case 'TEXT_REFLOW':
+          return [SHELFVIEW_TEXT_FORMAT]
+        case 'MIXED_CONTENT_SEQUENCE':
+          return [SHELFVIEW_FIXED_PAGE_FORMAT, SHELFVIEW_TEXT_FORMAT]
+        case 'FIXED_PAGE_SEQUENCE':
+          return [SHELFVIEW_FIXED_PAGE_FORMAT]
+        default:
+          return []
       }
     },
     async openFixedPageManifest(
@@ -1170,35 +1454,110 @@ export default Vue.extend({
     cycleTextTheme() {
       this.textTheme = shelfViewNextTextTheme(this.textTheme)
       this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+      this.schedulePreferenceSave()
+    },
+    openTextSettings() {
+      this.textSettingsOpen = true
+    },
+    closeTextSettings() {
+      this.textSettingsOpen = false
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    resetTextDisplaySettings() {
+      this.applyTextPreferenceSettings(TEXT_DISPLAY_DEFAULTS)
+      this.onTextDisplaySettingChanged()
+    },
+    onTextDisplaySettingChanged() {
+      this.normalizeTextDisplaySettings()
+      this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+      this.schedulePreferenceSave()
     },
     applyPreferenceSettings(
       settings: ShelfViewFixedPagePreferenceSettings,
       persist = false,
+      format?: ShelfViewPreferenceFormat,
     ) {
-      if (settings.layout && this.availableReaderLayouts.includes(settings.layout)) {
+      if (format !== SHELFVIEW_TEXT_FORMAT) {
+        if (settings.layout && this.availableReaderLayouts.includes(settings.layout)) {
+          this.readerLayout = settings.layout
+        }
+        if (settings.readingDirection && (settings.readingDirection === 'LTR' || (settings.readingDirection === 'RTL' && this.rtlAvailable))) {
+          this.readingDirection = settings.readingDirection
+        }
+        if (settings.pageFit && SHELFVIEW_FIXED_PAGE_FITS.includes(settings.pageFit)) {
+          this.pageFit = settings.pageFit
+        }
+        if (settings.imageFilterPreset && this.imageFiltersAvailable) {
+          this.imageFilterPreset = settings.imageFilterPreset
+        }
+        if (!this.imageFiltersAvailable) this.imageFilterPreset = 'ORIGINAL'
+      }
+
+      this.applyTextPreferenceSettings(settings)
+      if (format === SHELFVIEW_TEXT_FORMAT && settings.layout && this.manifest?.kind === 'TEXT_REFLOW' && this.availableReaderLayouts.includes(settings.layout)) {
         this.readerLayout = settings.layout
       }
-      if (settings.readingDirection && (settings.readingDirection === 'LTR' || (settings.readingDirection === 'RTL' && this.rtlAvailable))) {
-        this.readingDirection = settings.readingDirection
-      }
-      if (settings.pageFit && SHELFVIEW_FIXED_PAGE_FITS.includes(settings.pageFit)) {
-        this.pageFit = settings.pageFit
-      }
-      if (settings.imageFilterPreset && this.imageFiltersAvailable) {
-        this.imageFilterPreset = settings.imageFilterPreset
-      }
-      if (!this.imageFiltersAvailable) this.imageFilterPreset = 'ORIGINAL'
 
       this.normalizeReaderLayout()
       if (persist) this.schedulePreferenceSave()
     },
-    currentPreferenceSettings(): ShelfViewFixedPagePreferenceSettings {
+    applyTextPreferenceSettings(settings: ShelfViewFixedPagePreferenceSettings) {
+      if (settings.textTheme && SHELFVIEW_TEXT_THEMES.includes(settings.textTheme)) this.textTheme = settings.textTheme
+      if (settings.textFontFamily && SHELFVIEW_TEXT_FONT_FAMILIES.includes(settings.textFontFamily)) this.textFontFamily = settings.textFontFamily
+      if (settings.textAlign && SHELFVIEW_TEXT_ALIGNS.includes(settings.textAlign)) this.textAlign = settings.textAlign
+      if (isFiniteNumber(settings.textFontSize)) this.textFontSize = settings.textFontSize
+      if (isFiniteNumber(settings.textLineHeight)) this.textLineHeight = settings.textLineHeight
+      if (isFiniteNumber(settings.textLetterSpacing)) this.textLetterSpacing = settings.textLetterSpacing
+      if (isFiniteNumber(settings.textWordSpacing)) this.textWordSpacing = settings.textWordSpacing
+      if (isFiniteNumber(settings.textContentWidth)) this.textContentWidth = settings.textContentWidth
+      if (isFiniteNumber(settings.textPageMargin)) this.textPageMargin = settings.textPageMargin
+      if (isFiniteNumber(settings.textParagraphSpacing)) this.textParagraphSpacing = settings.textParagraphSpacing
+      if (isFiniteNumber(settings.textFontWeight)) this.textFontWeight = settings.textFontWeight
+      this.normalizeTextDisplaySettings()
+    },
+    normalizeTextDisplaySettings() {
+      if (!SHELFVIEW_TEXT_THEMES.includes(this.textTheme)) this.textTheme = TEXT_DISPLAY_DEFAULTS.textTheme
+      if (!SHELFVIEW_TEXT_FONT_FAMILIES.includes(this.textFontFamily)) this.textFontFamily = TEXT_DISPLAY_DEFAULTS.textFontFamily
+      if (!SHELFVIEW_TEXT_ALIGNS.includes(this.textAlign)) this.textAlign = TEXT_DISPLAY_DEFAULTS.textAlign
+      this.textFontSize = Math.round(clampNumber(this.textFontSize, 14, 32))
+      this.textLineHeight = roundNumber(clampNumber(this.textLineHeight, 1.35, 2.4), 2)
+      this.textLetterSpacing = roundNumber(clampNumber(this.textLetterSpacing, 0, 2.5), 1)
+      this.textWordSpacing = roundNumber(clampNumber(this.textWordSpacing, 0, 8), 1)
+      this.textContentWidth = Math.round(clampNumber(this.textContentWidth, 520, 1180))
+      this.textPageMargin = Math.round(clampNumber(this.textPageMargin, 16, 120))
+      this.textParagraphSpacing = roundNumber(clampNumber(this.textParagraphSpacing, 0.6, 2.6), 2)
+      this.textFontWeight = Math.round(clampNumber(this.textFontWeight, 300, 700) / 50) * 50
+    },
+    currentPreferenceSettings(format?: ShelfViewPreferenceFormat): ShelfViewFixedPagePreferenceSettings {
+      if ((format ?? this.currentPreferenceFormat()) === SHELFVIEW_TEXT_FORMAT) {
+        return {
+          layout: this.readerLayout,
+          textTheme: this.textTheme,
+          textFontFamily: this.textFontFamily,
+          textFontSize: this.textFontSize,
+          textLineHeight: this.textLineHeight,
+          textLetterSpacing: this.textLetterSpacing,
+          textWordSpacing: this.textWordSpacing,
+          textContentWidth: this.textContentWidth,
+          textPageMargin: this.textPageMargin,
+          textParagraphSpacing: this.textParagraphSpacing,
+          textAlign: this.textAlign,
+          textFontWeight: this.textFontWeight,
+        }
+      }
+
       return {
         layout: this.readerLayout,
         readingDirection: this.readingDirection,
         pageFit: this.pageFit,
         imageFilterPreset: this.imageFilterPreset,
       }
+    },
+    currentPreferenceFormat(): ShelfViewPreferenceFormat | undefined {
+      if (!this.manifest) return undefined
+      if (this.textControlsVisible) return SHELFVIEW_TEXT_FORMAT
+      if (this.fixedPageControlsVisible) return SHELFVIEW_FIXED_PAGE_FORMAT
+      return undefined
     },
     schedulePositionSave() {
       if (!this.adapter || !this.currentLocator) return
@@ -1210,7 +1569,7 @@ export default Vue.extend({
       }, POSITION_SAVE_DEBOUNCE_MS)
     },
     schedulePreferenceSave() {
-      if (!this.bookId || !this.manifest || this.manifest.kind !== 'FIXED_PAGE_SEQUENCE') return
+      if (!this.bookId || !this.currentPreferenceFormat()) return
 
       if (this.preferenceSaveTimer !== undefined) window.clearTimeout(this.preferenceSaveTimer)
       this.setReaderStateStatus('PENDING', 'Saving')
@@ -1251,7 +1610,8 @@ export default Vue.extend({
         window.clearTimeout(this.preferenceSaveTimer)
         this.preferenceSaveTimer = undefined
       }
-      if (!this.bookId || !this.manifest || this.manifest.kind !== 'FIXED_PAGE_SEQUENCE') return
+      const format = this.currentPreferenceFormat()
+      if (!this.bookId || !format) return
       if (this.browserOffline()) {
         this.setReaderStateStatus('OFFLINE', 'Offline')
         return
@@ -1262,8 +1622,8 @@ export default Vue.extend({
         await this.$shelfViewState.savePreference({
           scopeType: 'BOOK',
           scopeId: this.bookId,
-          format: SHELFVIEW_FIXED_PAGE_FORMAT,
-          settings: this.currentPreferenceSettings(),
+          format,
+          settings: this.currentPreferenceSettings(format),
         })
         this.setReaderStateStatus('SAVED', 'Saved')
       } catch (e) {
@@ -1615,6 +1975,18 @@ function clampNumber(
 ): number {
   return Math.max(min, Math.min(value, max))
 }
+
+function roundNumber(
+  value: number,
+  decimals: number,
+): number {
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
 </script>
 
 <style scoped>
@@ -1788,15 +2160,19 @@ function clampNumber(
 }
 
 .shelfview-reader-shell__text {
-  font-family: Roboto, Arial, sans-serif;
-  font-size: 18px;
-  line-height: 1.8;
+  font-family: var(--sv-text-font-family, Roboto, Arial, sans-serif);
+  font-size: var(--sv-text-font-size, 20px);
+  font-weight: var(--sv-text-font-weight, 400);
+  letter-spacing: var(--sv-text-letter-spacing, 0);
+  line-height: var(--sv-text-line-height, 1.75);
   margin: 0 auto;
   min-height: 100%;
-  max-width: 880px;
-  padding: 42px min(7vw, 72px) 56px;
+  max-width: min(100%, var(--sv-text-content-width, 760px));
+  padding: var(--sv-text-page-margin-y, 42px) var(--sv-text-page-margin-x, 56px) 56px;
+  text-align: var(--sv-text-align, left);
   white-space: pre-wrap;
   width: 100%;
+  word-spacing: var(--sv-text-word-spacing, 0);
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
@@ -1817,7 +2193,7 @@ function clampNumber(
 }
 
 .shelfview-reader-shell__text-paragraph {
-  margin: 0 0 1.35em;
+  margin: 0 0 var(--sv-text-paragraph-spacing, 1.35em);
 }
 
 .shelfview-reader-shell__text-paragraph:last-child {
@@ -1872,6 +2248,54 @@ function clampNumber(
   top: 48px;
   width: 360px;
   z-index: 3;
+}
+
+.shelfview-reader-shell__text-settings {
+  background: #23272e;
+  bottom: 0;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.36);
+  color: #f5f5f5;
+  max-width: min(380px, 94vw);
+  overflow-y: auto;
+  padding: 16px;
+  position: fixed;
+  right: 0;
+  top: 48px;
+  width: 380px;
+  z-index: 3;
+}
+
+.shelfview-reader-shell__text-settings-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.shelfview-reader-shell__text-settings-header h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.shelfview-reader-shell__text-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shelfview-reader-shell__text-setting-row label {
+  align-items: baseline;
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.shelfview-reader-shell__text-setting-row label span {
+  color: #b8d7f1;
+  font-weight: 500;
 }
 
 .shelfview-reader-shell__bookmarks-header {
@@ -2021,9 +2445,15 @@ function clampNumber(
   }
 
   .shelfview-reader-shell__text {
-    font-size: 16px;
-    line-height: 1.7;
-    padding: 24px 18px 40px;
+    padding:
+      max(20px, calc(var(--sv-text-page-margin-y, 24px) * 0.66))
+      min(var(--sv-text-page-margin-x, 18px), 28px)
+      40px;
+  }
+
+  .shelfview-reader-shell__text-settings {
+    max-width: 100vw;
+    width: 100vw;
   }
 }
 </style>

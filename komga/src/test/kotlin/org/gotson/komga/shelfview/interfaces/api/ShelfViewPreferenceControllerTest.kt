@@ -139,6 +139,63 @@ class ShelfViewPreferenceControllerTest(
 
   @Test
   @WithMockCustomUser(id = USER_1_ID)
+  fun `given text reflow preference when saving then text settings are validated and returned`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content =
+          preferenceJson(
+            "BOOK",
+            book.id,
+            """
+            {
+              "layout":"CONTINUOUS_SCROLL",
+              "textTheme":"DARK",
+              "textFontFamily":"READABLE_KR",
+              "textFontSize":24,
+              "textLineHeight":1.9,
+              "textLetterSpacing":0.8,
+              "textWordSpacing":2.5,
+              "textContentWidth":700,
+              "textPageMargin":64,
+              "textParagraphSpacing":1.55,
+              "textAlign":"JUSTIFY",
+              "textFontWeight":500
+            }
+            """.trimIndent(),
+            TEXT_FORMAT,
+          )
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.format") { value(TEXT_FORMAT) }
+        jsonPath("$.settings.textTheme") { value("DARK") }
+        jsonPath("$.settings.textFontFamily") { value("READABLE_KR") }
+        jsonPath("$.settings.textFontSize") { value(24) }
+        jsonPath("$.settings.textContentWidth") { value(700) }
+        jsonPath("$.settings.textAlign") { value("JUSTIFY") }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "BOOK")
+        param("scopeId", book.id)
+        param("format", TEXT_FORMAT)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.effectiveSettings.layout") { value("CONTINUOUS_SCROLL") }
+        jsonPath("$.effectiveSettings.textTheme") { value("DARK") }
+        jsonPath("$.effectiveSettings.textFontSize") { value(24) }
+        jsonPath("$.effectiveSettings.textLineHeight") { value(1.9) }
+        jsonPath("$.effectiveSettings.textLetterSpacing") { value(0.8) }
+        jsonPath("$.effectiveSettings.textContentWidth") { value(700) }
+        jsonPath("$.effectiveSettings.textFontWeight") { value(500) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
   fun `given existing preference when saving same scope then settings are replaced`() {
     val book = createBookWithMedia()
 
@@ -196,6 +253,9 @@ class ShelfViewPreferenceControllerTest(
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"unknown":"value"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"layout":"BAD"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"pageFit":3}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"imageFilterPreset":"ORIGINAL"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textFontSize":99}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textTheme":"BAD"}}""",
     ],
   )
   @WithMockCustomUser(id = USER_1_ID)
@@ -263,11 +323,12 @@ class ShelfViewPreferenceControllerTest(
     scopeType: String,
     scopeId: String,
     settingsJson: String,
+    format: String = FORMAT,
   ) = ShelfViewReaderPreference(
     userId = USER_1_ID,
     scopeType = scopeType,
     scopeId = scopeId,
-    format = FORMAT,
+    format = format,
     settingsJson = settingsJson,
   )
 
@@ -275,11 +336,12 @@ class ShelfViewPreferenceControllerTest(
     scopeType: String,
     scopeId: String,
     settingsJson: String,
+    format: String = FORMAT,
   ) = """
     {
       "scopeType": "$scopeType",
       "scopeId": "$scopeId",
-      "format": "$FORMAT",
+      "format": "$format",
       "settings": $settingsJson
     }
     """.trimIndent()
@@ -289,5 +351,6 @@ class ShelfViewPreferenceControllerTest(
     const val USER_1_ID = "shelfview-preference-user-1"
     const val USER_2_ID = "shelfview-preference-user-2"
     const val FORMAT = "FIXED_PAGE_SEQUENCE"
+    const val TEXT_FORMAT = "TEXT_REFLOW"
   }
 }
