@@ -21,6 +21,15 @@ module.exports = {
     },
   },
 
+  // SV-700: the full fork-ts-checker type-check is too slow on the small CI
+  // runner. When SHELFVIEW_SKIP_TSCHECK=true (set only in CI build), drop the
+  // type-check plugin so CI verifies bundling fast. Local dev/build keep it.
+  chainWebpack: config => {
+    if (process.env.SHELFVIEW_SKIP_TSCHECK === 'true' && config.plugins.has('fork-ts-checker')) {
+      config.plugins.delete('fork-ts-checker')
+    }
+  },
+
   // custom rule for readium and r2d2bc css that needs to be made available, but untouched
   configureWebpack: {
     module: {
