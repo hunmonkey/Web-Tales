@@ -1,0 +1,12 @@
+logging:
+  file:
+    name: ${user.home}/Library/Logs/Tales/tales.log
+tales:
+  config-dir: ${user.home}/Library/Application Support/Tales
+  kobo.kepubify-path: kepubify
+spring:
+  config:
+    import:
+      - "optional:file:${tales.config-dir}/application.yml"
+      - "optional:file:${tales.config-dir}/application.yaml"
+      - "optional:file:${tales.config-dir}/application.properties"

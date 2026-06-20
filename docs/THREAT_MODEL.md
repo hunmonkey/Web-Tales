@@ -1,6 +1,6 @@
 # ShelfView Threat Model (SV-800)
 
-This is a code-grounded threat model for the ShelfView additions on top of Komga
+This is a code-grounded threat model for the ShelfView additions on top of Tales
 `1.24.4`. It covers assets, trust boundaries, the attack surface, and the threats
 and mitigations for the archive, TXT, API and cache paths, with residual risks.
 
@@ -10,9 +10,9 @@ Constants cited below are the defaults from
 
 ## Method and scope
 
-- In scope: the `org.gotson.komga.shelfview` backend (manifest, content delivery,
-  position/bookmark/preference state) and the `komga-webui/src/shelfview` reader.
-- Out of scope (inherited from Komga upstream and assumed sound): the
+- In scope: the `org.tales.shelfview` backend (manifest, content delivery,
+  position/bookmark/preference state) and the `tales-webui/src/shelfview` reader.
+- Out of scope (inherited from Tales upstream and assumed sound): the
   authentication/session/API-key stack, the library scanner identity model, TLS
   termination (delegated to the reverse proxy, see `docs/UNRAID_DEPLOYMENT.md`).
 - Assumption: operators mount source media read-only and run the SV-701 image as
@@ -39,7 +39,7 @@ Constants cited below are the defaults from
 ## Attack surface (entry points)
 
 All under `/api/shelfview/v1` and each controller authenticates
-(`@AuthenticationPrincipal KomgaPrincipal`) and authorizes
+(`@AuthenticationPrincipal TalesPrincipal`) and authorizes
 (`ContentRestrictionChecker.checkContentRestriction`) — verified across all 9
 controllers:
 
@@ -49,7 +49,7 @@ controllers:
 - `GET .../books/{id}/image-directory/pages/{page}`
 - `GET/PATCH .../books/{id}/position`
 - bookmark CRUD, preference get/save
-- Reused Komga page API for plain fixed-page books: `/api/v1/books/{id}/pages/{n}`
+- Reused Tales page API for plain fixed-page books: `/api/v1/books/{id}/pages/{n}`
 
 ## Threats and mitigations
 
@@ -107,7 +107,7 @@ Implemented in `ShelfViewImageDirectoryContentProvider`.
   (`shelfview-mixed-pdf-cache`) via a Caffeine cache: bounded size (64), 30‑min
   expiry, and a removal listener that deletes the temp file. Temp files are also
   deleted on any failure path.
-- Komga-managed thumbnails/derived output remain under `/config`.
+- Tales-managed thumbnails/derived output remain under `/config`.
 
 ## Cross-cutting controls
 
@@ -129,13 +129,13 @@ Implemented in `ShelfViewImageDirectoryContentProvider`.
 2. **Untrusted PDF parsing/rendering** relies on PDFBox robustness against
    malformed PDFs. *Recommendation:* keep PDFBox patched; treat as a watch item.
 3. **Scanner follows symlinks.** `FileSystemScanner` walks with `FOLLOW_LINKS`
-   (upstream Komga behavior), while ShelfView content delivery does not follow
+   (upstream Tales behavior), while ShelfView content delivery does not follow
    links. *Recommendation:* document that library roots should not contain
    untrusted symlinks; consider revisiting scan link-following upstream-side.
 4. **Native image libraries** (libjxl/libheif/libwebp/libarchive) in the image are
    an external attack surface for crafted images. *Recommendation:* rebuild the
    image regularly to pick up base-image security updates.
-5. **Auth model is inherited** from Komga; ShelfView trusts it. Any Komga auth
+5. **Auth model is inherited** from Tales; ShelfView trusts it. Any Tales auth
    regression affects ShelfView. Tracked as an upstream dependency.
 
 ## Change triggers

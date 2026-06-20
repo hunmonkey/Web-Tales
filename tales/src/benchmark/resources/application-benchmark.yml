@@ -1,0 +1,27 @@
+application.version: BENCHMARK
+
+benchmark:
+  result-folder: ${project.reportsDir}/benchmark
+  measurement-iterations: 5
+  warmup-iterations: 1
+  mode: averagetime
+  #  measurement-iterations: 1
+  #  warmup-iterations: 0
+  #  mode: singleshottime
+  result-format: text
+tales:
+  config-dir: ${rootDir}/config-dir
+  workspace: diesel
+  database:
+    file: \${tales.config-dir}/\${tales.workspace}.sqlite
+  lucene:
+    data-directory: \${tales.config-dir}/lucene/\${tales.workspace}
+  tasks-db:
+    file: \${tales.config-dir}/\${tales.workspace}-tasks.sqlite
+spring:
+  flyway:
+    enabled: true
+#logging:
+#  level:
+#    root: ERROR
+#    org.jooq.tools.LoggerListener: DEBUG

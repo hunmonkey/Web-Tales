@@ -1,0 +1,437 @@
+package org.tales.shelfview.interfaces.api
+
+import org.tales.domain.model.Book
+import org.tales.domain.model.BookPage
+import org.tales.domain.model.TalesUser
+import org.tales.domain.model.Media
+import org.tales.domain.model.makeBook
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.model.makeSeries
+import org.tales.domain.persistence.BookRepository
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.domain.persistence.SeriesRepository
+import org.tales.domain.service.LibraryLifecycle
+import org.tales.domain.service.SeriesLifecycle
+import org.tales.interfaces.api.rest.WithMockCustomUser
+import org.tales.shelfview.domain.ShelfViewReaderPreference
+import org.tales.shelfview.infrastructure.jooq.ShelfViewReaderStateDao
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.put
+import org.tales.domain.model.MediaType as TalesMediaType
+
+@SpringBootTest
+@AutoConfigureMockMvc(printOnlyOnFailure = false)
+class ShelfViewPreferenceControllerTest(
+  @Autowired private val seriesRepository: SeriesRepository,
+  @Autowired private val seriesLifecycle: SeriesLifecycle,
+  @Autowired private val mediaRepository: MediaRepository,
+  @Autowired private val libraryRepository: LibraryRepository,
+  @Autowired private val libraryLifecycle: LibraryLifecycle,
+  @Autowired private val bookRepository: BookRepository,
+  @Autowired private val userRepository: TalesUserRepository,
+  @Autowired private val readerStateDao: ShelfViewReaderStateDao,
+  @Autowired private val mockMvc: MockMvc,
+) {
+  private val library = makeLibrary(id = LIBRARY_ID)
+  private val user1 = TalesUser("shelfview-preference-user1@example.org", "", id = USER_1_ID)
+  private val user2 = TalesUser("shelfview-preference-user2@example.org", "", id = USER_2_ID)
+
+  @BeforeAll
+  fun `setup library and users`() {
+    libraryRepository.insert(library)
+    userRepository.insert(user1)
+    userRepository.insert(user2)
+  }
+
+  @AfterEach
+  fun `clear repository`() {
+    readerStateDao.deleteAllPreferences()
+    seriesLifecycle.deleteMany(seriesRepository.findAll())
+  }
+
+  @AfterAll
+  fun teardown() {
+    userRepository.delete(USER_1_ID)
+    userRepository.delete(USER_2_ID)
+    libraryRepository.findAll().forEach {
+      libraryLifecycle.deleteLibrary(it)
+    }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given scoped preferences when getting book preference then returns effective settings in precedence order`() {
+    val book = createBookWithMedia()
+    readerStateDao.savePreference(preference("GLOBAL", "GLOBAL", """{"layout":"SINGLE_PAGE","pageFit":"HEIGHT"}"""))
+    readerStateDao.savePreference(preference("LIBRARY", book.libraryId, """{"readingDirection":"RTL","pageFit":"WIDTH"}"""))
+    readerStateDao.savePreference(preference("SERIES", book.seriesId, """{"layout":"DOUBLE_PAGE"}"""))
+    readerStateDao.savePreference(preference("BOOK", book.id, """{"imageFilterPreset":"IMAGE_ENHANCE"}"""))
+
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "BOOK")
+        param("scopeId", book.id)
+        param("format", FORMAT)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.scopeType") { value("BOOK") }
+        jsonPath("$.scopeId") { value(book.id) }
+        jsonPath("$.settings.imageFilterPreset") { value("IMAGE_ENHANCE") }
+        jsonPath("$.effectiveSettings.layout") { value("DOUBLE_PAGE") }
+        jsonPath("$.effectiveSettings.readingDirection") { value("RTL") }
+        jsonPath("$.effectiveSettings.pageFit") { value("WIDTH") }
+        jsonPath("$.effectiveSettings.imageFilterPreset") { value("IMAGE_ENHANCE") }
+        jsonPath("$.sources.length()") { value(4) }
+        jsonPath("${'$'}.sources[0].scopeType") { value("GLOBAL") }
+        jsonPath("${'$'}.sources[1].scopeType") { value("LIBRARY") }
+        jsonPath("${'$'}.sources[2].scopeType") { value("SERIES") }
+        jsonPath("${'$'}.sources[3].scopeType") { value("BOOK") }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given supported scopes when saving preferences then they can be read back`() {
+    val book = createBookWithMedia()
+
+    listOf(
+      "GLOBAL" to "GLOBAL",
+      "LIBRARY" to book.libraryId,
+      "SERIES" to book.seriesId,
+      "BOOK" to book.id,
+    ).forEach { (scopeType, scopeId) ->
+      mockMvc
+        .put("/api/shelfview/v1/preferences") {
+          contentType = MediaType.APPLICATION_JSON
+          content = preferenceJson(scopeType, scopeId, """{"layout":"DOUBLE_PAGE"}""")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.scopeType") { value(scopeType) }
+          jsonPath("$.scopeId") { value(scopeId) }
+          jsonPath("$.settings.layout") { value("DOUBLE_PAGE") }
+        }
+    }
+
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "BOOK")
+        param("scopeId", book.id)
+        param("format", FORMAT)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.sources.length()") { value(4) }
+        jsonPath("$.effectiveSettings.layout") { value("DOUBLE_PAGE") }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given fixed page preference when saving then display settings are validated and returned`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content =
+          preferenceJson(
+            "BOOK",
+            book.id,
+            """
+            {
+              "layout":"CONTINUOUS_SCROLL",
+              "readingDirection":"RTL",
+              "pageFit":"WIDTH",
+              "imageFilterPreset":"CANVAS_SHARPEN",
+              "fixedPageRotation":90,
+              "fixedPageCoverSingle":true,
+              "fixedPageScale":220,
+              "fixedPageGap":24,
+              "fixedPageMargin":32,
+              "fixedPageBackground":"PAPER",
+              "fixedPageBrightness":1.08,
+              "fixedPageContrast":1.18
+            }
+            """.trimIndent(),
+          )
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.format") { value(FORMAT) }
+        jsonPath("$.settings.imageFilterPreset") { value("CANVAS_SHARPEN") }
+        jsonPath("$.settings.fixedPageScale") { value(220) }
+        jsonPath("$.settings.fixedPageRotation") { value(90) }
+        jsonPath("$.settings.fixedPageCoverSingle") { value(true) }
+        jsonPath("$.settings.fixedPageGap") { value(24) }
+        jsonPath("$.settings.fixedPageMargin") { value(32) }
+        jsonPath("$.settings.fixedPageBackground") { value("PAPER") }
+        jsonPath("$.settings.fixedPageBrightness") { value(1.08) }
+        jsonPath("$.settings.fixedPageContrast") { value(1.18) }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "BOOK")
+        param("scopeId", book.id)
+        param("format", FORMAT)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.effectiveSettings.layout") { value("CONTINUOUS_SCROLL") }
+        jsonPath("$.effectiveSettings.imageFilterPreset") { value("CANVAS_SHARPEN") }
+        jsonPath("$.effectiveSettings.fixedPageScale") { value(220) }
+        jsonPath("$.effectiveSettings.fixedPageRotation") { value(90) }
+        jsonPath("$.effectiveSettings.fixedPageCoverSingle") { value(true) }
+        jsonPath("$.effectiveSettings.fixedPageGap") { value(24) }
+        jsonPath("$.effectiveSettings.fixedPageMargin") { value(32) }
+        jsonPath("$.effectiveSettings.fixedPageBackground") { value("PAPER") }
+        jsonPath("$.effectiveSettings.fixedPageBrightness") { value(1.08) }
+        jsonPath("$.effectiveSettings.fixedPageContrast") { value(1.18) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given text reflow preference when saving then text settings are validated and returned`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content =
+          preferenceJson(
+            "BOOK",
+            book.id,
+            """
+            {
+              "layout":"CONTINUOUS_SCROLL",
+              "textTheme":"DARK",
+              "textFontFamily":"GOWUN_DODUM",
+              "textFontSize":24,
+              "textLineHeight":1.9,
+              "textLetterSpacing":0.8,
+              "textWordSpacing":2.5,
+              "textContentWidth":700,
+              "textPageMargin":64,
+              "textParagraphSpacing":1.55,
+              "textAlign":"JUSTIFY",
+              "textFontWeight":500,
+              "textBrightness":0.92
+            }
+            """.trimIndent(),
+            TEXT_FORMAT,
+          )
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.format") { value(TEXT_FORMAT) }
+        jsonPath("$.settings.textTheme") { value("DARK") }
+        jsonPath("$.settings.textFontFamily") { value("GOWUN_DODUM") }
+        jsonPath("$.settings.textFontSize") { value(24) }
+        jsonPath("$.settings.textContentWidth") { value(700) }
+        jsonPath("$.settings.textAlign") { value("JUSTIFY") }
+        jsonPath("$.settings.textBrightness") { value(0.92) }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "BOOK")
+        param("scopeId", book.id)
+        param("format", TEXT_FORMAT)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.effectiveSettings.layout") { value("CONTINUOUS_SCROLL") }
+        jsonPath("$.effectiveSettings.textTheme") { value("DARK") }
+        jsonPath("$.effectiveSettings.textFontSize") { value(24) }
+        jsonPath("$.effectiveSettings.textLineHeight") { value(1.9) }
+        jsonPath("$.effectiveSettings.textLetterSpacing") { value(0.8) }
+        jsonPath("$.effectiveSettings.textContentWidth") { value(700) }
+        jsonPath("$.effectiveSettings.textFontWeight") { value(500) }
+        jsonPath("$.effectiveSettings.textBrightness") { value(0.92) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given existing preference when saving same scope then settings are replaced`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content = preferenceJson("BOOK", book.id, """{"layout":"DOUBLE_PAGE","readingDirection":"RTL"}""")
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.settings.layout") { value("DOUBLE_PAGE") }
+        jsonPath("$.settings.readingDirection") { value("RTL") }
+      }
+
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content = preferenceJson("BOOK", book.id, """{"pageFit":"WIDTH"}""")
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.settings.pageFit") { value("WIDTH") }
+        jsonPath("$.effectiveSettings.layout") { value("SINGLE_PAGE") }
+        jsonPath("$.effectiveSettings.readingDirection") { value("LTR") }
+        jsonPath("$.effectiveSettings.pageFit") { value("WIDTH") }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_2_ID)
+  fun `given preference saved by one user when another user gets preference then it is isolated`() {
+    val book = createBookWithMedia()
+    readerStateDao.savePreference(preference("BOOK", book.id, """{"layout":"DOUBLE_PAGE"}"""))
+
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "BOOK")
+        param("scopeId", book.id)
+        param("format", FORMAT)
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.sources.length()") { value(0) }
+        jsonPath("$.effectiveSettings.layout") { value("SINGLE_PAGE") }
+        jsonPath("$.effectiveSettings.readingDirection") { value("LTR") }
+        jsonPath("$.effectiveSettings.pageFit") { value("SCREEN") }
+        jsonPath("$.effectiveSettings.imageFilterPreset") { value("ORIGINAL") }
+        jsonPath("$.effectiveSettings.fixedPageScale") { value(100) }
+        jsonPath("$.effectiveSettings.fixedPageRotation") { value(0) }
+        jsonPath("$.effectiveSettings.fixedPageCoverSingle") { value(false) }
+        jsonPath("$.effectiveSettings.fixedPageGap") { value(12) }
+        jsonPath("$.effectiveSettings.fixedPageMargin") { value(16) }
+        jsonPath("$.effectiveSettings.fixedPageBackground") { value("DARK") }
+        jsonPath("$.effectiveSettings.fixedPageBrightness") { value(1.0) }
+        jsonPath("$.effectiveSettings.fixedPageContrast") { value(1.0) }
+      }
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+    strings = [
+      """{"scopeType":"UNKNOWN","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"layout":"SINGLE_PAGE"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"wrong","format":"FIXED_PAGE_SEQUENCE","settings":{"layout":"SINGLE_PAGE"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"UNKNOWN","settings":{"layout":"SINGLE_PAGE"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":[]}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"unknown":"value"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"layout":"BAD"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"imageFilterPreset":"AI_UPSCALE"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"pageFit":3}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageRotation":45}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageCoverSingle":"yes"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageScale":320}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageBackground":"BLUE"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageBrightness":1.8}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"imageFilterPreset":"ORIGINAL"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textFontSize":99}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textBrightness":0.2}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textTheme":"BAD"}}""",
+    ],
+  )
+  @WithMockCustomUser(id = USER_1_ID)
+  fun `given invalid preference request when saving preference then returns bad request`(jsonString: String) {
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content = jsonString
+      }.andExpect {
+        status { isBadRequest() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID, sharedAllLibraries = false, sharedLibraries = ["other"])
+  fun `given user without book access when saving preference then returns forbidden`() {
+    val book = createBookWithMedia()
+
+    mockMvc
+      .put("/api/shelfview/v1/preferences") {
+        contentType = MediaType.APPLICATION_JSON
+        content = preferenceJson("BOOK", book.id, """{"layout":"DOUBLE_PAGE"}""")
+      }.andExpect {
+        status { isForbidden() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser(id = USER_1_ID, sharedAllLibraries = false, sharedLibraries = ["other"])
+  fun `given user without library access when getting library preference then returns forbidden`() {
+    mockMvc
+      .get("/api/shelfview/v1/preferences") {
+        param("scopeType", "LIBRARY")
+        param("scopeId", LIBRARY_ID)
+        param("format", FORMAT)
+      }.andExpect {
+        status { isForbidden() }
+      }
+  }
+
+  private fun createBookWithMedia(): Book {
+    val createdSeries = seriesLifecycle.createSeries(makeSeries(name = "series", libraryId = library.id))
+    seriesLifecycle.addBooks(createdSeries, listOf(makeBook("Book One.cbz", libraryId = library.id)))
+
+    val book = bookRepository.findAll().first { it.libraryId == library.id }
+    mediaRepository.findById(book.id).let {
+      mediaRepository.update(
+        it.copy(
+          status = Media.Status.READY,
+          mediaType = TalesMediaType.ZIP.type,
+          pageCount = 2,
+          pages =
+            listOf(
+              BookPage("001.jpg", "image/jpeg"),
+              BookPage("002.jpg", "image/jpeg"),
+            ),
+        ),
+      )
+    }
+
+    return book
+  }
+
+  private fun preference(
+    scopeType: String,
+    scopeId: String,
+    settingsJson: String,
+    format: String = FORMAT,
+  ) = ShelfViewReaderPreference(
+    userId = USER_1_ID,
+    scopeType = scopeType,
+    scopeId = scopeId,
+    format = format,
+    settingsJson = settingsJson,
+  )
+
+  private fun preferenceJson(
+    scopeType: String,
+    scopeId: String,
+    settingsJson: String,
+    format: String = FORMAT,
+  ) = """
+    {
+      "scopeType": "$scopeType",
+      "scopeId": "$scopeId",
+      "format": "$format",
+      "settings": $settingsJson
+    }
+    """.trimIndent()
+
+  private companion object {
+    const val LIBRARY_ID = "shelfview-preference-library"
+    const val USER_1_ID = "shelfview-preference-user-1"
+    const val USER_2_ID = "shelfview-preference-user-2"
+    const val FORMAT = "FIXED_PAGE_SEQUENCE"
+    const val TEXT_FORMAT = "TEXT_REFLOW"
+  }
+}

@@ -1,6 +1,6 @@
 # Development guidelines
 
-Thanks a lot for contributing to Komga!
+Thanks a lot for contributing to Tales!
 
 ## Requirements
 
@@ -11,24 +11,24 @@ You will need:
 
 ## Setting up the project
 
-- run `npm install` in the `komga-webui` folder of the project. This will install the necessary tooling for the webui.
+- run `npm install` in the `tales-webui` folder of the project. This will install the necessary tooling for the webui.
 
 ## Commit messages
 
-Komga's commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) standard. This enables automatic versioning, releases, and release notes generation.
+Tales's commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) standard. This enables automatic versioning, releases, and release notes generation.
 
 ## Project organization
 
-Komga is composed of 3 projects:
-- `komga`: a Spring Boot backend server that hosts the APIs, but also serves the static assets of the frontend.
-- `komga-webui`: a VueJS frontend, built at compile time and served by the backend at runtime.
-- `komga-tray`: a thin desktop wrapper that displays a tray-icon
+Tales is composed of 3 projects:
+- `tales`: a Spring Boot backend server that hosts the APIs, but also serves the static assets of the frontend.
+- `tales-webui`: a VueJS frontend, built at compile time and served by the backend at runtime.
+- `tales-tray`: a thin desktop wrapper that displays a tray-icon
 
 ## Backend development
 
 ### Spring profiles
 
-Komga uses Spring Profiles extensively:
+Tales uses Spring Profiles extensively:
 - `dev`: add more logging, disable periodic scanning, in-memory database, and enable CORS from `localhost:8081` (the frontend dev server)
 - `localdb`: a dev profile that stores the database in `./localdb`.
 - `noclaim`: will create initial users at startup if none exist and output users and passwords in the standard output
@@ -62,7 +62,7 @@ SET SPRING_PROFILES_ACTIVE=dev
 
 ## Frontend development
 
-You can run a live development server with `npm run serve` from `/komga-webui`. The dev server will override the URL to connect to `localhost:25600`, so you can also run `gradle bootRun` to have a backend running, serving the API requests. The frontend will be loaded from `localhost:8081`.
+You can run a live development server with `npm run serve` from `/tales-webui`. The dev server will override the URL to connect to `localhost:25600`, so you can also run `gradle bootRun` to have a backend running, serving the API requests. The frontend will be loaded from `localhost:8081`.
 
 Make sure you start the backend with the `dev` profile, else the frontend requests will be denied because of CORS.
 
@@ -72,4 +72,4 @@ To build the Docker image, you need to:
 
 - have the webui built and copied to `/resources/public`. To do so, run `./gradlew prepareThymeLeaf`
 - prepare the docker image via JReleaser. To do so, run `./gradlew jreleaserPackage`
-- the `Dockerfile` will be available in `komga/build/jreleaser/package/docker/`
+- the `Dockerfile` will be available in `tales/build/jreleaser/package/docker/`

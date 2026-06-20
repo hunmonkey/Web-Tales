@@ -5,9 +5,9 @@ Verified during SV-001 on 2026-06-18.
 ## Current baseline
 
 - Project remote: `origin` -> `https://github.com/hunmonkey/Web-Tales.git`
-- Upstream remote: `upstream` -> `https://github.com/gotson/komga.git`
+- Upstream remote: `upstream` -> `https://github.com/gotson/tales.git`
 - Upstream push URL: `DISABLED`
-- Base tag: Komga `1.24.4`
+- Base tag: Tales `1.24.4`
 - Base tag commit: `9c84690a07aa7dcc5c54b58dd67de3fb8b9deb5d`
 - Active development branch: `dev`
 - Deployment branch: `main`

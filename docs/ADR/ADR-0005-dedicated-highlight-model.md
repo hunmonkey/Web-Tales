@@ -28,23 +28,23 @@ That bookmark-backed approach is not enough for range and color highlights:
 
 Read directly in the current Web-Tales/ShelfView fork:
 
-1. `komga/src/flyway/resources/db/migration/sqlite/V20260618210500__shelfview_reader_state.sql`
+1. `tales/src/flyway/resources/db/migration/sqlite/V20260618210500__shelfview_reader_state.sql`
    - Defines `SHELFVIEW_READER_POSITION`, `SHELFVIEW_BOOKMARK` and
      `SHELFVIEW_READER_PREFERENCE`.
-2. `komga/src/main/kotlin/org/gotson/komga/shelfview/domain/ShelfViewReaderState.kt`
+2. `tales/src/main/kotlin/org/tales/shelfview/domain/ShelfViewReaderState.kt`
    - Contains `ShelfViewReaderPosition`, `ShelfViewBookmark` and
      `ShelfViewReaderPreference` domain records.
-3. `komga/src/main/kotlin/org/gotson/komga/shelfview/infrastructure/jooq/ShelfViewReaderStateDao.kt`
+3. `tales/src/main/kotlin/org/tales/shelfview/infrastructure/jooq/ShelfViewReaderStateDao.kt`
    - Implements the current state repositories in one DAO backed by generated
      jOOQ table bindings.
-4. `komga/src/main/kotlin/org/gotson/komga/shelfview/interfaces/api/ShelfViewBookmarkController.kt`
+4. `tales/src/main/kotlin/org/tales/shelfview/interfaces/api/ShelfViewBookmarkController.kt`
    - Lists, creates, updates and deletes per-user bookmarks behind book access
      checks.
-5. `komga/src/main/kotlin/org/gotson/komga/shelfview/interfaces/api/ShelfViewLocatorValidator.kt`
+5. `tales/src/main/kotlin/org/tales/shelfview/interfaces/api/ShelfViewLocatorValidator.kt`
    - Validates storable `PAGE`, `TEXT` and `MIXED` locators against the current
      book fingerprint. `EPUB` locators exist for Manifest contents but are not
      yet accepted for saved ShelfView state.
-6. `komga-webui/src/shelfview/views/ShelfViewReaderShell.vue`
+6. `tales-webui/src/shelfview/views/ShelfViewReaderShell.vue`
    - Renders bookmark-backed TXT paragraph highlights and already loads
      bookmarks through `$shelfViewState`.
 
@@ -151,7 +151,7 @@ The DTO shape should be close to:
   "bookId": "book-id",
   "locator": {"schemaVersion": 1, "kind": "TEXT"},
   "selector": {"schemaVersion": 1, "kind": "TEXT_RANGE"},
-  "contentFingerprint": "komga-file-hash:...",
+  "contentFingerprint": "tales-file-hash:...",
   "color": "YELLOW",
   "note": "optional memo",
   "textQuote": "short selected text",

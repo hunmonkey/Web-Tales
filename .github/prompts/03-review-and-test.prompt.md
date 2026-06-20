@@ -13,7 +13,7 @@ Prioritize:
 1. Authentication and authorization gaps.
 2. Raw path exposure, traversal, archive bomb and unsafe text rendering.
 3. Data migration and Locator compatibility.
-4. Existing Komga API/reader/progress regressions.
+4. Existing Tales API/reader/progress regressions.
 5. Resource leaks, stale requests, memory and large-file behavior.
 6. 0/1-based page errors and natural sort errors.
 7. Missing tests and false claims in documentation.

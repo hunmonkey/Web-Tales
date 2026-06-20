@@ -1,0 +1,97 @@
+application.version: ${version}
+
+logging:
+  logback:
+    rollingpolicy:
+      max-history: 7
+      total-size-cap: 1GB
+      clean-history-on-start: true
+      max-file-size: 10MB
+  file:
+    name: \${tales.config-dir}/logs/tales.log
+  level:
+    org.apache.activemq.audit: WARN
+    org.apache.fontbox.cff.Type1CharString: ERROR
+    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
+
+tales:
+  database:
+    file: \${tales.config-dir}/database.sqlite
+  lucene:
+    data-directory: \${tales.config-dir}/lucene
+  fonts:
+    data-directory: \${tales.config-dir}/fonts
+  config-dir: \${user.home}/.tales
+  tasks-db:
+    file: \${tales.config-dir}/tasks.sqlite
+
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/{vendor}
+    mixed: true
+    placeholders:
+      library-file-hashing: \${tales.file-hashing:true}
+      library-scan-startup: \${tales.libraries-scan-startup:false}
+      delete-empty-collections: \${tales.delete-empty-collections:true}
+      delete-empty-read-lists: \${tales.delete-empty-read-lists:true}
+  thymeleaf:
+    prefix: classpath:/public/
+  mvc:
+    async:
+      request-timeout: 1h
+  web:
+    resources:
+      add-mappings: false
+  jackson:
+    deserialization:
+      FAIL_ON_NULL_FOR_PRIMITIVES: true
+    mapper:
+      accept-case-insensitive-properties: true
+      accept-case-insensitive-values: true
+  config:
+    import:
+      - "optional:file:\${tales.config-dir}/application.yml"
+      - "optional:file:\${tales.config-dir}/application.yaml"
+      - "optional:file:\${tales.config-dir}/application.properties"
+  http:
+    codecs:
+      max-in-memory-size: 10MB
+
+server:
+  servlet.session.timeout: 7d
+  forward-headers-strategy: framework
+  shutdown: graceful
+  error:
+    include-message: always
+  port: 25600
+
+management:
+  endpoints.web.exposure.include: "*"
+  endpoint:
+    configprops:
+      roles: ADMIN
+      show-values: when_authorized
+    env:
+      roles: ADMIN
+      show-values: when_authorized
+    health:
+      roles: ADMIN
+      show-details: when_authorized
+    shutdown:
+      access: unrestricted
+  info:
+    java:
+      enabled: true
+    os:
+      enabled: true
+  simple:
+    metrics:
+      export:
+        enabled: true
+        step: 24h
+springdoc:
+  swagger-ui:
+    disable-swagger-default-url: true
+  paths-to-match: "/api/**"
+  writer-with-order-by-keys: true

@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
-    directory: "/komga-webui"
+    directory: "/tales-webui"
     open-pull-requests-limit: 0
     commit-message:
       prefix: "deps(webui)"
@@ -10,19 +10,19 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "gradle"
-    directory: "/komga"
+    directory: "/tales"
     open-pull-requests-limit: 0
     commit-message:
-      prefix: "deps(komga)"
+      prefix: "deps(tales)"
     #      include: "scope"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "gradle"
-    directory: "/komga-tray"
+    directory: "/tales-tray"
     open-pull-requests-limit: 0
     commit-message:
-      prefix: "deps(komga-tray)"
+      prefix: "deps(tales-tray)"
     #      include: "scope"
     schedule:
       interval: "weekly"

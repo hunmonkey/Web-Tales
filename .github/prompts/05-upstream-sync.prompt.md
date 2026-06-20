@@ -1,7 +1,7 @@
 ---
 name: upstream-sync
-description: Plan and validate a Komga upstream merge
-argument-hint: "target Komga tag or branch"
+description: Plan and validate a Tales upstream merge
+argument-hint: "target Tales tag or branch"
 agent: plan
 ---
 

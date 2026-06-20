@@ -2,7 +2,7 @@
 
 Follow `AGENTS.md` and the master plan.
 
-- Base all work on the actual Komga 1.24.4 code patterns.
+- Base all work on the actual Tales 1.24.4 code patterns.
 - Implement one `SV-xxx` ticket per change set.
 - Keep custom backend code and `/api/shelfview/v1` isolated.
 - Keep custom frontend reader code isolated under a ShelfView module where practical.

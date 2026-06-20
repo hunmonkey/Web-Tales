@@ -18,7 +18,7 @@ Media files, archives, text, images, metadata, filenames, bookmark notes and set
 
 ## License default
 
-- Preserve Komga MIT notices.
+- Preserve Tales MIT notices.
 - Prefer MIT, BSD or Apache-2.0 dependencies with recorded purpose and license.
 - Do not copy GPL/AGPL code into the default codebase.
 - Koodo/Kookit, Kavita and BookLore are reference-only unless the owner intentionally changes the distribution obligations.
@@ -30,7 +30,7 @@ Media files, archives, text, images, metadata, filenames, bookmark notes and set
 
 Before adding a package:
 
-1. Is it necessary, or can existing Komga code solve the problem?
+1. Is it necessary, or can existing Tales code solve the problem?
 2. Is it maintained and compatible with the current Vue 2/JDK stack?
 3. What is its license?
 4. Does it add native binaries, workers or network behavior?

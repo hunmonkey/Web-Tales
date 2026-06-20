@@ -4,32 +4,32 @@
 - Date: 2026-06-19
 - Ticket: SV-450 (ZIP internal TXT/PDF/JPG/GIF design spike)
 - Supersedes: none
-- Related: [ADR-0001](ADR-0001-komga-fork-and-reader-strategy.md), [ADR-0002](ADR-0002-txt-scanning-and-domain-model.md), `SHELFVIEW_MASTER_DEVELOPMENT_PLAN.md` sections 3.4, 5.1 and M4.5
+- Related: [ADR-0001](ADR-0001-tales-fork-and-reader-strategy.md), [ADR-0002](ADR-0002-txt-scanning-and-domain-model.md), `SHELFVIEW_MASTER_DEVELOPMENT_PLAN.md` sections 3.4, 5.1 and M4.5
 
 ## Context
 
-The owner goal includes ZIP files that contain readable TXT, PDF, JPG and similar entries. Existing Komga ZIP/CBZ handling is optimized for image-only archives: the archive becomes one `Book`, image entries become fixed pages, and non-image entries are stored as `Media.files` metadata.
+The owner goal includes ZIP files that contain readable TXT, PDF, JPG and similar entries. Existing Tales ZIP/CBZ handling is optimized for image-only archives: the archive becomes one `Book`, image entries become fixed pages, and non-image entries are stored as `Media.files` metadata.
 
 SV-450 is a design-only spike before implementing ZIP-internal TXT/PDF/JPG/GIF support. The master plan requires an ADR because mixed archives combine the fixed-page reader and text reader inside one physical source file.
 
 ### Verified code map
 
-Read directly in the current Komga 1.24.4 fork:
+Read directly in the current Tales 1.24.4 fork:
 
-1. `komga/src/main/kotlin/org/gotson/komga/infrastructure/mediacontainer/divina/ZipExtractor.kt`
+1. `tales/src/main/kotlin/org/tales/infrastructure/mediacontainer/divina/ZipExtractor.kt`
    - Opens a ZIP with Apache Commons Compress `ZipFile`.
    - Iterates all non-directory entries, detects media type from entry content, optionally analyzes image dimensions, records file size and naturally sorts by entry name.
    - `getEntryStream(path, entryName)` uses `getZipEntryBytes`.
-2. `komga/src/main/kotlin/org/gotson/komga/domain/service/BookAnalyzer.kt`
+2. `tales/src/main/kotlin/org/tales/domain/service/BookAnalyzer.kt`
    - `analyzeDivina()` partitions ZIP entries into image entries and others.
    - Image entries become `BookPage` records and are served by the fixed-page pipeline.
    - Other entries become `MediaFile` records.
    - A ZIP with no image pages currently becomes `Status.ERROR` / `ERR_1006`.
    - `getFileContent()` can extract a named file from a DIVINA archive.
-3. `komga/src/main/kotlin/org/gotson/komga/domain/model/Media.kt`, `MediaFile.kt`, `MediaContainerEntry.kt`
+3. `tales/src/main/kotlin/org/tales/domain/model/Media.kt`, `MediaFile.kt`, `MediaContainerEntry.kt`
    - `Media.pages` already stores image pages.
    - `Media.files` can store non-page archive entries, but has only EPUB-specific subtype values today.
-4. `komga/src/main/kotlin/org/gotson/komga/infrastructure/util/ZipFileUtils.kt`
+4. `tales/src/main/kotlin/org/tales/infrastructure/util/ZipFileUtils.kt`
    - Existing helper reads a single ZIP entry by name, including a slower Unicode-extra-field fallback.
    - It reads the full entry into memory and does not by itself enforce ShelfView mixed-content limits.
 5. Current ShelfView manifest contracts:
@@ -41,7 +41,7 @@ Read directly in the current Komga 1.24.4 fork:
 
 Adopt a **single Book, ordered internal content model** for mixed ZIP archives.
 
-1. A ZIP file remains one Komga `Book`. ZIP entries do **not** become separate books or series.
+1. A ZIP file remains one Tales `Book`. ZIP entries do **not** become separate books or series.
 2. ShelfView adds a mixed publication shape, tentatively `kind = MIXED_CONTENT_SEQUENCE`, with an ordered `items`/`spine` array. Each item points to a safe server endpoint and has a stable opaque `itemId`.
 3. The frontend adds a `MixedContentAdapter` that coordinates existing fixed-page and text behavior instead of scattering extension checks in Vue components.
 4. Entry paths are never exposed as raw server paths or trusted identifiers. The server may expose a sanitized display label, but API calls use opaque `itemId` values derived from normalized entry metadata and the book content fingerprint.
@@ -63,9 +63,9 @@ Adopt a **single Book, ordered internal content model** for mixed ZIP archives.
     "characterOffset": 44,
     "progression": 0.31,
     "normalizationVersion": 1,
-    "contentFingerprint": "komga-file-state:..."
+    "contentFingerprint": "tales-file-state:..."
   },
-  "contentFingerprint": "komga-file-state:..."
+  "contentFingerprint": "tales-file-state:..."
 }
 ```
 
@@ -82,7 +82,7 @@ The exact DTO names can change during SV-451/SV-453, but the shape should stay c
   "title": "Archive title",
   "kind": "MIXED_CONTENT_SEQUENCE",
   "sourceFormat": "ZIP",
-  "contentFingerprint": "komga-file-state:...",
+  "contentFingerprint": "tales-file-state:...",
   "items": [
     {
       "itemId": "opaque-text-id",
@@ -182,7 +182,7 @@ Negative:
 
 ## Rejected alternatives
 
-- **Split ZIP entries into separate Komga books.** Rejected because one archive would fragment into many books, create awkward series ordering, duplicate permission/progress state and surprise users.
+- **Split ZIP entries into separate Tales books.** Rejected because one archive would fragment into many books, create awkward series ordering, duplicate permission/progress state and surprise users.
 - **Send the ZIP to the browser and use zip.js.** Rejected for the server viewer because large archives would be downloaded in full and client extraction would bypass server-side validation. `zip.js` remains only for future local-file/open-offline features.
 - **Treat every mixed ZIP as a fixed-page image archive.** Rejected because TXT and PDF entries would be ignored or forced into fake pages.
 - **Extract the entire ZIP to a server directory.** Rejected because it increases disk usage, cleanup risk and attack surface. Only bounded per-entry derived extraction is allowed, and only when a downstream renderer such as the PDF path needs a file.

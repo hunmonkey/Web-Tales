@@ -1,2 +1,2 @@
-include 'komga'
-include 'komga-tray'
+include 'tales'
+include 'tales-tray'

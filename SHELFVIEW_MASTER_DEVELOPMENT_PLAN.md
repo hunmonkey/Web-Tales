@@ -4,7 +4,7 @@
 - 문서 버전: 1.0
 - 기준일: 2026-06-18
 - 프로젝트 가칭: **ShelfView**
-- 기반 프로젝트: **Komga 1.24.4 안정 릴리스 포크**
+- 기반 프로젝트: **Tales 1.24.4 안정 릴리스 포크**
 - 대상 운영 환경: **Unraid의 Docker 컨테이너**
 - 문서 목적: 사람과 AI 코딩 에이전트가 동일한 범위, 구조, 품질 기준으로 개발하도록 하는 단일 기준 문서
 
@@ -40,7 +40,7 @@ AI가 저장소 조사를 완료한 뒤에는 백로그의 **SV-000부터 한 �
 
 # 1. 프로젝트 목표
 
-ShelfView는 Unraid 서버의 도서·만화 파일을 브라우저에서 읽는 자체 호스팅 웹 애플리케이션이다. 기존 Komga의 검증된 서버 기능을 유지하면서 다음 기능을 확장한다.
+ShelfView는 Unraid 서버의 도서·만화 파일을 브라우저에서 읽는 자체 호스팅 웹 애플리케이션이다. 기존 Tales의 검증된 서버 기능을 유지하면서 다음 기능을 확장한다.
 
 1. PDF, TXT, ZIP/CBZ, JPG·PNG·WebP 이미지 폴더와 ZIP 내부의 TXT·PDF·JPG·GIF 콘텐츠를 하나의 도서관에서 관리한다.
 2. 만화 보기와 텍스트 책 보기를 하나의 일관된 리더 UI에서 제공한다.
@@ -48,13 +48,13 @@ ShelfView는 Unraid 서버의 도서·만화 파일을 브라우저에서 읽는
 4. 밝기, 대비, 흑백, 세피아, 반전, 저조도, OLED 검정 테마를 제공한다.
 5. 사용자별 마지막 읽은 위치, 여러 개의 책갈피, 뷰어 설정을 서버에 동기화한다.
 6. 원본 미디어는 읽기 전용으로 유지하며 Docker로 배포한다.
-7. 업스트림 Komga의 보안 수정과 기능을 지속해서 병합할 수 있는 구조를 유지한다.
+7. 업스트림 Tales의 보안 수정과 기능을 지속해서 병합할 수 있는 구조를 유지한다.
 
 ## 1.1 성공 기준
 
 MVP는 다음 시나리오가 모두 동작하면 완료로 본다.
 
-- Unraid 공유 폴더의 CBZ/ZIP/PDF가 기존 Komga 기능을 잃지 않고 열린다.
+- Unraid 공유 폴더의 CBZ/ZIP/PDF가 기존 Tales 기능을 잃지 않고 열린다.
 - UTF-8 및 한국어 레거시 인코딩 TXT가 안전하게 열리고, 테마·글꼴·행간을 변경할 수 있다.
 - ZIP 내부에 포함된 TXT, PDF, JPG, GIF 항목도 안전하게 읽을 수 있다.
 - 명시적으로 표시된 이미지 폴더가 한 권의 책으로 스캔되고 자연 정렬된 순서로 읽힌다.
@@ -63,7 +63,7 @@ MVP는 다음 시나리오가 모두 동작하면 완료로 본다.
 - 설정이 사용자별로 저장되고 다른 브라우저에서도 복원된다.
 - 미디어 폴더를 Docker에 읽기 전용으로 마운트해도 모든 읽기 기능이 작동한다.
 - 인증되지 않은 사용자는 콘텐츠·페이지·텍스트·책갈피 API에 접근할 수 없다.
-- 기존 Komga 리더로 되돌아갈 수 있는 기능 플래그 또는 폴백 경로가 존재한다.
+- 기존 Tales 리더로 되돌아갈 수 있는 기능 플래그 또는 폴백 경로가 존재한다.
 
 ## 1.2 MVP에서 제외할 것
 
@@ -76,21 +76,21 @@ MVP는 다음 시나리오가 모두 동작하면 완료로 본다.
 - 모바일 네이티브 앱
 - 클라우드 동기화 서비스
 - 편집기 또는 도서 제작 기능
-- Komga 전체를 Vue 3, Spring 최신 구조 등으로 일괄 마이그레이션
+- Tales 전체를 Vue 3, Spring 최신 구조 등으로 일괄 마이그레이션
 - 사용자 업로드를 인터넷에 공개하는 멀티테넌트 SaaS
 
 ---
 
 # 2. 기준선과 핵심 기술 결정
 
-## 2.1 Komga를 전체 서버 기반으로 포크한다
+## 2.1 Tales를 전체 서버 기반으로 포크한다
 
-Komga는 MIT 라이선스이며 웹 UI, 사용자 관리, 라이브러리 스캔, 메타데이터, 웹 리더, REST API, OPDS, 읽기 상태 등 필요한 기반을 이미 제공한다. 프로젝트는 현재 `komga` Spring Boot 백엔드, `komga-webui` Vue 프런트엔드, `komga-tray`로 나뉜다.
+Tales는 MIT 라이선스이며 웹 UI, 사용자 관리, 라이브러리 스캔, 메타데이터, 웹 리더, REST API, OPDS, 읽기 상태 등 필요한 기반을 이미 제공한다. 프로젝트는 현재 `tales` Spring Boot 백엔드, `tales-webui` Vue 프런트엔드, `tales-tray`로 나뉜다.
 
 기준 태그는 문서 작성일 현재 안정 릴리스인 `1.24.4`로 고정한다. `master`의 최신 커밋에서 바로 개발을 시작하지 않는다.
 
 ```bash
-git clone https://github.com/gotson/komga.git shelfview
+git clone https://github.com/gotson/tales.git shelfview
 cd shelfview
 
 git remote rename origin upstream
@@ -121,7 +121,7 @@ git push --set-upstream origin shelfview-main
 | 프런트엔드 | Vue 2.6, TypeScript 4.9, Vuex 3, Vuetify 2, Vue CLI 5 |
 | 개발 요구사항 | JDK 21+, Node.js 18+ |
 | 배포 | 단일 Docker 이미지, 기본 포트 25600 |
-| 저장소 | Komga의 기존 DB·마이그레이션 체계 유지 |
+| 저장소 | Tales의 기존 DB·마이그레이션 체계 유지 |
 
 **중요:** MVP 작업과 프레임워크 현대화를 섞지 않는다. Vue 3 전환, Pinia 전환, Vite 전환, 대규모 패키지 갱신은 별도 프로젝트다.
 
@@ -132,8 +132,8 @@ git push --set-upstream origin shelfview-main
 권장 구조는 실제 저장소 조사 후 확정하되 방향은 다음과 같다.
 
 ```text
-komga/
-└── src/main/kotlin/org/gotson/komga/
+tales/
+└── src/main/kotlin/org/tales/
     └── shelfview/
         ├── api/
         ├── domain/
@@ -141,7 +141,7 @@ komga/
         ├── scanner/
         └── service/
 
-komga-webui/src/
+tales-webui/src/
 └── shelfview/
     ├── adapters/
     ├── components/
@@ -152,7 +152,7 @@ komga-webui/src/
     └── views/
 ```
 
-기존 Komga 클래스에 반드시 손을 대야 할 때는 다음 순서를 따른다.
+기존 Tales 클래스에 반드시 손을 대야 할 때는 다음 순서를 따른다.
 
 1. 확장 포인트나 기존 인터페이스를 먼저 찾는다.
 2. 작은 어댑터 또는 이벤트 구독으로 해결 가능한지 확인한다.
@@ -186,7 +186,7 @@ komga-webui/src/
 
 ShelfView의 신규 코드는 **MIT 호환 공개를 염두에 둔 독자 구현**을 기본값으로 한다. 프로젝트 소유자가 다른 라이선스를 선택하기 전까지 다음 규칙을 지킨다.
 
-- Komga의 MIT 라이선스와 저작권 고지를 보존한다.
+- Tales의 MIT 라이선스와 저작권 고지를 보존한다.
 - Apache-2.0, MIT, BSD 계열 라이브러리는 조건을 확인하고 의존성으로 사용한다.
 - GPL/AGPL 코드는 기본 구현에 복사·붙여넣기하지 않는다.
 - 다른 프로젝트의 UI 흐름, 공개 기능 아이디어, 데이터 모델 개념은 참고할 수 있다.
@@ -199,7 +199,7 @@ ShelfView의 신규 코드는 **MIT 호환 공개를 염두에 둔 독자 구현
 
 | 프로젝트 | 라이선스 | 기본 활용 방침 |
 |---|---|---|
-| Komga | MIT | 전체 포크, 서버·UI 기반으로 사용 |
+| Tales | MIT | 전체 포크, 서버·UI 기반으로 사용 |
 | PDF.js | Apache-2.0 | 2단계 PDF 텍스트 레이어·검색에 패키지 의존성으로 검토 |
 | zip.js | BSD-3-Clause | 로컬 파일 열기 기능이 필요할 때 선택적으로 사용 |
 | foliate-js | MIT | TXT 페이지네이션 연구용; 특정 커밋 고정 후 제한적으로 검토 |
@@ -210,7 +210,7 @@ ShelfView의 신규 코드는 **MIT 호환 공개를 염두에 둔 독자 구현
 
 ## 3.3 PDF 구현 결정
 
-MVP에서는 PDF 파일도 Komga가 제공하는 페이지 스트림을 이용해 **고정 페이지 시퀀스**로 읽는다. 이 방법은 새 리더의 단면·양면·연속 스크롤·필터·책갈피를 빠르게 통일한다.
+MVP에서는 PDF 파일도 Tales가 제공하는 페이지 스트림을 이용해 **고정 페이지 시퀀스**로 읽는다. 이 방법은 새 리더의 단면·양면·연속 스크롤·필터·책갈피를 빠르게 통일한다.
 
 PDF.js는 다음 요구가 생기는 후속 단계에서만 도입한다.
 
@@ -224,7 +224,7 @@ PDF.js를 도입할 때는 현재 Vue 2 빌드 체계와 웹 워커 구성을 �
 
 ## 3.4 ZIP 처리 결정
 
-서버형 뷰어에서는 브라우저가 대용량 ZIP 전체를 내려받아 해제하지 않는다. 기존 Komga의 분석·페이지 제공 경로를 재사용한다.
+서버형 뷰어에서는 브라우저가 대용량 ZIP 전체를 내려받아 해제하지 않는다. 기존 Tales의 분석·페이지 제공 경로를 재사용한다.
 
 후속 확장에서는 ZIP 내부에 TXT, PDF, JPG, GIF가 섞여 있는 도서도 지원한다. 이 기능은 단순 이미지 ZIP과 달리 텍스트 리더와 이미지/PDF 리더가 한 압축파일 안에서 만나는 구조이므로, 구현 전에 별도 ADR로 Manifest 형태, 읽기 순서, GIF/PDF 처리 방식을 결정한다.
 
@@ -243,14 +243,14 @@ zip.js는 다음 기능에만 선택적으로 사용한다.
         |
         | HTTPS + Session/API Key
         v
-[Komga Web UI + ShelfView Unified Reader]
+[Tales Web UI + ShelfView Unified Reader]
         |
         | /api/v1                  기존 API
         | /api/shelfview/v1        신규 API
         v
 [Spring Boot / Kotlin]
   +-------------------------------+
-  | 기존 Komga 서비스             |
+  | 기존 Tales 서비스             |
   | - 사용자/권한                 |
   | - 라이브러리/스캔             |
   | - 미디어 분석                 |
@@ -346,7 +346,7 @@ UI는 어댑터의 공통 인터페이스만 사용한다.
 
 ## 5.1 CBZ·ZIP
 
-기존 Komga의 스캔, 분석, 페이지 목록, 페이지 이미지 API를 최대한 재사용한다.
+기존 Tales의 스캔, 분석, 페이지 목록, 페이지 이미지 API를 최대한 재사용한다.
 
 필수 동작:
 
@@ -427,7 +427,7 @@ TXT 설정:
 
 ## 5.4 JPG·PNG·WebP 이미지 폴더
 
-Komga의 일반 규칙과 충돌하지 않도록 이미지 폴더를 자동 추측하지 않는다. MVP는 명시적 마커 파일을 사용한다.
+Tales의 일반 규칙과 충돌하지 않도록 이미지 폴더를 자동 추측하지 않는다. MVP는 명시적 마커 파일을 사용한다.
 
 ```text
 /data/images/작품명/1권/
@@ -481,7 +481,7 @@ export type Locator = PageLocator | TextLocator
 
 ## 6.2 데이터 저장 원칙
 
-- 기존 고정 페이지 형식은 Komga의 기존 읽기 진행률과 호환성을 유지한다.
+- 기존 고정 페이지 형식은 Tales의 기존 읽기 진행률과 호환성을 유지한다.
 - TXT와 확장 Locator는 ShelfView 테이블에 저장한다.
 - 책갈피와 마지막 위치를 분리한다.
 - 뷰어 설정은 전역 → 라이브러리 → 시리즈 → 책 순서로 덮어쓴다.
@@ -526,7 +526,7 @@ CREATE TABLE shelfview_reader_preference (
 );
 ```
 
-실제 컬럼 타입, 외래키, 시간 타입, ID 생성법은 Komga의 기존 jOOQ/Flyway 패턴을 조사한 뒤 맞춘다.
+실제 컬럼 타입, 외래키, 시간 타입, ID 생성법은 Tales의 기존 jOOQ/Flyway 패턴을 조사한 뒤 맞춘다.
 
 ## 6.3 저장 타이밍
 
@@ -587,10 +587,10 @@ PUT /api/shelfview/v1/preferences
 
 ## 7.6 공통 API 규칙
 
-- 모든 요청에서 기존 Komga 인증과 책 접근 권한을 재사용한다.
+- 모든 요청에서 기존 Tales 인증과 책 접근 권한을 재사용한다.
 - 사용자가 해당 책을 볼 수 없는 경우 존재 여부를 과도하게 노출하지 않는다.
 - DTO와 DB 모델을 분리한다.
-- 오류 응답은 기존 Komga 형식을 따르되 ShelfView 오류 코드를 부여한다.
+- 오류 응답은 기존 Tales 형식을 따르되 ShelfView 오류 코드를 부여한다.
 - Locator JSON은 서버에서 스키마 검증한다.
 - 잘못된 페이지 인덱스, 인코딩, scope 값을 거부한다.
 - OpenAPI/Swagger 문서에 신규 API를 노출한다.
@@ -613,7 +613,7 @@ UnifiedReaderView.vue
 └── ReaderLoadingState.vue
 ```
 
-실제 파일명은 기존 Komga 명명 규칙을 조사해 맞춘다.
+실제 파일명은 기존 Tales 명명 규칙을 조사해 맞춘다.
 
 ## 8.2 상태
 
@@ -742,7 +742,7 @@ AI는 새 프레임워크나 저장소 패턴을 도입하기 전에 다음을 �
 ## 9.4 캐시
 
 - 원본 `/data`에 파생 파일을 쓰지 않는다.
-- 표지, 페이지 정보, 이미지 폴더 분석 결과는 `/cache` 또는 기존 Komga 캐시 체계를 사용한다.
+- 표지, 페이지 정보, 이미지 폴더 분석 결과는 `/cache` 또는 기존 Tales 캐시 체계를 사용한다.
 - 캐시는 언제든 재생성할 수 있어야 한다.
 - 캐시 키에 파일 수정 시각만 의존하지 말고 크기·fingerprint 정책을 검토한다.
 
@@ -789,7 +789,7 @@ AI는 새 프레임워크나 저장소 패턴을 도입하기 전에 다음을 �
 - 의존성 추가 이유와 라이선스를 PR에 기록한다.
 - 불필요한 신규 패키지를 추가하지 않는다.
 - CI에서 비밀키·토큰을 이미지에 포함하지 않는다.
-- 업스트림 Komga 보안 공지를 주기적으로 확인한다.
+- 업스트림 Tales 보안 공지를 주기적으로 확인한다.
 
 ---
 
@@ -869,7 +869,7 @@ test-fixtures/
 ./gradlew test
 
 # 프런트엔드
-cd komga-webui
+cd tales-webui
 npm run lint
 npm run test:unit
 npm run build
@@ -929,7 +929,7 @@ Unraid에서는 `/config`와 `/cache`를 appdata 전용 풀에 두는 것을 권
 - 릴리스: `ghcr.io/<owner>/shelfview:<version>`
 - `latest`만 사용하지 않고 버전 태그 제공
 - 가능하면 `linux/amd64`, `linux/arm64` 빌드
-- 빌드 정보, Komga 기준 태그, Git SHA를 About 화면과 로그에 표시
+- 빌드 정보, Tales 기준 태그, Git SHA를 About 화면과 로그에 표시
 
 ## 13.3 운영
 
@@ -1040,7 +1040,7 @@ AI는 명시적 승인 없이 다음을 하지 않는다.
 
 ### SV-001 기준 태그와 업스트림 정책
 
-- Komga 1.24.4 기반 브랜치 생성
+- Tales 1.24.4 기반 브랜치 생성
 - `upstream` 원격 확인
 - `docs/UPSTREAM_SYNC.md` 작성
 - MIT LICENSE와 NOTICE 보존 확인
@@ -1286,7 +1286,7 @@ AI는 명시적 승인 없이 다음을 하지 않는다.
 
 ### SV-600 기존 진행률 호환
 
-- 고정 페이지에서 Komga 진행률과 동기화
+- 고정 페이지에서 Tales 진행률과 동기화
 - 기존 리더 ↔ 새 리더 왕복
 - 완료/미완료 상태 회귀 테스트
 
@@ -1391,7 +1391,7 @@ AI는 명시적 승인 없이 다음을 하지 않는다.
 
 # 17. 첫 개발 세션의 정확한 순서
 
-1. 스타터 팩 내용을 Komga 포크 루트에 복사한다.
+1. 스타터 팩 내용을 Tales 포크 루트에 복사한다.
 2. VS Code에서 저장소 루트를 연다.
 3. Git 상태와 기준 태그를 확인한다.
 4. AI 채팅에서 `/repository-audit`를 실행한다.
@@ -1410,7 +1410,7 @@ AI는 명시적 승인 없이 다음을 하지 않는다.
 
 | 위험 | 대응 |
 |---|---|
-| Komga 업스트림과 충돌 | 전용 네임스페이스, API 경로, 작은 훅, 정기 upstream-sync |
+| Tales 업스트림과 충돌 | 전용 네임스페이스, API 경로, 작은 훅, 정기 upstream-sync |
 | Vue 2의 노후화 | MVP에서는 고정, 별도 현대화 ADR·프로젝트로 분리 |
 | 이미지 폴더가 기존 스캔 모델과 충돌 | 마커 기반 opt-in, 스파이크 후 도메인 결정 |
 | TXT 페이지가 설정마다 변함 | 페이지 번호가 아닌 문단·문자 Locator |
@@ -1444,11 +1444,11 @@ AI는 명시적 승인 없이 다음을 하지 않는다.
 
 # 20. 공식 참고 자료
 
-- Komga 저장소: https://github.com/gotson/komga
-- Komga 개발 지침: https://github.com/gotson/komga/blob/master/DEVELOPING.md
-- Komga Docker 문서: https://komga.org/docs/installation/docker/
-- Komga 라이브러리 문서: https://komga.org/docs/guides/libraries/
-- Komga API 문서 안내: https://komga.org/docs/guides/api/
+- Tales 저장소: https://github.com/gotson/tales
+- Tales 개발 지침: https://github.com/gotson/tales/blob/master/DEVELOPING.md
+- Tales Docker 문서: https://tales.org/docs/installation/docker/
+- Tales 라이브러리 문서: https://tales.org/docs/guides/libraries/
+- Tales API 문서 안내: https://tales.org/docs/guides/api/
 - PDF.js: https://github.com/mozilla/pdf.js
 - zip.js: https://github.com/gildas-lormeau/zip.js
 - foliate-js: https://github.com/johnfactotum/foliate-js
@@ -1509,7 +1509,7 @@ AI는 명시적 승인 없이 다음을 하지 않는다.
 
 다음 상황에서는 즉시 구현보다 ADR을 먼저 작성한다.
 
-- 기존 Komga 도메인 모델을 변경해야 함
+- 기존 Tales 도메인 모델을 변경해야 함
 - 기존 공개 API 응답을 변경해야 함
 - 새 런타임 의존성 또는 GPL/AGPL 코드를 고려함
 - DB 데이터가 손실될 수 있는 마이그레이션

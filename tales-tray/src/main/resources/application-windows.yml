@@ -1,0 +1,9 @@
+tales:
+  config-dir: ${LOCALAPPDATA}/Tales
+  kobo.kepubify-path: kepubify.exe
+spring:
+  config:
+    import:
+      - "optional:file:${tales.config-dir}/application.yml"
+      - "optional:file:${tales.config-dir}/application.yaml"
+      - "optional:file:${tales.config-dir}/application.properties"

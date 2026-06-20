@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Komga is a self-hosted application. It does not transmit any data outside the machine hosting it.
+Tales is a self-hosted application. It does not transmit any data outside the machine hosting it.
 
 ## Data collected
 

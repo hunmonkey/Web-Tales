@@ -4,51 +4,51 @@
 - Date: 2026-06-20
 - Ticket: SV-920 (Phase 2 EPUB integration ADR)
 - Supersedes: none
-- Related: [ADR-0001](ADR-0001-komga-fork-and-reader-strategy.md), `SHELFVIEW_MASTER_DEVELOPMENT_PLAN.md` appendix B
+- Related: [ADR-0001](ADR-0001-tales-fork-and-reader-strategy.md), `SHELFVIEW_MASTER_DEVELOPMENT_PLAN.md` appendix B
 
 ## Context
 
 The current ShelfView reader covers fixed-page books, TXT reflow, image-directory
-books and mixed ZIP content. EPUB is still handled by Komga's existing EPUB
+books and mixed ZIP content. EPUB is still handled by Tales's existing EPUB
 reader route or by the legacy fixed-page reader for Divina-compatible EPUB.
 
 SV-920 is a design ticket before any EPUB implementation work. The master plan
 kept "EPUB renderer replacement" outside the MVP and requires an ADR for new
 renderer/dependency choices. The safe question for this ticket is therefore not
 "replace EPUB now", but "how should EPUB join the Tales/ShelfView experience
-without throwing away the proven Komga EPUB path?"
+without throwing away the proven Tales EPUB path?"
 
 ### Verified code map
 
-Read directly in the current Komga 1.24.4 fork:
+Read directly in the current Tales 1.24.4 fork:
 
-1. `komga-webui/src/functions/book-format.ts`
+1. `tales-webui/src/functions/book-format.ts`
    - `getBookReadRouteFromMedia()` routes non-EPUB books to `read-book-v2`
      when the ShelfView reader flag is enabled.
    - EPUB is intentionally excluded from that route.
    - Legacy EPUB routing sends Divina-compatible EPUB to `read-book` and other
      EPUB to `read-epub`.
-2. `komga-webui/src/views/EpubReader.vue`
-   - Uses `@d-i-t-a/reader` to load the existing Komga WebPub manifest.
+2. `tales-webui/src/views/EpubReader.vue`
+   - Uses `@d-i-t-a/reader` to load the existing Tales WebPub manifest.
    - Loads `bookManifestUrl(bookId)` and `bookPositionsUrl(bookId)`.
-   - Saves progress through `createR2Progression(location)` and Komga's normal
+   - Saves progress through `createR2Progression(location)` and Tales's normal
      book progression API.
    - Stores EPUB display settings under `persistedState.epubreader`.
-3. `komga/src/main/kotlin/org/gotson/komga/domain/service/BookAnalyzer.kt`
+3. `tales/src/main/kotlin/org/tales/domain/service/BookAnalyzer.kt`
    - `analyzeEpub()` extracts EPUB resources, table of contents, landmarks,
      page list, positions, fixed-layout metadata and Divina-compatible pages.
    - `getFileContent()` serves EPUB resources from the original EPUB archive.
-4. `komga/src/main/kotlin/org/gotson/komga/interfaces/api/CommonBookController.kt`
+4. `tales/src/main/kotlin/org/tales/interfaces/api/CommonBookController.kt`
    and `WebPubGenerator.kt`
    - Provide the existing WebPub manifest and EPUB resource flow.
    - Check content restrictions before returning the EPUB manifest/resources.
    - Return EPUB resources with a restrictive content-security policy.
-5. `komga/src/main/kotlin/org/gotson/komga/shelfview/interfaces/api/ShelfViewManifestController.kt`
+5. `tales/src/main/kotlin/org/tales/shelfview/interfaces/api/ShelfViewManifestController.kt`
    - Returns ShelfView manifests for TXT, fixed-page, image-directory and mixed
      ZIP books.
    - Explicitly rejects EPUB for the ShelfView fixed-page manifest today.
-6. `komga/src/main/kotlin/org/gotson/komga/shelfview/interfaces/api/ShelfViewPositionController.kt`
-   - Mirrors fixed-page ShelfView progress into Komga `READ_PROGRESS` only for
+6. `tales/src/main/kotlin/org/tales/shelfview/interfaces/api/ShelfViewPositionController.kt`
+   - Mirrors fixed-page ShelfView progress into Tales `READ_PROGRESS` only for
      compatible fixed-page profiles.
    - EPUB is currently excluded from that fixed-page mirror path.
 
@@ -56,7 +56,7 @@ Read directly in the current Komga 1.24.4 fork:
 
 Adopt a **WebPub bridge, not an EPUB rewrite**.
 
-1. Keep Komga's existing EPUB scan, analysis, WebPub manifest generation,
+1. Keep Tales's existing EPUB scan, analysis, WebPub manifest generation,
    resource serving and `@d-i-t-a/reader` rendering path as the EPUB source of
    truth.
 2. Add a future ShelfView manifest bridge for EPUB instead of parsing EPUB into
@@ -64,15 +64,15 @@ Adopt a **WebPub bridge, not an EPUB rewrite**.
    tentatively `EPUB_WEBPUB`, with an `epub` block pointing to the existing
    authorized WebPub manifest and positions endpoint.
 3. Add a future frontend adapter, tentatively `EpubWebPubAdapter`, under
-   `komga-webui/src/shelfview/adapters`. It should wrap the existing
+   `tales-webui/src/shelfview/adapters`. It should wrap the existing
    `@d-i-t-a/reader` flow and keep Readium/WebPub details out of generic
    ShelfView components.
 4. Use a versioned EPUB locator wrapper when ShelfView-owned positions or
    bookmarks are needed. The nested payload should preserve the Readium locator
    (`href`, `locations`, total progression and optional title data) instead of
    trying to translate EPUB into page or paragraph locators.
-5. Preserve Komga EPUB progression compatibility first. The first implementation
-   should continue writing the existing Komga progression through the same
+5. Preserve Tales EPUB progression compatibility first. The first implementation
+   should continue writing the existing Tales progression through the same
    `createR2Progression()` path. Mirroring EPUB progress into ShelfView's
    extended position table can be a later step once the EPUB locator wrapper is
    covered by tests.
@@ -96,7 +96,7 @@ close to:
   "title": "Book title",
   "kind": "EPUB_WEBPUB",
   "sourceFormat": "EPUB",
-  "contentFingerprint": "komga-file-state:...",
+  "contentFingerprint": "tales-file-state:...",
   "epub": {
     "webpubManifestEndpoint": "/api/v1/books/book-id/manifest/epub",
     "positionsEndpoint": "/api/v1/books/book-id/positions"
@@ -115,7 +115,7 @@ close to:
 ```
 
 This is a bridge manifest: ShelfView owns routing, shell behavior and future
-state integration, while Komga's WebPub endpoint still owns EPUB publication
+state integration, while Tales's WebPub endpoint still owns EPUB publication
 data and resource delivery.
 
 ### Tentative EPUB locator wrapper
@@ -131,7 +131,7 @@ data and resource delivery.
     "position": 34
   },
   "title": "Chapter 1",
-  "contentFingerprint": "komga-file-state:..."
+  "contentFingerprint": "tales-file-state:..."
 }
 ```
 
@@ -141,7 +141,7 @@ Readium locator shape. Do not store arbitrary reader objects.
 ## Security and license policy
 
 - Continue to authenticate and authorize EPUB manifests and resources through
-  the existing Komga controllers.
+  the existing Tales controllers.
 - Do not expose raw server file paths or raw archive internals.
 - Keep source EPUB files read-only.
 - Preserve the restrictive EPUB resource content-security policy.
@@ -169,15 +169,15 @@ Future tickets after this ADR should be small and reversible:
 6. Add tests proving:
    - EPUB bridge manifests are returned only for authorized, ready EPUB books.
    - Non-EPUB ShelfView manifests are unchanged.
-   - EPUB resources continue to flow through existing Komga resource endpoints.
-   - EPUB progress still writes Komga-compatible progression data.
+   - EPUB resources continue to flow through existing Tales resource endpoints.
+   - EPUB progress still writes Tales-compatible progression data.
    - Unsupported/malformed EPUBs still show a fallback path.
 
 ## Consequences
 
 Positive:
 
-- Reuses the EPUB support Komga already has: scanning, metadata, WebPub
+- Reuses the EPUB support Tales already has: scanning, metadata, WebPub
   manifest, resources, TOC, positions and current reader engine.
 - Avoids a large parser/renderer replacement.
 - Keeps EPUB HTML isolated in the existing iframe/WebPub flow.
@@ -228,5 +228,5 @@ Negative:
   fixed-page route until separate validation?
 - Which EPUB settings should be unified with ShelfView TXT settings, and which
   should remain EPUB-specific?
-- Should EPUB bookmarks be stored first in ShelfView's bookmark table, Komga's
+- Should EPUB bookmarks be stored first in ShelfView's bookmark table, Tales's
   existing progression only, or both?

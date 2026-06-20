@@ -32,7 +32,7 @@ jobs:
         with:
           filters: |
             backend:
-              - 'komga/**'
+              - 'tales/**'
               - '*.gradle.kts'
               - 'settings.gradle.kts'
               - 'gradle/**'
@@ -40,9 +40,9 @@ jobs:
               - 'gradlew'
               - 'gradlew.bat'
             frontend:
-              - 'komga-webui/**'
+              - 'tales-webui/**'
             docker:
-              - 'komga/docker/**'
+              - 'tales/docker/**'
               - '.github/workflows/shelfview-ci.yml'
 
   backend:
@@ -61,7 +61,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Run backend tests
-        run: ./gradlew :komga:test
+        run: ./gradlew :tales:test
 
   frontend:
     name: Frontend lint, test and build
@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: komga-webui
+        working-directory: tales-webui
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -79,7 +79,7 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-          cache-dependency-path: komga-webui/package-lock.json
+          cache-dependency-path: tales-webui/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Lint
@@ -111,21 +111,21 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Build boot jar
-        run: ./gradlew :komga:bootJar
+        run: ./gradlew :tales:bootJar
       - name: Stage jar and render hardened Dockerfile
         id: render
         run: |
           set -euo pipefail
-          jar="$(ls komga/build/libs/komga-*.jar | grep -v -- '-plain.jar' | head -n1)"
+          jar="$(ls tales/build/libs/tales-*.jar | grep -v -- '-plain.jar' | head -n1)"
           if [ -z "$jar" ]; then
-            echo "Boot jar not found in komga/build/libs" >&2
+            echo "Boot jar not found in tales/build/libs" >&2
             exit 1
           fi
           echo "Using boot jar: $jar"
-          mkdir -p komga/docker/assembly
-          cp "$jar" komga/docker/assembly/
-          bash komga/docker/render-shelfview-dockerfile.sh \
-            komga/docker/Dockerfile.tpl "$(basename "$jar")" komga/docker/Dockerfile
+          mkdir -p tales/docker/assembly
+          cp "$jar" tales/docker/assembly/
+          bash tales/docker/render-shelfview-dockerfile.sh \
+            tales/docker/Dockerfile.tpl "$(basename "$jar")" tales/docker/Dockerfile
           echo "version=$(git describe --tags --always --dirty)" >> "$GITHUB_OUTPUT"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -134,8 +134,8 @@ jobs:
       - name: Build image - amd64 (priority, loaded)
         uses: docker/build-push-action@v6
         with:
-          context: komga/docker
-          file: komga/docker/Dockerfile
+          context: tales/docker
+          file: tales/docker/Dockerfile
           platforms: linux/amd64
           push: false
           load: true
@@ -149,8 +149,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v6
         with:
-          context: komga/docker
-          file: komga/docker/Dockerfile
+          context: tales/docker
+          file: tales/docker/Dockerfile
           platforms: linux/arm64
           push: false
           tags: tales:ci-arm64

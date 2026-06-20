@@ -152,11 +152,11 @@ jreleaser {
   }
 
   distributions {
-    create("komga") {
+    create("tales") {
       active = Active.RELEASE
       distributionType = SINGLE_JAR
       artifact {
-        path = rootDir.resolve("komga/build/libs/komga-{{projectVersion}}.jar")
+        path = rootDir.resolve("tales/build/libs/tales-{{projectVersion}}.jar")
       }
     }
   }
@@ -165,7 +165,7 @@ jreleaser {
     docker {
       active = Active.RELEASE
       continueOnError = false
-      templateDirectory = rootDir.resolve("komga/docker")
+      templateDirectory = rootDir.resolve("tales/docker")
       repository.active = Active.NEVER
       buildArgs = listOf("--cache-from", "web-tales:latest")
       imageNames =

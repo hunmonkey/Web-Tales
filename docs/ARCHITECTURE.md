@@ -2,7 +2,7 @@
 
 ## Goal
 
-Extend Komga without replacing its proven library, identity, authorization, analysis, page streaming, metadata and deployment foundations.
+Extend Tales without replacing its proven library, identity, authorization, analysis, page streaming, metadata and deployment foundations.
 
 ## Boundaries
 
@@ -10,7 +10,7 @@ Extend Komga without replacing its proven library, identity, authorization, anal
 - New endpoints live under `/api/shelfview/v1`.
 - New backend code is isolated under a ShelfView namespace where practical.
 - New frontend reader code is isolated under a ShelfView module where practical.
-- `/data` is read-only; persistent state is in `/config`; derived data is in `/cache` or an existing Komga cache.
+- `/data` is read-only; persistent state is in `/config`; derived data is in `/cache` or an existing Tales cache.
 
 ## Reader model
 
@@ -19,7 +19,7 @@ The server returns a versioned Manifest:
 - `FIXED_PAGE_SEQUENCE`: CBZ, ZIP, PDF, IMAGE_DIRECTORY
 - `TEXT_REFLOW`: TXT
 - `MIXED_CONTENT_SEQUENCE`: ZIP archives whose internal readable items mix TXT, PDF and image entries
-- `EPUB_WEBPUB`: EPUB bridge to Komga's existing WebPub manifest and reader stack
+- `EPUB_WEBPUB`: EPUB bridge to Tales's existing WebPub manifest and reader stack
 
 The UI uses adapters:
 
@@ -45,12 +45,12 @@ paragraph-derived contents.
 
 ## Data
 
-- Preserve existing Komga progress compatibility for fixed pages.
-- Fixed-page ShelfView `PAGE` saves mirror into Komga `READ_PROGRESS` with Komga's one-based page number.
-- If no newer ShelfView position exists, the ShelfView position endpoint can expose existing Komga `READ_PROGRESS` as a zero-based ShelfView `PAGE` locator.
-- TXT and mixed ZIP locators remain ShelfView-only because Komga `READ_PROGRESS` cannot represent paragraph offsets or internal ZIP item identity.
-- EPUB initially preserves Komga progression compatibility through the existing Readium progression path; the ShelfView EPUB locator wrapper is available for Manifest contents, while EPUB bookmarks or extended positions remain future work.
-- ZIP files that contain TXT or PDF entries are excluded from fixed-page Komga progress fallback; image-only ZIP/CBZ, PDF and image-directory books keep fixed-page compatibility.
+- Preserve existing Tales progress compatibility for fixed pages.
+- Fixed-page ShelfView `PAGE` saves mirror into Tales `READ_PROGRESS` with Tales's one-based page number.
+- If no newer ShelfView position exists, the ShelfView position endpoint can expose existing Tales `READ_PROGRESS` as a zero-based ShelfView `PAGE` locator.
+- TXT and mixed ZIP locators remain ShelfView-only because Tales `READ_PROGRESS` cannot represent paragraph offsets or internal ZIP item identity.
+- EPUB initially preserves Tales progression compatibility through the existing Readium progression path; the ShelfView EPUB locator wrapper is available for Manifest contents, while EPUB bookmarks or extended positions remain future work.
+- ZIP files that contain TXT or PDF entries are excluded from fixed-page Tales progress fallback; image-only ZIP/CBZ, PDF and image-directory books keep fixed-page compatibility.
 - Add separate ShelfView storage for extended positions, multiple bookmarks and scoped preferences.
 - Dedicated highlights are separate ShelfView annotation state, not bookmark
   labels. [ADR-0005](ADR/ADR-0005-dedicated-highlight-model.md) defines the
@@ -83,7 +83,7 @@ paragraph-derived contents.
 
 ### ShelfView storage recovery
 
-SV-300 uses a forward-only Flyway migration. If a restore is needed before the ShelfView state APIs are in use, stop the app and restore the SQLite database under `/config` from backup, or drop only the three `SHELFVIEW_*` tables added by the migration when losing ShelfView-only reader state is acceptable. Existing Komga read progress remains in `READ_PROGRESS`.
+SV-300 uses a forward-only Flyway migration. If a restore is needed before the ShelfView state APIs are in use, stop the app and restore the SQLite database under `/config` from backup, or drop only the three `SHELFVIEW_*` tables added by the migration when losing ShelfView-only reader state is acceptable. Existing Tales read progress remains in `READ_PROGRESS`.
 
 ## Feature rollout
 
@@ -138,7 +138,7 @@ met.
 - Page image failures show a retry path that reloads the image element without reopening the whole reader.
 - Manifest/text load failures show a full reader retry path.
 - TXT decoding failures can retry with manual UTF-8, EUC-KR or automatic decoding.
-- The existing Komga reader remains available from the error state as a fallback route.
+- The existing Tales reader remains available from the error state as a fallback route.
 
 ## Reader responsive recovery
 
@@ -156,7 +156,7 @@ Planned ZIP expansion is tracked as SV-450 through SV-453. In addition to the cu
 - Reuse server-side archive inspection and page/content delivery patterns where possible.
 - Keep source archives read-only and do not expose raw server paths or unsafe internal entry names.
 - Validate archive traversal, nested entries, entry count, decompressed size, line length, image dimensions and internal PDF bounds before serving content.
-- ADR-0003 chooses a single-Book mixed content model: the ZIP remains one Komga book, and the ShelfView manifest exposes ordered internal items behind opaque item ids.
+- ADR-0003 chooses a single-Book mixed content model: the ZIP remains one Tales book, and the ShelfView manifest exposes ordered internal items behind opaque item ids.
 - Mixed ZIP support adds a `MIXED_CONTENT_SEQUENCE` manifest shape and a `MixedContentAdapter` that coordinates text and fixed-page item adapters.
 - GIF animation is preserved by default when the original GIF passes validation; internal PDF entries reuse the existing PDF page-image path through a bounded derived cache instead of PDF.js.
 
@@ -214,7 +214,7 @@ SV-502 adds image-directory page delivery:
 - The page endpoint template is `/api/shelfview/v1/books/{bookId}/image-directory/pages/{page}?zero_based=true`.
 - Page delivery reads only direct child files recorded in `Media.pages`; blank names, path separators, hidden names, nested paths and symbolic-link page files are rejected.
 - Page bytes are revalidated on delivery with the same image extension/MIME and dimension/pixel limits used by ShelfView archive image pages.
-- Responses use inline image content disposition, the detected image content type and Komga private `Last-Modified` revalidation headers.
+- Responses use inline image content disposition, the detected image content type and Tales private `Last-Modified` revalidation headers.
 - Byte-range responses are not implemented for image-directory pages; images are returned as bounded whole-page byte responses, matching the current ShelfView fixed-page reader needs.
 - Source image folders remain read-only.
 
@@ -242,13 +242,13 @@ structured contents.
 EPUB integration is planned by [ADR-0004](ADR/ADR-0004-epub-integration.md).
 The first integration path is a WebPub bridge, not a renderer rewrite.
 
-- Komga's existing EPUB scanner, analyzer, WebPub manifest, resource endpoints,
+- Tales's existing EPUB scanner, analyzer, WebPub manifest, resource endpoints,
   TOC/page-list/position extraction and `@d-i-t-a/reader` rendering remain the
   source of truth.
 - ShelfView exposes a distinct `EPUB_WEBPUB` manifest kind with an `epub`
   block that points to the existing authorized WebPub manifest and positions
   endpoints.
-- EPUB bridge manifests can populate Manifest-level `contents` from Komga's
+- EPUB bridge manifests can populate Manifest-level `contents` from Tales's
   stored EPUB TOC entries. Each contents entry contains a bounded EPUB locator
   with `href`, optional title and content fingerprint; raw server file paths are
   not returned.
@@ -263,7 +263,7 @@ The first integration path is a WebPub bridge, not a renderer rewrite.
 
 TXT uses a hybrid model decided in [ADR-0002](ADR/ADR-0002-txt-scanning-and-domain-model.md): native scan and identity, isolated analysis and rendering.
 
-- A `.txt` is registered natively as `MediaType.TXT` / `MediaProfile.TXT` so it reuses Komga scanning, identity, permissions and progress.
+- A `.txt` is registered natively as `MediaType.TXT` / `MediaProfile.TXT` so it reuses Tales scanning, identity, permissions and progress.
 - Scanning is gated by a new `scanTxt` library option (default off), with a forward-only Flyway migration adding `LIBRARY.SCAN_TXT`.
 - The native analysis branch is thin: it records minimal metadata (size, encoding candidate, fingerprint) and does not parse pages.
 - All decoding, normalization, pagination, escaping and the paragraph/character Locator live in the ShelfView namespace behind `/api/shelfview/v1/.../text` and the frontend `TextReflowAdapter`.

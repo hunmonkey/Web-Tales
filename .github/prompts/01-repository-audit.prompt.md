@@ -1,6 +1,6 @@
 ---
 name: repository-audit
-description: Audit the Komga fork before ShelfView implementation
+description: Audit the Tales fork before ShelfView implementation
 argument-hint: "optional focus area"
 agent: plan
 ---

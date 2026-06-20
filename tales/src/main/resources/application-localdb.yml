@@ -1,0 +1,8 @@
+tales:
+  workspace: localdb
+  database:
+    file: \${tales.config-dir}/\${tales.workspace}.sqlite
+  lucene:
+    data-directory: \${tales.config-dir}/lucene/\${tales.workspace}
+  tasks-db:
+    file: \${tales.config-dir}/\${tales.workspace}-tasks.sqlite

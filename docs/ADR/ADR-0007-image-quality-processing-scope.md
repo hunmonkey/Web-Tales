@@ -30,13 +30,13 @@ dependency/license review.
 
 Read directly in the current fork:
 
-1. `komga-webui/src/shelfview/functions/image-filter-presets.ts`
+1. `tales-webui/src/shelfview/functions/image-filter-presets.ts`
    - Defines the fixed-page image filter presets and converts them into CSS
      variables.
-2. `komga-webui/src/shelfview/views/ShelfViewReaderShell.vue`
+2. `tales-webui/src/shelfview/views/ShelfViewReaderShell.vue`
    - Applies image filter styles to page content only.
    - Existing tests verify filter changes keep the page image URL stable.
-3. `komga/src/main/kotlin/org/gotson/komga/shelfview/interfaces/api/ShelfViewPreferenceController.kt`
+3. `tales/src/main/kotlin/org/tales/shelfview/interfaces/api/ShelfViewPreferenceController.kt`
    - Validates fixed-page `imageFilterPreset` values before saving them.
 4. `SHELFVIEW_MASTER_DEVELOPMENT_PLAN.md`
    - Keeps sharpening, background removal and adaptive binarization behind a

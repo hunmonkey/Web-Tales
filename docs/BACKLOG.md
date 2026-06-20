@@ -61,7 +61,7 @@ closed as "not pursued for now" rather than treated as active development work.
 
 ## M6 Compatibility and UX
 
-- [x] SV-600 Existing Komga progress compatibility
+- [x] SV-600 Existing Tales progress compatibility
 - [x] SV-601 Corrupt/missing/network/encoding recovery UX
 - [x] SV-602 Desktop browser validation closed by owner; Chrome/Edge automation exists, Firefox manual gate is not pursued for now
 
