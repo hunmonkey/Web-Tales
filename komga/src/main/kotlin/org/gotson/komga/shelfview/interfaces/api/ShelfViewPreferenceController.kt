@@ -14,11 +14,11 @@ import org.gotson.komga.interfaces.api.persistence.SeriesDtoRepository
 import org.gotson.komga.interfaces.api.rest.dto.BookDto
 import org.gotson.komga.interfaces.api.rest.dto.SeriesDto
 import org.gotson.komga.language.toUTC
+import org.gotson.komga.shelfview.domain.ShelfViewReaderPreference
+import org.gotson.komga.shelfview.domain.persistence.ShelfViewReaderPreferenceRepository
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPreferenceResponseDto
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPreferenceUpdateDto
 import org.gotson.komga.shelfview.interfaces.api.dto.toDto
-import org.gotson.komga.shelfview.domain.ShelfViewReaderPreference
-import org.gotson.komga.shelfview.domain.persistence.ShelfViewReaderPreferenceRepository
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -206,7 +206,7 @@ class ShelfViewPreferenceController(
           copyTextSetting(settings, target, "layout", setOf("SINGLE_PAGE", "DOUBLE_PAGE", "CONTINUOUS_SCROLL"))
           copyTextSetting(settings, target, "readingDirection", setOf("LTR", "RTL"))
           copyTextSetting(settings, target, "pageFit", setOf("SCREEN", "WIDTH", "HEIGHT", "ORIGINAL"))
-          copyTextSetting(settings, target, "imageFilterPreset", setOf("ORIGINAL", "EYE_COMFORT", "MONO_COMIC", "LOW_LIGHT", "NIGHT_INVERT", "OLED_TEXT"))
+          copyTextSetting(settings, target, "imageFilterPreset", setOf("ORIGINAL", "IMAGE_ENHANCE", "FADED_SCAN", "CANVAS_SHARPEN", "EYE_COMFORT", "MONO_COMIC", "LOW_LIGHT", "NIGHT_INVERT", "OLED_TEXT"))
           copyIntegerChoiceSetting(settings, target, "fixedPageRotation", setOf(0, 90, 180, 270))
           copyBooleanSetting(settings, target, "fixedPageCoverSingle")
           copyIntegerSetting(settings, target, "fixedPageScale", 50, 300)

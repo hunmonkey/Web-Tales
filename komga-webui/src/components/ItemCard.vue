@@ -18,6 +18,43 @@
           @error="thumbnailError = true"
           @load="thumbnailError = false"
         >
+          <v-tooltip v-if="shelfViewBadge" bottom>
+            <template v-slot:activator="{ on }">
+              <v-chip
+                class="shelfview-bookshelf-badge"
+                color="rgba(0, 0, 0, 0.72)"
+                text-color="white"
+                x-small
+                label
+                v-on="on"
+              >
+                <v-icon x-small left>{{ shelfViewBadge.icon }}</v-icon>
+                {{ $t(shelfViewBadge.labelKey) }}
+              </v-chip>
+            </template>
+            <span>{{ $t(shelfViewBadge.tooltipKey) }}</span>
+          </v-tooltip>
+
+          <v-tooltip v-if="shelfViewContinuation" bottom>
+            <template v-slot:activator="{ on }">
+              <v-chip
+                class="shelfview-continuation-chip"
+                color="primary"
+                text-color="white"
+                x-small
+                label
+                link
+                :to="shelfViewContinuation.to"
+                v-on="on"
+                @click.native="$event.stopImmediatePropagation()"
+              >
+                <v-icon x-small left>{{ shelfViewContinuation.icon }}</v-icon>
+                {{ $t(shelfViewContinuation.labelKey, { count: shelfViewContinuation.count }) }}
+              </v-chip>
+            </template>
+            <span>{{ $t(shelfViewContinuation.tooltipKey, { count: shelfViewContinuation.count }) }}</span>
+          </v-tooltip>
+
           <!-- unread tick for book -->
           <div class="unread" v-if="isUnread"/>
 
@@ -178,6 +215,12 @@ import {coverBase64} from '@/types/image'
 import {ReadListDto} from '@/types/komga-readlists'
 import OneShotActionsMenu from '@/components/menus/OneshotActionsMenu.vue'
 import {CLIENT_SETTING} from '@/types/komga-clientsettings'
+import {
+  ShelfViewBookshelfBadge,
+  ShelfViewSeriesContinuation,
+  shelfViewBookshelfBadge,
+  shelfViewSeriesContinuation,
+} from '@/shelfview/functions/bookshelf-experience'
 
 export default Vue.extend({
   name: 'ItemCard',
@@ -338,6 +381,16 @@ export default Vue.extend({
       }
       return false
     },
+    shelfViewBadge(): ShelfViewBookshelfBadge | undefined {
+      if (this.computedItem.type() !== ItemTypes.BOOK) return undefined
+
+      return shelfViewBookshelfBadge((this.item as BookDto).media)
+    },
+    shelfViewContinuation(): ShelfViewSeriesContinuation | undefined {
+      if (this.computedItem.type() !== ItemTypes.SERIES) return undefined
+
+      return shelfViewSeriesContinuation(this.computedItem.item as SeriesDto)
+    },
     showFab(): boolean {
       return !this.disableFab && this.bookReady && !this.selected && !this.preselect && this.canReadPages
     },
@@ -430,5 +483,21 @@ export default Vue.extend({
   position: absolute;
   right: 0;
   z-index: 2;
+}
+
+.shelfview-bookshelf-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  max-width: calc(100% - 12px);
+}
+
+.shelfview-continuation-chip {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  z-index: 2;
+  max-width: calc(100% - 12px);
 }
 </style>

@@ -1,5 +1,7 @@
 package org.gotson.komga.shelfview.interfaces.api
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.apache.commons.io.FilenameUtils
 import org.gotson.komga.domain.model.Media
 import org.gotson.komga.domain.model.MediaFile
@@ -10,13 +12,15 @@ import org.gotson.komga.infrastructure.security.KomgaPrincipal
 import org.gotson.komga.interfaces.api.ContentRestrictionChecker
 import org.gotson.komga.interfaces.api.persistence.BookDtoRepository
 import org.gotson.komga.interfaces.api.rest.dto.BookDto
+import org.gotson.komga.shelfview.domain.ShelfViewPublicationKind
+import org.gotson.komga.shelfview.domain.ShelfViewSourceFormat
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewCapabilitiesDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewEpubDto
+import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewManifestContentsItemDto
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewManifestDto
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewManifestItemDto
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewPagesDto
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewTextDto
-import org.gotson.komga.shelfview.domain.ShelfViewPublicationKind
-import org.gotson.komga.shelfview.domain.ShelfViewSourceFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -35,6 +39,9 @@ class ShelfViewManifestController(
   private val mediaRepository: MediaRepository,
   private val contentRestrictionChecker: ContentRestrictionChecker,
   private val zipMixedContentProvider: ShelfViewZipMixedContentProvider,
+  private val pdfContentsProvider: ShelfViewPdfContentsProvider,
+  private val epubContentsProvider: ShelfViewEpubContentsProvider,
+  private val mapper: ObjectMapper,
 ) {
   @GetMapping("books/{bookId}/manifest")
   fun getManifest(
@@ -51,6 +58,24 @@ class ShelfViewManifestController(
       KomgaMediaType.fromMediaType(media.mediaType)
         ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
     val contentFingerprint = shelfViewContentFingerprint(book, media)
+
+    if (mediaType.profile == MediaProfile.EPUB) {
+      val epubExtension = mediaRepository.findExtensionByIdOrNull(book.id)
+      return ShelfViewManifestDto(
+        bookId = book.id,
+        title = book.metadata.title.ifBlank { book.name },
+        kind = ShelfViewPublicationKind.EPUB_WEBPUB,
+        sourceFormat = ShelfViewSourceFormat.EPUB,
+        contentFingerprint = contentFingerprint,
+        epub =
+          ShelfViewEpubDto(
+            webpubManifestEndpoint = "/api/v1/books/${book.id}/manifest/epub",
+            positionsEndpoint = "/api/v1/books/${book.id}/positions",
+          ),
+        contents = epubContentsProvider.listContents(epubExtension, contentFingerprint),
+        capabilities = epubCapabilities,
+      )
+    }
 
     if (mediaType.profile == MediaProfile.TXT) {
       return ShelfViewManifestDto(
@@ -92,6 +117,7 @@ class ShelfViewManifestController(
           contentFingerprint = contentFingerprint,
           pageCount = items.sumOf { it.pageCount ?: 1 },
           items = items,
+          contents = items.map { it.toContentsItemDto(contentFingerprint) },
           capabilities = mixedContentCapabilities,
         )
       }
@@ -101,18 +127,28 @@ class ShelfViewManifestController(
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Book media type '${media.mediaType}' is not supported by ShelfView fixed-page manifest yet")
     }
 
+    val pageCount = shelfViewPageCount(media)
+    val contents =
+      if (mediaType == KomgaMediaType.PDF) {
+        val sourceBook = bookRepository.findByIdOrNull(book.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        pdfContentsProvider.listContents(sourceBook.path, contentFingerprint, pageCount)
+      } else {
+        emptyList()
+      }
+
     return ShelfViewManifestDto(
       bookId = book.id,
       title = book.metadata.title.ifBlank { book.name },
       kind = ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE,
       sourceFormat = sourceFormat,
       contentFingerprint = contentFingerprint,
-      pageCount = shelfViewPageCount(media),
+      pageCount = pageCount,
       pages =
         ShelfViewPagesDto(
           endpointTemplate = fixedPageEndpointTemplate(book.id, mediaType),
           thumbnailEndpointTemplate = fixedPageThumbnailEndpointTemplate(book.id, mediaType),
         ),
+      contents = contents,
       capabilities = fixedPageCapabilities,
     )
   }
@@ -138,7 +174,7 @@ class ShelfViewManifestController(
       KomgaMediaType.RAR_5,
       -> ShelfViewSourceFormat.CBR
       KomgaMediaType.PDF -> ShelfViewSourceFormat.PDF
-      KomgaMediaType.EPUB -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "EPUB is not supported by ShelfView fixed-page manifest yet")
+      KomgaMediaType.EPUB -> ShelfViewSourceFormat.EPUB
       KomgaMediaType.TXT -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "TXT is handled by the ShelfView text manifest, not the fixed-page manifest")
       KomgaMediaType.IMAGE_DIRECTORY -> ShelfViewSourceFormat.IMAGE_DIRECTORY
     }
@@ -200,6 +236,46 @@ class ShelfViewManifestController(
     )
   }
 
+  private fun ShelfViewManifestItemDto.toContentsItemDto(bookContentFingerprint: String): ShelfViewManifestContentsItemDto =
+    ShelfViewManifestContentsItemDto(
+      label = label,
+      locator =
+        mapper
+          .createObjectNode()
+          .put("schemaVersion", 1)
+          .put("kind", "MIXED")
+          .put("itemId", itemId)
+          .put("itemIndex", index)
+          .set<ObjectNode>(
+            "itemLocator",
+            firstItemLocator(),
+          ).put("contentFingerprint", bookContentFingerprint),
+    )
+
+  private fun ShelfViewManifestItemDto.firstItemLocator(): ObjectNode {
+    val itemContentFingerprint = contentFingerprint
+
+    return if (kind == ShelfViewPublicationKind.TEXT_REFLOW) {
+      mapper
+        .createObjectNode()
+        .put("schemaVersion", 1)
+        .put("kind", "TEXT")
+        .put("paragraph", 0)
+        .put("characterOffset", 0)
+        .put("progression", 0.0)
+        .put("normalizationVersion", SHELFVIEW_TEXT_NORMALIZATION_VERSION)
+        .put("contentFingerprint", itemContentFingerprint)
+    } else {
+      mapper
+        .createObjectNode()
+        .put("schemaVersion", 1)
+        .put("kind", "PAGE")
+        .put("page", 0)
+        .put("offset", 0.0)
+        .put("contentFingerprint", itemContentFingerprint)
+    }
+  }
+
   private companion object {
     val fixedPageProfiles = setOf(MediaProfile.DIVINA, MediaProfile.PDF, MediaProfile.IMAGE_DIRECTORY)
 
@@ -231,6 +307,16 @@ class ShelfViewManifestController(
         continuousScroll = true,
         rtl = false,
         imageFilters = true,
+      )
+
+    val epubCapabilities =
+      ShelfViewCapabilitiesDto(
+        search = false,
+        textSelection = true,
+        doublePage = false,
+        continuousScroll = true,
+        rtl = true,
+        imageFilters = false,
       )
   }
 }

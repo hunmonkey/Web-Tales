@@ -5,9 +5,11 @@ import org.gotson.komga.jooq.main.Tables
 import org.gotson.komga.language.toCurrentTimeZone
 import org.gotson.komga.language.toUTC
 import org.gotson.komga.shelfview.domain.ShelfViewBookmark
+import org.gotson.komga.shelfview.domain.ShelfViewHighlight
 import org.gotson.komga.shelfview.domain.ShelfViewReaderPosition
 import org.gotson.komga.shelfview.domain.ShelfViewReaderPreference
 import org.gotson.komga.shelfview.domain.persistence.ShelfViewBookmarkRepository
+import org.gotson.komga.shelfview.domain.persistence.ShelfViewHighlightRepository
 import org.gotson.komga.shelfview.domain.persistence.ShelfViewReaderPositionRepository
 import org.gotson.komga.shelfview.domain.persistence.ShelfViewReaderPreferenceRepository
 import org.jooq.DSLContext
@@ -25,9 +27,11 @@ class ShelfViewReaderStateDao(
 ) : SplitDslDaoBase(dslRW, dslRO),
   ShelfViewReaderPositionRepository,
   ShelfViewBookmarkRepository,
+  ShelfViewHighlightRepository,
   ShelfViewReaderPreferenceRepository {
   private val position = Tables.SHELFVIEW_READER_POSITION
   private val bookmark = Tables.SHELFVIEW_BOOKMARK
+  private val highlight = Tables.SHELFVIEW_HIGHLIGHT
   private val preference = Tables.SHELFVIEW_READER_PREFERENCE
 
   override fun findPositionOrNull(
@@ -191,6 +195,104 @@ class ShelfViewReaderStateDao(
     dslRW.deleteFrom(bookmark).execute()
   }
 
+  override fun findHighlights(
+    bookId: String,
+    userId: String,
+  ): Collection<ShelfViewHighlight> =
+    dslRO
+      .selectFrom(highlight)
+      .where(highlight.BOOK_ID.eq(bookId))
+      .and(highlight.USER_ID.eq(userId))
+      .orderBy(highlight.CREATED_AT.asc())
+      .fetch { it.toHighlight() }
+
+  override fun findHighlightByIdAndUserIdOrNull(
+    highlightId: String,
+    userId: String,
+  ): ShelfViewHighlight? =
+    dslRO
+      .selectFrom(highlight)
+      .where(highlight.ID.eq(highlightId))
+      .and(highlight.USER_ID.eq(userId))
+      .fetchOne()
+      ?.toHighlight()
+
+  @Transactional
+  override fun saveHighlight(highlight: ShelfViewHighlight) {
+    val updatedAt = LocalDateTime.now(ZoneId.of("Z"))
+
+    dslRW
+      .insertInto(
+        this.highlight,
+        this.highlight.ID,
+        this.highlight.USER_ID,
+        this.highlight.BOOK_ID,
+        this.highlight.LOCATOR_JSON,
+        this.highlight.SELECTOR_JSON,
+        this.highlight.CONTENT_FINGERPRINT,
+        this.highlight.COLOR,
+        this.highlight.NOTE,
+        this.highlight.TEXT_QUOTE,
+        this.highlight.CREATED_AT,
+        this.highlight.UPDATED_AT,
+      ).values(
+        highlight.id,
+        highlight.userId,
+        highlight.bookId,
+        highlight.locatorJson,
+        highlight.selectorJson,
+        highlight.contentFingerprint,
+        highlight.color,
+        highlight.note,
+        highlight.textQuote,
+        highlight.createdAt.toUTC(),
+        highlight.updatedAt.toUTC(),
+      ).onDuplicateKeyUpdate()
+      .set(this.highlight.USER_ID, highlight.userId)
+      .set(this.highlight.BOOK_ID, highlight.bookId)
+      .set(this.highlight.LOCATOR_JSON, highlight.locatorJson)
+      .set(this.highlight.SELECTOR_JSON, highlight.selectorJson)
+      .set(this.highlight.CONTENT_FINGERPRINT, highlight.contentFingerprint)
+      .set(this.highlight.COLOR, highlight.color)
+      .set(this.highlight.NOTE, highlight.note)
+      .set(this.highlight.TEXT_QUOTE, highlight.textQuote)
+      .set(this.highlight.UPDATED_AT, updatedAt)
+      .execute()
+  }
+
+  @Transactional
+  override fun deleteHighlight(
+    highlightId: String,
+    userId: String,
+  ) {
+    dslRW
+      .deleteFrom(highlight)
+      .where(highlight.ID.eq(highlightId))
+      .and(highlight.USER_ID.eq(userId))
+      .execute()
+  }
+
+  @Transactional
+  override fun deleteHighlightsByUserId(userId: String) {
+    dslRW
+      .deleteFrom(highlight)
+      .where(highlight.USER_ID.eq(userId))
+      .execute()
+  }
+
+  @Transactional
+  override fun deleteHighlightsByBookId(bookId: String) {
+    dslRW
+      .deleteFrom(highlight)
+      .where(highlight.BOOK_ID.eq(bookId))
+      .execute()
+  }
+
+  @Transactional
+  override fun deleteAllHighlights() {
+    dslRW.deleteFrom(highlight).execute()
+  }
+
   override fun findPreferenceOrNull(
     userId: String,
     scopeType: String,
@@ -287,6 +389,21 @@ class ShelfViewReaderStateDao(
       note = get(bookmark.NOTE),
       createdAt = get(bookmark.CREATED_AT).toCurrentTimeZone(),
       updatedAt = get(bookmark.UPDATED_AT).toCurrentTimeZone(),
+    )
+
+  private fun Record.toHighlight() =
+    ShelfViewHighlight(
+      id = get(highlight.ID),
+      userId = get(highlight.USER_ID),
+      bookId = get(highlight.BOOK_ID),
+      locatorJson = get(highlight.LOCATOR_JSON),
+      selectorJson = get(highlight.SELECTOR_JSON),
+      contentFingerprint = get(highlight.CONTENT_FINGERPRINT),
+      color = get(highlight.COLOR),
+      note = get(highlight.NOTE),
+      textQuote = get(highlight.TEXT_QUOTE),
+      createdAt = get(highlight.CREATED_AT).toCurrentTimeZone(),
+      updatedAt = get(highlight.UPDATED_AT).toCurrentTimeZone(),
     )
 
   private fun Record.toPreference() =

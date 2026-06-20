@@ -2,6 +2,7 @@ import {AxiosInstance} from 'axios'
 import ShelfViewStateService from '@/shelfview/services/shelfview-state.service'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
 import {SHELFVIEW_LOCATOR_SCHEMA_VERSION, ShelfViewPageLocator} from '@/shelfview/models/shelfview-locator'
+import {SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION, ShelfViewTextRangeHighlightSelector} from '@/shelfview/models/shelfview-state'
 
 const locator: ShelfViewPageLocator = {
   schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -9,6 +10,16 @@ const locator: ShelfViewPageLocator = {
   page: 1,
   offset: 0,
   contentFingerprint: 'komga-file-state:book-1',
+}
+
+const selector: ShelfViewTextRangeHighlightSelector = {
+  schemaVersion: SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION,
+  kind: 'TEXT_RANGE',
+  startParagraph: 0,
+  startCharacterOffset: 0,
+  endParagraph: 0,
+  endCharacterOffset: 12,
+  normalizationVersion: 1,
 }
 
 describe('ShelfViewStateService', () => {
@@ -53,6 +64,37 @@ describe('ShelfViewStateService', () => {
     expect(post).toHaveBeenCalledWith('/api/shelfview/v1/books/book-1/bookmarks', {locator, label: 'Page 2'})
     expect(put).toHaveBeenCalledWith('/api/shelfview/v1/bookmarks/bookmark-1', {locator, label: 'Updated'})
     expect(deleteFn).toHaveBeenCalledWith('/api/shelfview/v1/bookmarks/bookmark-1')
+  })
+
+  it('fetches, creates, updates and deletes highlights', async () => {
+    const highlight = {
+      id: 'highlight-1',
+      bookId: 'book-1',
+      locator,
+      selector,
+      contentFingerprint: locator.contentFingerprint,
+      color: 'YELLOW',
+      note: 'Important',
+      textQuote: 'Opening text',
+      createdAt: 'now',
+      updatedAt: 'now',
+    }
+    const highlightUpdate = {locator, selector, color: 'BLUE' as const, note: 'Updated', textQuote: 'Updated text'}
+    const get = jest.fn().mockResolvedValue({data: [highlight]})
+    const post = jest.fn().mockResolvedValue({data: highlight})
+    const put = jest.fn().mockResolvedValue({data: {...highlight, ...highlightUpdate}})
+    const deleteFn = jest.fn().mockResolvedValue({})
+    const service = new ShelfViewStateService({get, post, put, delete: deleteFn} as unknown as AxiosInstance)
+
+    await expect(service.getHighlights('book-1')).resolves.toEqual([highlight])
+    await expect(service.createHighlight('book-1', highlightUpdate)).resolves.toEqual(highlight)
+    await expect(service.updateHighlight('highlight-1', highlightUpdate)).resolves.toMatchObject({color: 'BLUE'})
+    await service.deleteHighlight('highlight-1')
+
+    expect(get).toHaveBeenCalledWith('/api/shelfview/v1/books/book-1/highlights')
+    expect(post).toHaveBeenCalledWith('/api/shelfview/v1/books/book-1/highlights', highlightUpdate)
+    expect(put).toHaveBeenCalledWith('/api/shelfview/v1/highlights/highlight-1', highlightUpdate)
+    expect(deleteFn).toHaveBeenCalledWith('/api/shelfview/v1/highlights/highlight-1')
   })
 
   it('fetches and saves preferences', async () => {

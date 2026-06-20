@@ -2,9 +2,14 @@ package org.gotson.komga.shelfview.interfaces.api
 
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem
 import org.gotson.komga.domain.model.BookPage
 import org.gotson.komga.domain.model.Dimension
+import org.gotson.komga.domain.model.EpubTocEntry
 import org.gotson.komga.domain.model.Media
+import org.gotson.komga.domain.model.MediaExtension
+import org.gotson.komga.domain.model.MediaExtensionEpub
 import org.gotson.komga.domain.model.MediaFile
 import org.gotson.komga.domain.model.MediaType
 import org.gotson.komga.domain.model.makeBook
@@ -80,6 +85,7 @@ class ShelfViewManifestControllerTest(
         jsonPath("$.pageCount") { value(2) }
         jsonPath("$.pages.endpointTemplate") { value("/api/v1/books/${book.id}/pages/{page}?zero_based=true") }
         jsonPath("$.pages.thumbnailEndpointTemplate") { value("/api/v1/books/${book.id}/pages/{pageOneBased}/thumbnail") }
+        jsonPath("$.contents") { doesNotExist() }
         jsonPath("$.capabilities.search") { value(false) }
         jsonPath("$.capabilities.doublePage") { value(true) }
         jsonPath("$.capabilities.imageFilters") { value(true) }
@@ -149,6 +155,28 @@ class ShelfViewManifestControllerTest(
         jsonPath("$.items[2].sourceFormat") { value("PDF") }
         jsonPath("$.items[2].pageCount") { value(1) }
         jsonPath("$.items[2].pages.endpointTemplate") { value("/api/shelfview/v1/books/${book.id}/mixed/$pdfItemId/pages/{page}?zero_based=true") }
+        jsonPath("$.contents[0].label") { value("1.txt") }
+        jsonPath("$.contents[0].locator.kind") { value("MIXED") }
+        jsonPath("$.contents[0].locator.itemId") { value(textItemId) }
+        jsonPath("$.contents[0].locator.itemIndex") { value(0) }
+        jsonPath("$.contents[0].locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.contents[0].locator.itemLocator.kind") { value("TEXT") }
+        jsonPath("$.contents[0].locator.itemLocator.paragraph") { value(0) }
+        jsonPath("$.contents[0].locator.itemLocator.contentFingerprint") { value(ShelfViewZipMixedItemIds.itemContentFingerprint(CONTENT_FINGERPRINT, textItemId)) }
+        jsonPath("$.contents[1].label") { value("2.jpg") }
+        jsonPath("$.contents[1].locator.kind") { value("MIXED") }
+        jsonPath("$.contents[1].locator.itemId") { value(imageItemId) }
+        jsonPath("$.contents[1].locator.itemIndex") { value(1) }
+        jsonPath("$.contents[1].locator.itemLocator.kind") { value("PAGE") }
+        jsonPath("$.contents[1].locator.itemLocator.page") { value(0) }
+        jsonPath("$.contents[1].locator.itemLocator.contentFingerprint") { value(ShelfViewZipMixedItemIds.itemContentFingerprint(CONTENT_FINGERPRINT, imageItemId)) }
+        jsonPath("$.contents[2].label") { value("10.pdf") }
+        jsonPath("$.contents[2].locator.kind") { value("MIXED") }
+        jsonPath("$.contents[2].locator.itemId") { value(pdfItemId) }
+        jsonPath("$.contents[2].locator.itemIndex") { value(2) }
+        jsonPath("$.contents[2].locator.itemLocator.kind") { value("PAGE") }
+        jsonPath("$.contents[2].locator.itemLocator.page") { value(0) }
+        jsonPath("$.contents[2].locator.itemLocator.contentFingerprint") { value(ShelfViewZipMixedItemIds.itemContentFingerprint(CONTENT_FINGERPRINT, pdfItemId)) }
         jsonPath("$.pages") { doesNotExist() }
         jsonPath("$.capabilities.textSelection") { value(true) }
         jsonPath("$.capabilities.search") { value(true) }
@@ -187,6 +215,41 @@ class ShelfViewManifestControllerTest(
         status { isOk() }
         jsonPath("$.sourceFormat") { value("PDF") }
         jsonPath("$.kind") { value("FIXED_PAGE_SEQUENCE") }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given pdf book with outline when getting manifest then returns contents`(
+    @TempDir dir: Path,
+  ) {
+    val pdf = dir.resolve("outlined.pdf")
+    writeOutlinedPdf(pdf)
+    val book =
+      createBookWithMedia(
+        MediaType.PDF.type,
+        "outlined.pdf",
+        file = pdf,
+        pages = bookPages(3),
+      )
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/manifest")
+      .andExpect {
+        status { isOk() }
+        jsonPath("$.kind") { value("FIXED_PAGE_SEQUENCE") }
+        jsonPath("$.sourceFormat") { value("PDF") }
+        jsonPath("$.pageCount") { value(3) }
+        jsonPath("$.contents[0].label") { value("Opening") }
+        jsonPath("$.contents[0].level") { value(1) }
+        jsonPath("$.contents[0].locator.kind") { value("PAGE") }
+        jsonPath("$.contents[0].locator.page") { value(0) }
+        jsonPath("$.contents[0].locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.contents[1].label") { value("Chapter 2") }
+        jsonPath("$.contents[1].level") { value(1) }
+        jsonPath("$.contents[1].locator.kind") { value("PAGE") }
+        jsonPath("$.contents[1].locator.page") { value(1) }
+        jsonPath("$.contents[1].locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
       }
   }
 
@@ -234,13 +297,55 @@ class ShelfViewManifestControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given epub book when getting manifest then returns bad request`() {
-    val book = createBookWithMedia(MediaType.EPUB.type, "Book One.epub")
+  fun `given epub book when getting manifest then returns WebPub bridge and contents`(
+    @TempDir dir: Path,
+  ) {
+    val epub = dir.resolve("Book One.epub")
+    Files.write(epub, byteArrayOf(1, 2, 3))
+    val book =
+      createBookWithMedia(
+        MediaType.EPUB.type,
+        "Book One.epub",
+        file = epub,
+        extension =
+          MediaExtensionEpub(
+            toc =
+              listOf(
+                EpubTocEntry("Opening", "Text/opening.xhtml"),
+                EpubTocEntry(
+                  "Part One",
+                  null,
+                  listOf(EpubTocEntry("Chapter 1", "Text/chapter-1.xhtml#start")),
+                ),
+                EpubTocEntry("External", "https://example.org/outside.xhtml"),
+              ),
+          ),
+      )
 
     mockMvc
       .get("/api/shelfview/v1/books/${book.id}/manifest")
       .andExpect {
-        status { isBadRequest() }
+        status { isOk() }
+        jsonPath("$.kind") { value("EPUB_WEBPUB") }
+        jsonPath("$.sourceFormat") { value("EPUB") }
+        jsonPath("$.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.epub.webpubManifestEndpoint") { value("/api/v1/books/${book.id}/manifest/epub") }
+        jsonPath("$.epub.positionsEndpoint") { value("/api/v1/books/${book.id}/positions") }
+        jsonPath("$.contents[0].label") { value("Opening") }
+        jsonPath("$.contents[0].level") { value(1) }
+        jsonPath("$.contents[0].locator.kind") { value("EPUB") }
+        jsonPath("$.contents[0].locator.href") { value("Text/opening.xhtml") }
+        jsonPath("$.contents[0].locator.title") { value("Opening") }
+        jsonPath("$.contents[0].locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
+        jsonPath("$.contents[1].label") { value("Chapter 1") }
+        jsonPath("$.contents[1].level") { value(2) }
+        jsonPath("$.contents[1].locator.kind") { value("EPUB") }
+        jsonPath("$.contents[1].locator.href") { value("Text/chapter-1.xhtml#start") }
+        jsonPath("$.contents[2]") { doesNotExist() }
+        jsonPath("$.pages") { doesNotExist() }
+        jsonPath("$.text") { doesNotExist() }
+        jsonPath("$.capabilities.textSelection") { value(true) }
+        jsonPath("$.capabilities.imageFilters") { value(false) }
       }
   }
 
@@ -261,6 +366,8 @@ class ShelfViewManifestControllerTest(
     bookName: String,
     file: Path? = null,
     files: List<MediaFile> = emptyList(),
+    pages: List<BookPage> = bookPages(2),
+    extension: MediaExtension? = null,
   ) = makeSeries(name = "series", libraryId = library.id).let { series ->
     val created = seriesLifecycle.createSeries(series)
     seriesLifecycle.addBooks(
@@ -297,12 +404,9 @@ class ShelfViewManifestControllerTest(
           it.copy(
             status = Media.Status.READY,
             mediaType = mediaType,
-            pages =
-              listOf(
-                BookPage("001.jpg", "image/jpeg", Dimension(800, 1200), fileSize = 1024),
-                BookPage("002.jpg", "image/jpeg", Dimension(800, 1200), fileSize = 2048),
-              ),
+            pages = pages,
             files = files,
+            extension = extension,
           ),
         )
       }
@@ -339,6 +443,42 @@ class ShelfViewManifestControllerTest(
         document.save(output)
       }
       output.toByteArray()
+    }
+
+  private fun writeOutlinedPdf(path: Path) {
+    PDDocument().use { document ->
+      val pages = listOf(PDPage(), PDPage(), PDPage())
+      pages.forEach { document.addPage(it) }
+
+      val outline = PDDocumentOutline()
+      document.documentCatalog.documentOutline = outline
+
+      outline.addLast(
+        PDOutlineItem().apply {
+          title = "Opening"
+          setDestination(pages[0])
+        },
+      )
+      outline.addLast(
+        PDOutlineItem().apply {
+          title = "Chapter 2"
+          setDestination(pages[1])
+        },
+      )
+      outline.openNode()
+
+      document.save(path.toFile())
+    }
+  }
+
+  private fun bookPages(count: Int): List<BookPage> =
+    (1..count).map { page ->
+      BookPage(
+        fileName = page.toString().padStart(3, '0') + ".jpg",
+        mediaType = "image/jpeg",
+        dimension = Dimension(800, 1200),
+        fileSize = 1024L * page,
+      )
     }
 
   private companion object {

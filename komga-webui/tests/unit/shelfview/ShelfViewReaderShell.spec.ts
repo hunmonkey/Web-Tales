@@ -390,6 +390,135 @@ describe('ShelfViewReaderShell', () => {
     })
   })
 
+  it('opens mixed content table of contents and jumps to an item', async () => {
+    const getManifest = jest.fn().mockResolvedValue(mixedManifest)
+    const getTextContent = jest.fn().mockResolvedValue(mixedTextContent)
+    const savePosition = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewText: {getTextContent},
+      shelfViewState: {savePosition},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-contents-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-contents-drawer"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(0).text()).toContain('001.txt')
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(1).text()).toContain('002.jpg')
+
+    await wrapper.findAll('[data-testid="shelfview-contents-item"]').at(1).trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-contents-drawer"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('src')).toBe('http://api.test/api/shelfview/v1/books/book-1/mixed/image-item/pages/0?zero_based=true')
+
+    await (wrapper.vm as any).flushPositionSave()
+    await Vue.nextTick()
+
+    expect(savePosition).toHaveBeenCalledWith('book-1', {
+      locator: expect.objectContaining({
+        kind: 'MIXED',
+        itemId: 'image-item',
+        itemIndex: 1,
+      }),
+      progression: 1,
+    })
+  })
+
+  it('opens manifest-provided contents and jumps to a fixed page', async () => {
+    const getManifest = jest.fn().mockResolvedValue({
+      ...manifest,
+      pageCount: 3,
+      contents: [
+        {label: 'Opening', locator: pageLocator(0)},
+        {label: 'Second section', locator: pageLocator(1)},
+      ],
+    })
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-contents-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-contents-drawer"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]')).toHaveLength(2)
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(0).text()).toContain('Opening')
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(1).text()).toContain('Second section')
+
+    await wrapper.findAll('[data-testid="shelfview-contents-item"]').at(1).trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/1?zero_based=true')
+    expect(wrapper.find('[data-testid="shelfview-contents-drawer"]').exists()).toBe(false)
+  })
+
+  it('opens TXT paragraph contents and jumps to a paragraph', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-contents-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-contents-drawer"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(0).text()).toContain('첫 번째 문단입니다.')
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(2).text()).toContain('마지막 문단입니다.')
+
+    await wrapper.findAll('[data-testid="shelfview-contents-item"]').at(2).trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 3')
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').text()).toBe('마지막 문단입니다.')
+    expect(wrapper.find('[data-testid="shelfview-contents-drawer"]').exists()).toBe(false)
+  })
+
+  it('prefers heading-like TXT paragraphs in the contents panel', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const getTextContent = jest.fn().mockResolvedValue({
+      ...textContent,
+      paragraphs: [
+        '제1장 시작',
+        '첫 장의 일반 문단입니다.',
+        'Chapter 2 Next',
+        '두 번째 장의 일반 문단입니다.',
+      ],
+    })
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewText: {getTextContent},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-contents-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]')).toHaveLength(2)
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(0).text()).toContain('제1장 시작')
+    expect(wrapper.findAll('[data-testid="shelfview-contents-item"]').at(1).text()).toContain('Chapter 2 Next')
+
+    await wrapper.findAll('[data-testid="shelfview-contents-item"]').at(1).trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 4')
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').text()).toBe('Chapter 2 Next')
+  })
+
   it('moves between text paragraphs and saves text position', async () => {
     const getManifest = jest.fn().mockResolvedValue(textManifest)
     const getTextContent = jest.fn().mockResolvedValue(textContent)
@@ -601,6 +730,542 @@ describe('ShelfViewReaderShell', () => {
         paragraph: 2,
       }),
     }))
+  })
+
+  it('highlights selected TXT text through the dedicated highlight API', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const createBookmark = jest.fn()
+    const createHighlight = jest.fn().mockImplementation(async (_bookId, highlight) => ({
+      id: 'highlight-1',
+      bookId: 'book-1',
+      contentFingerprint: textManifest.contentFingerprint,
+      createdAt: 'now',
+      updatedAt: 'now',
+      ...highlight,
+    }))
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        createBookmark,
+        createHighlight,
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').classes()).not.toContain('shelfview-reader-shell__text-paragraph--highlighted')
+
+    const firstParagraph = wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').element
+    const firstTextNode = firstParagraph.querySelector('span')?.firstChild
+    expect(firstTextNode).toBeTruthy()
+    const range = document.createRange()
+    range.setStart(firstTextNode as Node, 0)
+    range.setEnd(firstTextNode as Node, 4)
+    const originalGetSelection = window.getSelection
+    const removeAllRanges = jest.fn()
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: jest.fn(() => ({
+        rangeCount: 1,
+        isCollapsed: false,
+        getRangeAt: () => range,
+        toString: () => '첫 번째',
+        removeAllRanges,
+      })),
+    })
+
+    try {
+      await wrapper.find('[data-testid="shelfview-reader-highlight-add"]').trigger('click')
+      await flushPromises()
+      await Vue.nextTick()
+    } finally {
+      Object.defineProperty(window, 'getSelection', {
+        configurable: true,
+        value: originalGetSelection,
+      })
+    }
+
+    expect(createHighlight).toHaveBeenCalledWith('book-1', expect.objectContaining({
+      color: 'YELLOW',
+      textQuote: '첫 번째',
+      locator: expect.objectContaining({
+        kind: 'TEXT',
+        paragraph: 0,
+        characterOffset: 0,
+      }),
+      selector: expect.objectContaining({
+        kind: 'TEXT_RANGE',
+        startParagraph: 0,
+        startCharacterOffset: 0,
+        endParagraph: 0,
+        endCharacterOffset: 4,
+        normalizationVersion: 1,
+      }),
+    }))
+    expect(createBookmark).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="shelfview-reader-text-highlight"]').text()).toBe('첫 번째')
+    expect(wrapper.find('[data-testid="shelfview-reader-highlight-add"]').attributes('disabled')).toBeUndefined()
+    expect(removeAllRanges).toHaveBeenCalled()
+  })
+
+  it('opens dictionary lookup for selected TXT text without searching automatically', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const hadGetSelection = 'getSelection' in window
+    const originalGetSelection = window.getSelection
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: jest.fn(() => ({
+        toString: () => '  첫 번째  ',
+      })),
+    })
+
+    try {
+      const wrapper = mountShell({getManifest})
+
+      await flushPromises()
+      await Vue.nextTick()
+
+      await wrapper.find('[data-testid="shelfview-reader-dictionary-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(wrapper.find('[data-testid="shelfview-dictionary-drawer"]').exists()).toBe(true)
+      expect((wrapper.find('[data-testid="shelfview-dictionary-query"]').element as HTMLInputElement).value).toBe('첫 번째')
+      expect(wrapper.find('[data-testid="shelfview-dictionary-results"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="shelfview-dictionary-result"]').attributes('data-provider-kind')).toBe('WEB_LOOKUP')
+      expect(wrapper.find('[data-testid="shelfview-dictionary-result"]').text()).toContain('shelfview_reader.dictionary_provider_web')
+      expect(decodeURIComponent(wrapper.find('[data-testid="shelfview-dictionary-search"]').attributes('href') ?? '')).toContain('첫 번째 dictionary')
+    } finally {
+      if (hadGetSelection) {
+        Object.defineProperty(window, 'getSelection', {
+          configurable: true,
+          value: originalGetSelection,
+        })
+      } else {
+        delete (window as any).getSelection
+      }
+    }
+  })
+
+  it('renders local dictionary provider results as text before the web fallback', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const hadGetSelection = 'getSelection' in window
+    const originalGetSelection = window.getSelection
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: jest.fn(() => ({
+        toString: () => '첫 번째',
+      })),
+    })
+
+    try {
+      const wrapper = mountShell({getManifest})
+
+      await flushPromises()
+      await Vue.nextTick()
+      await wrapper.setData({
+        dictionaryLocalEntries: [{
+          term: '첫 번째',
+          definition: '첫 번째 뜻 <b>강조 아님</b>',
+          sourceName: 'Test local pack',
+        }],
+      })
+
+      await wrapper.find('[data-testid="shelfview-reader-dictionary-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      const results = wrapper.findAll('[data-testid="shelfview-dictionary-result"]')
+      expect(results).toHaveLength(2)
+      expect(results.at(0).attributes('data-provider-kind')).toBe('LOCAL_PACK')
+      expect(results.at(0).text()).toContain('shelfview_reader.dictionary_provider_local')
+      expect(wrapper.find('[data-testid="shelfview-dictionary-term"]').text()).toBe('첫 번째')
+      expect(wrapper.find('[data-testid="shelfview-dictionary-definition"]').text()).toBe('첫 번째 뜻 <b>강조 아님</b>')
+      expect(wrapper.find('[data-testid="shelfview-dictionary-definition"] b').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="shelfview-dictionary-source"]').text()).toBe('Test local pack')
+      expect(results.at(1).attributes('data-provider-kind')).toBe('WEB_LOOKUP')
+    } finally {
+      if (hadGetSelection) {
+        Object.defineProperty(window, 'getSelection', {
+          configurable: true,
+          value: originalGetSelection,
+        })
+      } else {
+        delete (window as any).getSelection
+      }
+    }
+  })
+
+  it('imports a local dictionary pack JSON into the dictionary drawer session', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const hadGetSelection = 'getSelection' in window
+    const originalGetSelection = window.getSelection
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: jest.fn(() => ({
+        toString: () => '첫 번째',
+      })),
+    })
+
+    try {
+      const wrapper = mountShell({getManifest})
+
+      await flushPromises()
+      await Vue.nextTick()
+
+      await (wrapper.vm as any).importDictionaryPackJson(JSON.stringify({
+        schemaVersion: 1,
+        metadata: {
+          sourceName: 'Session pack',
+          sourceUrl: 'https://example.test/session-pack',
+          licenseName: 'First-party test data',
+        },
+        entries: [
+          {
+            term: '첫 번째',
+            definition: '세션에서 가져온 뜻',
+          },
+        ],
+      }))
+
+      await wrapper.find('[data-testid="shelfview-reader-dictionary-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect((wrapper.vm as any).readerStateMessage).toBe('shelfview_reader.status_dictionary_pack_loaded')
+      expect(wrapper.find('[data-testid="shelfview-dictionary-import"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="shelfview-dictionary-definition"]').text()).toBe('세션에서 가져온 뜻')
+      expect(wrapper.find('[data-testid="shelfview-dictionary-source"]').text()).toBe('Session pack')
+    } finally {
+      if (hadGetSelection) {
+        Object.defineProperty(window, 'getSelection', {
+          configurable: true,
+          value: originalGetSelection,
+        })
+      } else {
+        delete (window as any).getSelection
+      }
+    }
+  })
+
+  it('persists an imported dictionary pack in browser storage and can clear it', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const hadGetSelection = 'getSelection' in window
+    const originalGetSelection = window.getSelection
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: jest.fn(() => ({
+        toString: () => '첫 번째',
+      })),
+    })
+    window.localStorage.clear()
+
+    try {
+      const wrapper = mountShell({getManifest})
+
+      await flushPromises()
+      await Vue.nextTick()
+
+      await (wrapper.vm as any).importDictionaryPackJson(JSON.stringify({
+        schemaVersion: 1,
+        metadata: {
+          sourceName: 'Stored pack',
+          licenseName: 'First-party test data',
+        },
+        entries: [
+          {
+            term: '첫 번째',
+            definition: '브라우저에 기억된 뜻',
+          },
+        ],
+      }))
+
+      expect(window.localStorage.getItem('shelfview.dictionaryPack.v1')).toContain('Stored pack')
+      wrapper.destroy()
+
+      const restoredWrapper = mountShell({getManifest})
+      await flushPromises()
+      await Vue.nextTick()
+
+      await restoredWrapper.find('[data-testid="shelfview-reader-dictionary-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(restoredWrapper.find('[data-testid="shelfview-dictionary-definition"]').text()).toBe('브라우저에 기억된 뜻')
+      await restoredWrapper.find('[data-testid="shelfview-dictionary-clear"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(window.localStorage.getItem('shelfview.dictionaryPack.v1')).toBeNull()
+      expect((restoredWrapper.vm as any).dictionaryLocalEntries).toEqual([])
+      expect((restoredWrapper.vm as any).readerStateMessage).toBe('shelfview_reader.status_dictionary_pack_cleared')
+    } finally {
+      window.localStorage.clear()
+      if (hadGetSelection) {
+        Object.defineProperty(window, 'getSelection', {
+          configurable: true,
+          value: originalGetSelection,
+        })
+      } else {
+        delete (window as any).getSelection
+      }
+    }
+  })
+
+  it('reads selected TXT text aloud when the selection is inside the reader', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const speak = jest.fn()
+    const cancel = jest.fn()
+    const hadGetSelection = 'getSelection' in window
+    const originalGetSelection = window.getSelection
+    const hadSpeechSynthesis = 'speechSynthesis' in window
+    const originalSpeechSynthesis = window.speechSynthesis
+    const hadSpeechSynthesisUtterance = 'SpeechSynthesisUtterance' in window
+    const originalSpeechSynthesisUtterance = window.SpeechSynthesisUtterance
+
+    class TestSpeechSynthesisUtterance {
+      text: string
+      onend: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      constructor(text: string) {
+        this.text = text
+      }
+    }
+
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel,
+        speak,
+      },
+    })
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: TestSpeechSynthesisUtterance,
+    })
+
+    try {
+      const wrapper = mountShell({getManifest})
+
+      await flushPromises()
+      await Vue.nextTick()
+
+      const firstParagraph = wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').element
+      const firstTextNode = firstParagraph.querySelector('span')?.firstChild
+      expect(firstTextNode).toBeTruthy()
+      const range = document.createRange()
+      range.setStart(firstTextNode as Node, 0)
+      range.setEnd(firstTextNode as Node, 4)
+
+      Object.defineProperty(window, 'getSelection', {
+        configurable: true,
+        value: jest.fn(() => ({
+          rangeCount: 1,
+          isCollapsed: false,
+          getRangeAt: () => range,
+          toString: () => '첫 번째',
+        })),
+      })
+
+      cancel.mockClear()
+      speak.mockClear()
+
+      await wrapper.find('[data-testid="shelfview-reader-tts-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(speak).toHaveBeenCalledWith(expect.objectContaining({
+        text: '첫 번째',
+      }))
+    } finally {
+      if (hadGetSelection) {
+        Object.defineProperty(window, 'getSelection', {
+          configurable: true,
+          value: originalGetSelection,
+        })
+      } else {
+        delete (window as any).getSelection
+      }
+
+      if (hadSpeechSynthesis) {
+        Object.defineProperty(window, 'speechSynthesis', {
+          configurable: true,
+          value: originalSpeechSynthesis,
+        })
+      } else {
+        delete (window as any).speechSynthesis
+      }
+
+      if (hadSpeechSynthesisUtterance) {
+        Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+          configurable: true,
+          value: originalSpeechSynthesisUtterance,
+        })
+      } else {
+        delete (window as any).SpeechSynthesisUtterance
+      }
+    }
+  })
+
+  it('reads the current TXT paragraph aloud when browser speech is available', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const speak = jest.fn()
+    const cancel = jest.fn()
+    const hadSpeechSynthesis = 'speechSynthesis' in window
+    const originalSpeechSynthesis = window.speechSynthesis
+    const hadSpeechSynthesisUtterance = 'SpeechSynthesisUtterance' in window
+    const originalSpeechSynthesisUtterance = window.SpeechSynthesisUtterance
+
+    class TestSpeechSynthesisUtterance {
+      text: string
+      onend: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      constructor(text: string) {
+        this.text = text
+      }
+    }
+
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel,
+        speak,
+      },
+    })
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: TestSpeechSynthesisUtterance,
+    })
+
+    try {
+      const wrapper = mountShell({getManifest})
+
+      await flushPromises()
+      await Vue.nextTick()
+
+      await wrapper.find('[data-testid="shelfview-reader-text-settings-toggle"]').trigger('click')
+      await Vue.nextTick()
+      expect(wrapper.find('[data-testid="shelfview-reader-tts-rate"]').exists()).toBe(true)
+      await wrapper.setData({textToSpeechRate: 1.3})
+      await Vue.nextTick()
+
+      cancel.mockClear()
+      speak.mockClear()
+
+      await wrapper.find('[data-testid="shelfview-reader-tts-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(cancel).toHaveBeenCalledTimes(1)
+      expect(speak).toHaveBeenCalledWith(expect.objectContaining({
+        text: textContent.paragraphs[0],
+        rate: 1.3,
+      }))
+
+      await wrapper.find('[data-testid="shelfview-reader-tts-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(cancel).toHaveBeenCalledTimes(2)
+    } finally {
+      if (hadSpeechSynthesis) {
+        Object.defineProperty(window, 'speechSynthesis', {
+          configurable: true,
+          value: originalSpeechSynthesis,
+        })
+      } else {
+        delete (window as any).speechSynthesis
+      }
+
+      if (hadSpeechSynthesisUtterance) {
+        Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+          configurable: true,
+          value: originalSpeechSynthesisUtterance,
+        })
+      } else {
+        delete (window as any).SpeechSynthesisUtterance
+      }
+    }
+  })
+
+  it('uses the selected browser voice for TXT read-aloud', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const voice = {
+      voiceURI: 'ko-voice',
+      name: 'Korean Voice',
+      lang: 'ko-KR',
+    } as SpeechSynthesisVoice
+    const speak = jest.fn()
+    const cancel = jest.fn()
+    const getVoices = jest.fn(() => [voice])
+    const addEventListener = jest.fn()
+    const removeEventListener = jest.fn()
+    const hadSpeechSynthesis = 'speechSynthesis' in window
+    const originalSpeechSynthesis = window.speechSynthesis
+    const hadSpeechSynthesisUtterance = 'SpeechSynthesisUtterance' in window
+    const originalSpeechSynthesisUtterance = window.SpeechSynthesisUtterance
+
+    class TestSpeechSynthesisUtterance {
+      text: string
+      voice?: SpeechSynthesisVoice
+      rate = 1
+      onend: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      constructor(text: string) {
+        this.text = text
+      }
+    }
+
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        addEventListener,
+        cancel,
+        getVoices,
+        removeEventListener,
+        speak,
+      },
+    })
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: TestSpeechSynthesisUtterance,
+    })
+
+    try {
+      const wrapper = mountShell({getManifest})
+
+      await flushPromises()
+      await Vue.nextTick()
+
+      await wrapper.find('[data-testid="shelfview-reader-text-settings-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(addEventListener).toHaveBeenCalledWith('voiceschanged', expect.any(Function))
+      expect(wrapper.find('[data-testid="shelfview-reader-tts-voice"]').exists()).toBe(true)
+
+      await wrapper.setData({textToSpeechVoiceURI: 'ko-voice'})
+      await wrapper.find('[data-testid="shelfview-reader-tts-toggle"]').trigger('click')
+      await Vue.nextTick()
+
+      expect(speak).toHaveBeenCalledWith(expect.objectContaining({
+        text: textContent.paragraphs[0],
+        voice,
+      }))
+    } finally {
+      if (hadSpeechSynthesis) {
+        Object.defineProperty(window, 'speechSynthesis', {
+          configurable: true,
+          value: originalSpeechSynthesis,
+        })
+      } else {
+        delete (window as any).speechSynthesis
+      }
+
+      if (hadSpeechSynthesisUtterance) {
+        Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+          configurable: true,
+          value: originalSpeechSynthesisUtterance,
+        })
+      } else {
+        delete (window as any).SpeechSynthesisUtterance
+      }
+    }
   })
 
   it('restores saved position, bookmarks and effective settings', async () => {
@@ -1155,18 +1820,53 @@ describe('ShelfViewReaderShell', () => {
     expect(originalPage.attributes('style')).toContain('--sv-brightness: 1;')
     expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').classes()).not.toContain('shelfview-page-content')
 
-    await chooseControlOption(wrapper, 'shelfview-reader-filter-toggle', 'shelfview-reader-filter-option-EYE_COMFORT')
+    await chooseControlOption(wrapper, 'shelfview-reader-filter-toggle', 'shelfview-reader-filter-option-IMAGE_ENHANCE')
     await flushPromises()
     await Vue.nextTick()
 
     const filteredPage = wrapper.find('[data-testid="shelfview-reader-page"]')
     expect(filteredPage.attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
-    expect(filteredPage.attributes('style')).toContain('--sv-brightness: 0.92;')
-    expect(filteredPage.attributes('style')).toContain('--sv-sepia: 0.16;')
+    expect(filteredPage.attributes('style')).toContain('--sv-brightness: 1.04;')
+    expect(filteredPage.attributes('style')).toContain('--sv-contrast: 1.28;')
+    expect(filteredPage.attributes('style')).toContain('--sv-saturate: 1.08;')
+  })
+
+  it('uses the canvas page prototype for canvas sharpen outside continuous scroll', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await chooseControlOption(wrapper, 'shelfview-reader-filter-toggle', 'shelfview-reader-filter-option-CANVAS_SHARPEN')
+    await flushPromises()
+    await Vue.nextTick()
+
+    const page = wrapper.find('[data-testid="shelfview-reader-page"]')
+    expect(page.element.tagName.toLowerCase()).toBe('canvas')
+    expect(page.attributes('data-canvas-src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
+  })
+
+  it('keeps continuous scroll on the normal image path for canvas sharpen', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
+    await chooseControlOption(wrapper, 'shelfview-reader-filter-toggle', 'shelfview-reader-filter-option-CANVAS_SHARPEN')
+    await flushPromises()
+    await Vue.nextTick()
+
+    const pages = wrapper.findAll('[data-testid="shelfview-reader-page"]')
+    expect(pages.length).toBe(2)
+    expect(pages.at(0).element.tagName.toLowerCase()).toBe('img')
   })
 
   it('creates, opens and deletes bookmarks from the drawer', async () => {
     const getManifest = jest.fn().mockResolvedValue(manifest)
+    const savedBookmark = {id: 'bookmark-2', bookId: 'book-1', locator: pageLocator(1), label: 'Second page', note: 'Remember this page', createdAt: 'now', updatedAt: 'now'}
     const createBookmark = jest.fn().mockResolvedValue({
       id: 'bookmark-new',
       bookId: 'book-1',
@@ -1175,14 +1875,19 @@ describe('ShelfViewReaderShell', () => {
       createdAt: 'now',
       updatedAt: 'now',
     })
+    const updateBookmark = jest.fn().mockResolvedValue({
+      ...savedBookmark,
+      note: 'Updated memo',
+    })
     const deleteBookmark = jest.fn().mockResolvedValue(undefined)
     const wrapper = mountShell({
       getManifest,
       shelfViewState: {
         getBookmarks: jest.fn().mockResolvedValue([
-          {id: 'bookmark-2', bookId: 'book-1', locator: pageLocator(1), label: 'Second page', createdAt: 'now', updatedAt: 'now'},
+          savedBookmark,
         ]),
         createBookmark,
+        updateBookmark,
         deleteBookmark,
       },
     })
@@ -1192,6 +1897,23 @@ describe('ShelfViewReaderShell', () => {
 
     await wrapper.find('[data-testid="shelfview-reader-bookmarks-toggle"]').trigger('click')
     await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-bookmark-note"]').text()).toBe('Remember this page')
+
+    await wrapper.find('[data-testid="shelfview-bookmark-note-edit"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-bookmark-note-input"]').setValue('Updated memo')
+    await wrapper.find('[data-testid="shelfview-bookmark-note-save"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(updateBookmark).toHaveBeenCalledWith('bookmark-2', {
+      locator: pageLocator(1),
+      label: 'Second page',
+      note: 'Updated memo',
+    })
+    expect(wrapper.find('[data-testid="shelfview-bookmark-note"]').text()).toBe('Updated memo')
+
     await wrapper.find('[data-testid="shelfview-bookmark-go"]').trigger('click')
     await flushPromises()
     await Vue.nextTick()
@@ -1340,6 +2062,10 @@ function mountShell({
     createBookmark: jest.fn(),
     updateBookmark: jest.fn(),
     deleteBookmark: jest.fn().mockResolvedValue(undefined),
+    getHighlights: jest.fn().mockResolvedValue([]),
+    createHighlight: jest.fn(),
+    updateHighlight: jest.fn(),
+    deleteHighlight: jest.fn().mockResolvedValue(undefined),
     getPreference: jest.fn().mockResolvedValue({
       scopeType: 'BOOK',
       scopeId: 'book-1',
@@ -1409,6 +2135,49 @@ function mountShell({
         template: '<input v-bind="$attrs" :value="value" @input="$emit(\'input\', $event.target.value)" @keyup="$emit(\'keyup\', $event)" />',
       },
       'v-progress-circular': {template: '<span />'},
+      ShelfViewControlMenu: {
+        props: ['menu', 'title', 'left', 'options'],
+        template: `
+          <div>
+            <button
+              data-testid="shelfview-reader-control-scrim"
+              @click="$emit('close')"
+            />
+            <ul
+              data-testid="shelfview-reader-control-menu"
+              :aria-label="title"
+              :style="{ left: left + 'px' }"
+            >
+              <li>{{ title }}</li>
+              <li
+                v-for="option in options"
+                :key="String(option.value)"
+              >
+                <button
+                  :data-testid="'shelfview-reader-' + menu + '-option-' + option.value"
+                  :aria-checked="option.active ? 'true' : 'false'"
+                  @click="$emit('select', option.value)"
+                >{{ option.label }}</button>
+              </li>
+            </ul>
+          </div>
+        `,
+      },
+      ShelfViewCanvasImagePage: {
+        props: ['src', 'alt', 'pageIndex', 'reloadNonce', 'pageClass', 'pageStyle'],
+        template: `
+          <canvas
+            class="shelfview-reader-shell__page shelfview-page-content"
+            :class="pageClass"
+            :style="pageStyle"
+            :data-canvas-src="src"
+            :aria-label="alt"
+            :data-page-index="pageIndex"
+            :data-page-reload="reloadNonce"
+            data-testid="shelfview-reader-page"
+          />
+        `,
+      },
     },
   })
   mountedWrappers.push(wrapper)

@@ -41,6 +41,58 @@ export interface ShelfViewBookmarkUpdateDto {
   note?: string,
 }
 
+export const SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION = 1
+
+export type ShelfViewHighlightColor =
+  | 'YELLOW'
+  | 'GREEN'
+  | 'BLUE'
+  | 'PINK'
+  | 'UNDERLINE'
+
+export interface ShelfViewTextRangeHighlightSelector {
+  schemaVersion: typeof SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION,
+  kind: 'TEXT_RANGE',
+  startParagraph: number,
+  startCharacterOffset: number,
+  endParagraph: number,
+  endCharacterOffset: number,
+  normalizationVersion: number,
+}
+
+export interface ShelfViewMixedTextRangeHighlightSelector {
+  schemaVersion: typeof SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION,
+  kind: 'MIXED_TEXT_RANGE',
+  itemId: string,
+  itemIndex: number,
+  itemSelector: ShelfViewTextRangeHighlightSelector,
+}
+
+export type ShelfViewHighlightSelector =
+  | ShelfViewTextRangeHighlightSelector
+  | ShelfViewMixedTextRangeHighlightSelector
+
+export interface ShelfViewHighlightDto {
+  id: string,
+  bookId: string,
+  locator: ShelfViewLocator,
+  selector: ShelfViewHighlightSelector,
+  contentFingerprint: string,
+  color: ShelfViewHighlightColor,
+  note?: string,
+  textQuote?: string,
+  createdAt: string,
+  updatedAt: string,
+}
+
+export interface ShelfViewHighlightUpdateDto {
+  locator: ShelfViewLocator,
+  selector: ShelfViewHighlightSelector,
+  color?: ShelfViewHighlightColor,
+  note?: string,
+  textQuote?: string,
+}
+
 export interface ShelfViewFixedPagePreferenceSettings {
   layout?: ShelfViewFixedPageLayout,
   readingDirection?: ShelfViewFixedPageReadingDirection,

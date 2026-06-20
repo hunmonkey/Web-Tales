@@ -99,6 +99,7 @@ continue one `SV-xxx` ticket at a time.
 - [x] SV-915 QW-6 bundled OFL Korean web fonts
 - [x] SV-916 QW-7 double-page cover-alone toggle
 - [x] SV-917 QW-8 fixed-page slideshow mode
+- [x] SV-919 QW-10 fixed-page image enhancement filter preset
 
 ## 0620 phased roadmap
 
@@ -106,10 +107,51 @@ The immediate Quick Wins from `0620.txt` are complete. Larger roadmap phases
 remain tracked as future work because they require component decomposition,
 ADRs, dependency/license review, or broader product decisions.
 
-- [ ] SV-900 Phase 0 reader core decomposition
-- [ ] SV-901 Phase 0 viewport controller extraction
-- [ ] SV-902 Phase 0 toolbar and drawer component split
-- [ ] SV-920 Phase 2 EPUB integration ADR
-- [ ] SV-930 Phase 3 reading aids: TOC, highlight, memo, dictionary and TTS
-- [ ] SV-940 Phase 4 Tales bookshelf and collection experience
-- [ ] SV-950 Phase 5 format, performance and image-quality expansion
+- [x] SV-900 Phase 0 reader core decomposition
+- [x] SV-901 Phase 0 viewport controller extraction
+- [x] SV-902 Phase 0 toolbar and drawer component split
+- [x] SV-920 Phase 2 EPUB integration ADR
+- [x] SV-930 Phase 3 reading aids: TOC, highlight, memo, dictionary and TTS
+  - [x] SV-930a Bookmark memo editing using the existing bookmark `note` field
+  - [x] SV-930b Mixed-content TOC panel using Manifest item labels
+  - [x] SV-930c Text paragraph read-aloud using browser speech synthesis
+  - [x] SV-930d Bookmark-backed TXT paragraph highlighting
+  - [x] SV-930e TXT paragraph contents panel
+  - [x] SV-930f TXT heading-based contents extraction
+  - [x] SV-930g Selection dictionary lookup handoff
+  - [x] SV-930h Manifest-provided structured TOC support
+  - [x] SV-930i Mixed ZIP Manifest contents backend
+  - [x] SV-930j PDF outline Manifest contents backend
+  - [x] SV-930k EPUB WebPub bridge Manifest and TOC contents backend
+  - [x] SV-930l Dedicated highlight model ADR
+  - [x] SV-930m Dedicated highlight storage migration and repository
+  - [x] SV-930n Dedicated highlight API and selector validation
+  - [x] SV-930o Dedicated highlight frontend service and model
+  - [x] SV-930p TXT range highlight UI using the dedicated highlight API
+  - [x] SV-930q Selected TXT text read-aloud using browser speech synthesis
+  - [x] SV-930r Built-in dictionary data source and license ADR
+  - [x] SV-930s Dictionary provider UI shell with web lookup fallback
+  - [x] SV-930t Local dictionary provider result plumbing without bundled data
+  - [x] SV-930u Dictionary pack JSON import parser without bundled data
+  - [x] SV-930v TXT read-aloud speed control
+  - [x] SV-930w Session-only dictionary pack import UI
+  - [x] SV-930x TXT read-aloud browser voice selection
+  - [x] SV-930y Browser-local dictionary pack persistence
+  - [x] SV-930z Reading-aids browser-local scope closure and server-sync deferral
+- [x] SV-940 Phase 4 Tales bookshelf and collection experience
+  - [x] SV-940a Bookshelf Tales-reader readiness badge
+  - [x] SV-940b Collection/series continuation surface
+  - [x] SV-940c Bookshelf/collection polish review and closure
+- [x] SV-950 Phase 5 format, performance and image-quality expansion
+  - [x] SV-950a Faded-scan display boost preset
+  - [x] SV-950b WebGL/Canvas image-quality spike decision
+  - [x] SV-950c Phase 5 scope closure
+- [x] SV-951 Owner-approved Canvas sharpen prototype
+
+## Deferred after SV-930 closure
+
+- [ ] Owner-approved server/account-synced dictionary provider storage
+
+## Deferred after SV-950 closure
+
+- [ ] Browser/device performance evidence for Canvas sharpen and future WebGL image-quality modes

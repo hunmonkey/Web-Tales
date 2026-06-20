@@ -1,9 +1,12 @@
+import {ShelfViewLocator} from '@/shelfview/models/shelfview-locator'
+
 export const SHELFVIEW_MANIFEST_SCHEMA_VERSION = 1
 
 export type ShelfViewPublicationKind =
   | 'FIXED_PAGE_SEQUENCE'
   | 'TEXT_REFLOW'
   | 'MIXED_CONTENT_SEQUENCE'
+  | 'EPUB_WEBPUB'
 
 export type ShelfViewSourceFormat =
   | 'CBZ'
@@ -12,6 +15,7 @@ export type ShelfViewSourceFormat =
   | 'PDF'
   | 'IMAGE_DIRECTORY'
   | 'TXT'
+  | 'EPUB'
   | 'JPG'
   | 'PNG'
   | 'WEBP'
@@ -27,8 +31,16 @@ export interface ShelfViewManifest {
   pageCount?: number,
   text?: ShelfViewText,
   pages?: ShelfViewPages,
+  epub?: ShelfViewEpub,
   items?: ShelfViewManifestItem[],
+  contents?: ShelfViewManifestContentsItem[],
   capabilities: ShelfViewCapabilities,
+}
+
+export interface ShelfViewManifestContentsItem {
+  label: string,
+  locator: ShelfViewLocator,
+  level?: number,
 }
 
 export interface ShelfViewManifestItem {
@@ -52,6 +64,11 @@ export interface ShelfViewText {
 export interface ShelfViewPages {
   endpointTemplate: string,
   thumbnailEndpointTemplate?: string,
+}
+
+export interface ShelfViewEpub {
+  webpubManifestEndpoint: string,
+  positionsEndpoint: string,
 }
 
 export interface ShelfViewCapabilities {

@@ -78,7 +78,7 @@ class ShelfViewPreferenceControllerTest(
     readerStateDao.savePreference(preference("GLOBAL", "GLOBAL", """{"layout":"SINGLE_PAGE","pageFit":"HEIGHT"}"""))
     readerStateDao.savePreference(preference("LIBRARY", book.libraryId, """{"readingDirection":"RTL","pageFit":"WIDTH"}"""))
     readerStateDao.savePreference(preference("SERIES", book.seriesId, """{"layout":"DOUBLE_PAGE"}"""))
-    readerStateDao.savePreference(preference("BOOK", book.id, """{"imageFilterPreset":"MONO_COMIC"}"""))
+    readerStateDao.savePreference(preference("BOOK", book.id, """{"imageFilterPreset":"IMAGE_ENHANCE"}"""))
 
     mockMvc
       .get("/api/shelfview/v1/preferences") {
@@ -89,11 +89,11 @@ class ShelfViewPreferenceControllerTest(
         status { isOk() }
         jsonPath("$.scopeType") { value("BOOK") }
         jsonPath("$.scopeId") { value(book.id) }
-        jsonPath("$.settings.imageFilterPreset") { value("MONO_COMIC") }
+        jsonPath("$.settings.imageFilterPreset") { value("IMAGE_ENHANCE") }
         jsonPath("$.effectiveSettings.layout") { value("DOUBLE_PAGE") }
         jsonPath("$.effectiveSettings.readingDirection") { value("RTL") }
         jsonPath("$.effectiveSettings.pageFit") { value("WIDTH") }
-        jsonPath("$.effectiveSettings.imageFilterPreset") { value("MONO_COMIC") }
+        jsonPath("$.effectiveSettings.imageFilterPreset") { value("IMAGE_ENHANCE") }
         jsonPath("$.sources.length()") { value(4) }
         jsonPath("${'$'}.sources[0].scopeType") { value("GLOBAL") }
         jsonPath("${'$'}.sources[1].scopeType") { value("LIBRARY") }
@@ -154,7 +154,7 @@ class ShelfViewPreferenceControllerTest(
               "layout":"CONTINUOUS_SCROLL",
               "readingDirection":"RTL",
               "pageFit":"WIDTH",
-              "imageFilterPreset":"MONO_COMIC",
+              "imageFilterPreset":"CANVAS_SHARPEN",
               "fixedPageRotation":90,
               "fixedPageCoverSingle":true,
               "fixedPageScale":220,
@@ -169,6 +169,7 @@ class ShelfViewPreferenceControllerTest(
       }.andExpect {
         status { isOk() }
         jsonPath("$.format") { value(FORMAT) }
+        jsonPath("$.settings.imageFilterPreset") { value("CANVAS_SHARPEN") }
         jsonPath("$.settings.fixedPageScale") { value(220) }
         jsonPath("$.settings.fixedPageRotation") { value(90) }
         jsonPath("$.settings.fixedPageCoverSingle") { value(true) }
@@ -187,6 +188,7 @@ class ShelfViewPreferenceControllerTest(
       }.andExpect {
         status { isOk() }
         jsonPath("$.effectiveSettings.layout") { value("CONTINUOUS_SCROLL") }
+        jsonPath("$.effectiveSettings.imageFilterPreset") { value("CANVAS_SHARPEN") }
         jsonPath("$.effectiveSettings.fixedPageScale") { value(220) }
         jsonPath("$.effectiveSettings.fixedPageRotation") { value(90) }
         jsonPath("$.effectiveSettings.fixedPageCoverSingle") { value(true) }
@@ -324,6 +326,7 @@ class ShelfViewPreferenceControllerTest(
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":[]}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"unknown":"value"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"layout":"BAD"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"imageFilterPreset":"AI_UPSCALE"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"pageFit":3}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageRotation":45}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageCoverSingle":"yes"}}""",

@@ -8,11 +8,11 @@ import org.gotson.komga.infrastructure.security.KomgaPrincipal
 import org.gotson.komga.interfaces.api.ContentRestrictionChecker
 import org.gotson.komga.interfaces.api.persistence.BookDtoRepository
 import org.gotson.komga.interfaces.api.rest.dto.BookDto
+import org.gotson.komga.shelfview.domain.ShelfViewBookmark
+import org.gotson.komga.shelfview.domain.persistence.ShelfViewBookmarkRepository
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewBookmarkDto
 import org.gotson.komga.shelfview.interfaces.api.dto.ShelfViewBookmarkUpdateDto
 import org.gotson.komga.shelfview.interfaces.api.dto.toDto
-import org.gotson.komga.shelfview.domain.ShelfViewBookmark
-import org.gotson.komga.shelfview.domain.persistence.ShelfViewBookmarkRepository
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal

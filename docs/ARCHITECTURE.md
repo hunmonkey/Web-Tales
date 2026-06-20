@@ -19,20 +19,28 @@ The server returns a versioned Manifest:
 - `FIXED_PAGE_SEQUENCE`: CBZ, ZIP, PDF, IMAGE_DIRECTORY
 - `TEXT_REFLOW`: TXT
 - `MIXED_CONTENT_SEQUENCE`: ZIP archives whose internal readable items mix TXT, PDF and image entries
+- `EPUB_WEBPUB`: EPUB bridge to Komga's existing WebPub manifest and reader stack
 
 The UI uses adapters:
 
 - `FixedPageAdapter`
 - `TextReflowAdapter`
 - `MixedContentAdapter`
+- planned `EpubWebPubAdapter`
 
 The UI must not scatter file-extension checks across components.
+
+Manifests can optionally expose a structured `contents` list. Each item has a
+display label and a versioned ShelfView locator, so the reader can show
+format-provided tables of contents before falling back to mixed-item or TXT
+paragraph-derived contents.
 
 ## Location model
 
 - Fixed pages: page index + offset + fingerprint
 - TXT: paragraph + character offset + progression + normalization version + fingerprint
 - Mixed ZIP: book-level fingerprint + opaque item id/index + nested fixed-page or TXT locator
+- EPUB: versioned wrapper around a bounded Readium/WebPub locator
 - Page indexes are zero-based internally and one-based only in presentation.
 
 ## Data
@@ -41,8 +49,36 @@ The UI must not scatter file-extension checks across components.
 - Fixed-page ShelfView `PAGE` saves mirror into Komga `READ_PROGRESS` with Komga's one-based page number.
 - If no newer ShelfView position exists, the ShelfView position endpoint can expose existing Komga `READ_PROGRESS` as a zero-based ShelfView `PAGE` locator.
 - TXT and mixed ZIP locators remain ShelfView-only because Komga `READ_PROGRESS` cannot represent paragraph offsets or internal ZIP item identity.
+- EPUB initially preserves Komga progression compatibility through the existing Readium progression path; the ShelfView EPUB locator wrapper is available for Manifest contents, while EPUB bookmarks or extended positions remain future work.
 - ZIP files that contain TXT or PDF entries are excluded from fixed-page Komga progress fallback; image-only ZIP/CBZ, PDF and image-directory books keep fixed-page compatibility.
 - Add separate ShelfView storage for extended positions, multiple bookmarks and scoped preferences.
+- Dedicated highlights are separate ShelfView annotation state, not bookmark
+  labels. [ADR-0005](ADR/ADR-0005-dedicated-highlight-model.md) defines the
+  selector JSON policy; SV-930m adds the `SHELFVIEW_HIGHLIGHT` storage
+  migration and repository layer, and SV-930n adds the authenticated highlight
+  API with selector validation. SV-930o adds frontend DTOs and service methods
+  for that API. SV-930p connects the TXT reader UI to the dedicated API for
+  selected range highlights while keeping older bookmark-backed paragraph
+  highlights visible as legacy annotations.
+- Built-in dictionary data must follow
+  [ADR-0006](ADR/ADR-0006-dictionary-data-source-policy.md). Third-party
+  dictionary content is not bundled into the default app until the owner accepts
+  the data source, license obligations and notice/update plan. Future
+  dictionary packs or configured providers should keep source/license metadata
+  separate from the application code. SV-930s adds only a frontend dictionary
+  provider result shell and keeps the existing explicit web lookup as the
+  fallback provider. SV-930t adds local provider result plumbing and safe text
+  rendering for future owner-approved dictionary packs, but still ships no
+  third-party dictionary data. SV-930u adds a bounded frontend JSON dictionary
+  pack parser requiring source/license metadata; it does not add persistence,
+  upload, external provider calls or bundled dictionary content. SV-930w adds a
+  session-only frontend import button that lets a user load a local JSON pack
+  into memory for the current reader session. SV-930y can remember that
+  user-provided JSON pack in browser `localStorage`; this is not server-side
+  storage, account sync, media write access or bundled dictionary content.
+  SV-930 closes the current reading-aids phase at this browser-local dictionary
+  scope. Server/account-synced dictionary provider storage remains deferred
+  until the owner approves the storage, attribution and redistribution policy.
 - Never edit existing Flyway migrations.
 
 ### ShelfView storage recovery
@@ -52,6 +88,49 @@ SV-300 uses a forward-only Flyway migration. If a restore is needed before the S
 ## Feature rollout
 
 A new reader route is introduced behind a feature flag. The existing reader remains available as fallback until compatibility and recovery have been validated.
+
+## Bookshelf experience
+
+SV-940a adds a small Tales badge to ready book cards when the ShelfView reader
+feature flag is enabled and the media profile is handled by the new reader
+route. The badge is only a bookshelf hint; it does not change authorization,
+library queries, collection membership, sorting, filtering, server API
+contracts, stored state or media files. EPUB remains on the existing EPUB route
+and does not receive this badge in the first bookshelf slice.
+
+SV-940b adds a small in-progress continuation chip to non-deleted, non-oneshot
+series cards when `booksInProgressCount` is greater than zero. The chip links to
+the existing series page with the existing in-progress read-status filter; it
+does not introduce a new recommendation API, ranking model, collection query or
+server-side continuation endpoint.
+
+SV-940 closes at these two display/navigation improvements. Richer bookshelf
+features such as personalized recommendation ranking, custom shelf rows, server
+continuation APIs or collection analytics remain future product decisions rather
+than implicit Phase 4 work.
+
+## Image-quality expansion
+
+SV-950a adds a `FADED_SCAN` fixed-page image filter preset for low-contrast or
+faded scans. It reuses the existing content-only CSS filter pipeline and the
+existing fixed-page preference storage contract. The preset changes only the
+browser display of page content; it does not rewrite media files, create derived
+images, introduce AI upscaling, add dependencies, or change page URLs.
+
+[ADR-0007](ADR/ADR-0007-image-quality-processing-scope.md) accepts that
+decision for planning: SV-950 stays on reversible CSS display presets, while
+true per-pixel WebGL/Canvas/AI/derived-image processing needs a separate
+owner-approved ticket with fallback, cancellation, memory bounds, browser
+evidence and dependency/license review.
+
+SV-951 adds the first owner-approved Canvas prototype as `CANVAS_SHARPEN`. It is
+browser-local, dependency-free and fixed-page only. The reader draws the current
+page image into a bounded `<canvas>`, applies a simple sharpen kernel, and falls
+back to the normal `<img>` path if Canvas loading or pixel access fails. It is
+disabled for continuous scroll so the app does not process many pages at once.
+Further WebGL sharpening, background cleanup, adaptive monochrome, caching or AI
+upscaling remain deferred until the remaining ADR-0007 gates are intentionally
+met.
 
 ## Reader recovery UX
 
@@ -102,6 +181,10 @@ SV-453 adds mixed ZIP manifest and reader routing:
 - Internal TXT items use `TEXT_REFLOW`; internal PDF/JPG/PNG/WebP/GIF items use `FIXED_PAGE_SEQUENCE`.
 - The frontend `MixedContentAdapter` opens the ordered items and reuses the existing text and fixed-page behavior instead of putting extension checks into the reader component.
 - Mixed locators wrap the current item id/index and the nested text or page locator, so last-position and bookmark APIs can persist mixed ZIP reading state.
+- Mixed ZIP manifests also populate Manifest-level `contents` entries from the
+  ordered internal item labels. Each contents entry points to the first
+  PAGE/TEXT location inside the mixed item, so the generic contents drawer can
+  use the same contract as future PDF/EPUB TOC extraction.
 - Existing image-only ZIP/CBZ books keep the fixed-page manifest path.
 - Cover-candidate exposure is not part of the current manifest contract and remains future UX/detail work.
 
@@ -147,6 +230,34 @@ SV-503 adds image-directory change lifecycle handling:
 ## PDF
 
 MVP renders through the existing page delivery path. PDF.js is a later, ADR-backed phase for text layer, search, links and direct PDF rendering.
+
+PDF fixed-page manifests can populate Manifest-level `contents` from the PDF
+document outline. Outline targets are converted server-side into zero-based
+ShelfView PAGE locators; raw PDF destinations and file paths are not returned
+to the browser. If outline parsing fails, the PDF still opens without
+structured contents.
+
+## EPUB
+
+EPUB integration is planned by [ADR-0004](ADR/ADR-0004-epub-integration.md).
+The first integration path is a WebPub bridge, not a renderer rewrite.
+
+- Komga's existing EPUB scanner, analyzer, WebPub manifest, resource endpoints,
+  TOC/page-list/position extraction and `@d-i-t-a/reader` rendering remain the
+  source of truth.
+- ShelfView exposes a distinct `EPUB_WEBPUB` manifest kind with an `epub`
+  block that points to the existing authorized WebPub manifest and positions
+  endpoints.
+- EPUB bridge manifests can populate Manifest-level `contents` from Komga's
+  stored EPUB TOC entries. Each contents entry contains a bounded EPUB locator
+  with `href`, optional title and content fingerprint; raw server file paths are
+  not returned.
+- A future `EpubWebPubAdapter` should keep Readium/WebPub details out of the
+  generic ShelfView reader shell.
+- Existing `read-epub` and legacy fixed-page EPUB routes remain fallback paths
+  until the ShelfView EPUB bridge has targeted tests and browser validation.
+- No PDF.js, new EPUB parser, browser-side EPUB extraction or new rendering
+  dependency is part of the first EPUB integration slice.
 
 ## TXT
 

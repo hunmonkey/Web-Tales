@@ -23,6 +23,20 @@ data class ShelfViewBookmark(
   val updatedAt: LocalDateTime = createdAt,
 )
 
+data class ShelfViewHighlight(
+  val userId: String,
+  val bookId: String,
+  val locatorJson: String,
+  val selectorJson: String,
+  val contentFingerprint: String,
+  val color: String,
+  val note: String? = null,
+  val textQuote: String? = null,
+  val id: String = TsidCreator.getTsid256().toString(),
+  val createdAt: LocalDateTime = LocalDateTime.now(),
+  val updatedAt: LocalDateTime = createdAt,
+)
+
 data class ShelfViewReaderPreference(
   val userId: String,
   val scopeType: String,

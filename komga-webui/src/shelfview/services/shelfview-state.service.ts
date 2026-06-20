@@ -3,6 +3,8 @@ import {ShelfViewApiError, toShelfViewApiError} from '@/shelfview/models/shelfvi
 import {
   ShelfViewBookmarkDto,
   ShelfViewBookmarkUpdateDto,
+  ShelfViewHighlightDto,
+  ShelfViewHighlightUpdateDto,
   ShelfViewPositionDto,
   ShelfViewPositionUpdateDto,
   ShelfViewPreferenceQuery,
@@ -81,6 +83,48 @@ export default class ShelfViewStateService {
     } catch (e) {
       if (e instanceof ShelfViewApiError) throw e
       throw toShelfViewApiError(e, 'An error occurred while trying to delete ShelfView bookmark')
+    }
+  }
+
+  async getHighlights(bookId: string): Promise<ShelfViewHighlightDto[]> {
+    try {
+      return (await this.http.get(`${API_SHELFVIEW_BOOKS}/${bookId}/highlights`)).data as ShelfViewHighlightDto[]
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to retrieve ShelfView highlights')
+    }
+  }
+
+  async createHighlight(
+    bookId: string,
+    highlight: ShelfViewHighlightUpdateDto,
+  ): Promise<ShelfViewHighlightDto> {
+    try {
+      return (await this.http.post(`${API_SHELFVIEW_BOOKS}/${bookId}/highlights`, highlight)).data as ShelfViewHighlightDto
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to create ShelfView highlight')
+    }
+  }
+
+  async updateHighlight(
+    highlightId: string,
+    highlight: ShelfViewHighlightUpdateDto,
+  ): Promise<ShelfViewHighlightDto> {
+    try {
+      return (await this.http.put(`${API_SHELFVIEW}/highlights/${highlightId}`, highlight)).data as ShelfViewHighlightDto
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to update ShelfView highlight')
+    }
+  }
+
+  async deleteHighlight(highlightId: string): Promise<void> {
+    try {
+      await this.http.delete(`${API_SHELFVIEW}/highlights/${highlightId}`)
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to delete ShelfView highlight')
     }
   }
 

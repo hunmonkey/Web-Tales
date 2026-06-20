@@ -1,5 +1,8 @@
 export type ShelfViewImageFilterPreset =
   | 'ORIGINAL'
+  | 'IMAGE_ENHANCE'
+  | 'FADED_SCAN'
+  | 'CANVAS_SHARPEN'
   | 'EYE_COMFORT'
   | 'MONO_COMIC'
   | 'LOW_LIGHT'
@@ -9,6 +12,7 @@ export type ShelfViewImageFilterPreset =
 export interface ShelfViewImageFilterValues {
   brightness: number,
   contrast: number,
+  saturate: number,
   grayscale: number,
   sepia: number,
   invert: number,
@@ -29,6 +33,46 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
     values: {
       brightness: 1,
       contrast: 1,
+      saturate: 1,
+      grayscale: 0,
+      sepia: 0,
+      invert: 0,
+    },
+  },
+  {
+    id: 'IMAGE_ENHANCE',
+    label: 'Image enhance',
+    icon: 'mdi-auto-fix',
+    values: {
+      brightness: 1.04,
+      contrast: 1.28,
+      saturate: 1.08,
+      grayscale: 0,
+      sepia: 0,
+      invert: 0,
+    },
+  },
+  {
+    id: 'FADED_SCAN',
+    label: 'Faded scan boost',
+    icon: 'mdi-image-filter-center-focus-strong-outline',
+    values: {
+      brightness: 1.08,
+      contrast: 1.42,
+      saturate: 0.92,
+      grayscale: 0,
+      sepia: 0,
+      invert: 0,
+    },
+  },
+  {
+    id: 'CANVAS_SHARPEN',
+    label: 'Canvas sharpen prototype',
+    icon: 'mdi-vector-square',
+    values: {
+      brightness: 1,
+      contrast: 1,
+      saturate: 1,
       grayscale: 0,
       sepia: 0,
       invert: 0,
@@ -41,6 +85,7 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
     values: {
       brightness: 0.92,
       contrast: 0.98,
+      saturate: 0.94,
       grayscale: 0,
       sepia: 0.16,
       invert: 0,
@@ -53,6 +98,7 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
     values: {
       brightness: 1,
       contrast: 1.18,
+      saturate: 1,
       grayscale: 1,
       sepia: 0,
       invert: 0,
@@ -65,6 +111,7 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
     values: {
       brightness: 0.78,
       contrast: 0.9,
+      saturate: 0.9,
       grayscale: 0,
       sepia: 0.08,
       invert: 0,
@@ -77,6 +124,7 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
     values: {
       brightness: 0.82,
       contrast: 0.95,
+      saturate: 0.86,
       grayscale: 0,
       sepia: 0,
       invert: 1,
@@ -89,6 +137,7 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
     values: {
       brightness: 0.9,
       contrast: 1.12,
+      saturate: 1,
       grayscale: 0,
       sepia: 0,
       invert: 1,
@@ -100,6 +149,12 @@ export function shelfViewImageFilterPreset(
   preset: ShelfViewImageFilterPreset,
 ): ShelfViewImageFilterPresetOption {
   return SHELFVIEW_IMAGE_FILTER_PRESETS.find(option => option.id === preset) || SHELFVIEW_IMAGE_FILTER_PRESETS[0]
+}
+
+export function shelfViewImageFilterUsesCanvas(
+  preset: ShelfViewImageFilterPreset,
+): boolean {
+  return preset === 'CANVAS_SHARPEN'
 }
 
 export function shelfViewNextImageFilterPreset(
@@ -117,6 +172,7 @@ export function shelfViewImageFilterStyle(
   return {
     '--sv-brightness': values.brightness.toString(),
     '--sv-contrast': values.contrast.toString(),
+    '--sv-saturate': values.saturate.toString(),
     '--sv-grayscale': values.grayscale.toString(),
     '--sv-sepia': values.sepia.toString(),
     '--sv-invert': values.invert.toString(),

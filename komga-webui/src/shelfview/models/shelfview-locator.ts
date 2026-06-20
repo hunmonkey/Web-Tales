@@ -4,6 +4,7 @@ export type ShelfViewLocatorKind =
   | 'PAGE'
   | 'TEXT'
   | 'MIXED'
+  | 'EPUB'
 
 export interface ShelfViewPageLocator {
   schemaVersion: typeof SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -32,4 +33,12 @@ export interface ShelfViewMixedLocator {
   contentFingerprint: string,
 }
 
-export type ShelfViewLocator = ShelfViewPageLocator | ShelfViewTextLocator | ShelfViewMixedLocator
+export interface ShelfViewEpubLocator {
+  schemaVersion: typeof SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+  kind: 'EPUB',
+  href: string,
+  title?: string,
+  contentFingerprint: string,
+}
+
+export type ShelfViewLocator = ShelfViewPageLocator | ShelfViewTextLocator | ShelfViewMixedLocator | ShelfViewEpubLocator

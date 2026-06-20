@@ -96,6 +96,55 @@
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
+              v-if="textToSpeechAvailable"
+              icon
+              :aria-label="textToSpeechLabel"
+              data-testid="shelfview-reader-tts-toggle"
+              v-on="on"
+              @click="toggleTextToSpeech"
+            >
+              <v-icon>{{ textToSpeechActive ? 'mdi-volume-off' : 'mdi-volume-high' }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ textToSpeechLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              v-if="textControlsVisible"
+              icon
+              :disabled="!textHighlightAvailable"
+              :aria-label="textHighlightLabel"
+              data-testid="shelfview-reader-highlight-add"
+              v-on="on"
+              @click="addTextHighlightForCurrentSelection"
+            >
+              <v-icon>{{ currentTextParagraphHighlighted ? 'mdi-marker-check' : 'mdi-format-color-highlight' }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ textHighlightLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              v-if="textControlsVisible"
+              icon
+              :aria-label="$t('shelfview_reader.dictionary_lookup')"
+              data-testid="shelfview-reader-dictionary-toggle"
+              v-on="on"
+              @click="openDictionaryLookup"
+            >
+              <v-icon>mdi-book-search-outline</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ $t('shelfview_reader.dictionary_lookup') }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
               v-if="fixedPageControlsVisible"
               icon
               :aria-label="$t('shelfview_reader.fixed_settings')"
@@ -190,6 +239,22 @@
           <span class="shelfview-reader-shell__control-toggle-label">{{ imageFilterPresetLabel }}</span>
           <v-icon small>mdi-menu-down</v-icon>
         </v-btn>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              v-if="contentsAvailable"
+              icon
+              :aria-label="$t('shelfview_reader.contents')"
+              data-testid="shelfview-reader-contents-toggle"
+              v-on="on"
+              @click="contentsDrawerOpen = true"
+            >
+              <v-icon>mdi-table-of-contents</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ $t('shelfview_reader.contents') }}</span>
+        </v-tooltip>
 
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
@@ -301,48 +366,15 @@
       </v-tooltip>
     </v-toolbar>
 
-    <div
+    <ShelfViewControlMenu
       v-if="openControlMenu"
-      class="shelfview-reader-shell__control-scrim"
-      data-testid="shelfview-reader-control-scrim"
-      @click="closeControlMenu"
+      :menu="openControlMenu"
+      :title="controlMenuTitle"
+      :left="controlMenuLeft"
+      :options="controlMenuOptions"
+      @close="closeControlMenu"
+      @select="selectControlOption"
     />
-    <ul
-      v-if="openControlMenu"
-      class="shelfview-reader-shell__control-menu"
-      :style="{ left: controlMenuLeft + 'px' }"
-      role="menu"
-      :aria-label="controlMenuTitle"
-      data-testid="shelfview-reader-control-menu"
-    >
-      <li
-        class="shelfview-reader-shell__control-menu-title"
-        role="presentation"
-      >{{ controlMenuTitle }}</li>
-      <li
-        v-for="option in controlMenuOptions"
-        :key="String(option.value)"
-        role="none"
-      >
-        <button
-          type="button"
-          role="menuitemradio"
-          :aria-checked="option.active ? 'true' : 'false'"
-          class="shelfview-reader-shell__control-option"
-          :class="{ 'shelfview-reader-shell__control-option--active': option.active }"
-          :data-testid="`shelfview-reader-${openControlMenu}-option-${option.value}`"
-          @click="selectControlOption(option.value)"
-        >
-          <v-icon small>{{ option.icon }}</v-icon>
-          <span class="shelfview-reader-shell__control-option-label">{{ option.label }}</span>
-          <v-icon
-            v-if="option.active"
-            small
-            class="shelfview-reader-shell__control-option-check"
-          >mdi-check</v-icon>
-        </button>
-      </li>
-    </ul>
 
     <section
       v-if="textSearchOpen && textSearchAvailable"
@@ -508,21 +540,34 @@
         :class="readerPagesClasses"
         data-testid="shelfview-reader-pages"
       >
-        <img
-          v-for="page in visiblePageSources"
-          :key="`page-${page.pageIndex}-${pageImageReloadNonce}`"
-          class="shelfview-reader-shell__page shelfview-page-content"
-          :class="pageImageClass"
-          :style="imageFilterStyle"
-          :src="page.url"
-          :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
-          draggable="false"
-          :data-page-index="page.pageIndex"
-          :data-page-reload="pageImageReloadNonce"
-          data-testid="shelfview-reader-page"
-          @error="onPageImageError"
-          @dragstart.prevent
-        />
+        <template v-for="page in visiblePageSources">
+          <ShelfViewCanvasImagePage
+            v-if="canvasImageProcessingEnabled"
+            :key="`canvas-page-${page.pageIndex}-${pageImageReloadNonce}`"
+            :src="page.url"
+            :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
+            :page-index="page.pageIndex"
+            :reload-nonce="pageImageReloadNonce"
+            :page-class="pageImageClass"
+            :page-style="imageFilterStyle"
+            @error="onPageImageError"
+          />
+          <img
+            v-else
+            :key="`page-${page.pageIndex}-${pageImageReloadNonce}`"
+            class="shelfview-reader-shell__page shelfview-page-content"
+            :class="pageImageClass"
+            :style="imageFilterStyle"
+            :src="page.url"
+            :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
+            draggable="false"
+            :data-page-index="page.pageIndex"
+            :data-page-reload="pageImageReloadNonce"
+            data-testid="shelfview-reader-page"
+            @error="onPageImageError"
+            @dragstart.prevent
+          />
+        </template>
       </div>
 
       <article
@@ -540,7 +585,12 @@
           :data-text-paragraph-index="paragraph.paragraphIndex"
           data-testid="shelfview-reader-text-paragraph"
         >
-          {{ paragraph.text }}
+          <span
+            v-for="segment in textParagraphSegments(paragraph)"
+            :key="segment.key"
+            :class="textParagraphSegmentClass(segment)"
+            :data-testid="segment.highlighted ? 'shelfview-reader-text-highlight' : undefined"
+          >{{ segment.text }}</span>
         </p>
       </article>
     </main>
@@ -570,6 +620,216 @@
     </section>
 
     <aside
+      v-if="contentsDrawerOpen && contentsAvailable"
+      class="shelfview-reader-shell__contents-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shelfview-contents-title"
+      data-testid="shelfview-contents-drawer"
+    >
+      <header class="shelfview-reader-shell__drawer-header">
+        <h2 id="shelfview-contents-title">{{ $t('shelfview_reader.contents') }}</h2>
+        <v-btn
+          icon
+          :aria-label="$t('shelfview_reader.close')"
+          data-testid="shelfview-contents-close"
+          @click="closeContentsDrawer"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </header>
+
+      <ul
+        v-if="manifestContentsItems.length > 0"
+        class="shelfview-reader-shell__contents-list"
+      >
+        <li
+          v-for="(item, index) in manifestContentsItems"
+          :key="`manifest-contents-${index}`"
+          class="shelfview-reader-shell__contents-row"
+        >
+          <button
+            type="button"
+            class="shelfview-reader-shell__contents-link"
+            :class="{'shelfview-reader-shell__contents-link--active': isCurrentManifestContentsItem(item)}"
+            data-testid="shelfview-contents-item"
+            @click="goToManifestContentsItem(item)"
+          >
+            <span class="shelfview-reader-shell__contents-index">{{ index + 1 }}</span>
+            <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
+            <v-icon
+              v-if="isCurrentManifestContentsItem(item)"
+              small
+              class="shelfview-reader-shell__contents-active-icon"
+            >mdi-check</v-icon>
+          </button>
+        </li>
+      </ul>
+      <ul
+        v-else-if="mixedContentsItems.length > 1"
+        class="shelfview-reader-shell__contents-list"
+      >
+        <li
+          v-for="item in mixedContentsItems"
+          :key="item.itemId"
+          class="shelfview-reader-shell__contents-row"
+        >
+          <button
+            type="button"
+            class="shelfview-reader-shell__contents-link"
+            :class="{'shelfview-reader-shell__contents-link--active': isCurrentMixedItem(item)}"
+            data-testid="shelfview-contents-item"
+            @click="goToMixedContentItem(item)"
+          >
+            <span class="shelfview-reader-shell__contents-index">{{ item.index + 1 }}</span>
+            <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
+            <v-icon
+              v-if="isCurrentMixedItem(item)"
+              small
+              class="shelfview-reader-shell__contents-active-icon"
+            >mdi-check</v-icon>
+          </button>
+        </li>
+      </ul>
+      <ul
+        v-else
+        class="shelfview-reader-shell__contents-list"
+      >
+        <li
+          v-for="item in textContentsItems"
+          :key="`text-contents-${item.paragraphIndex}`"
+          class="shelfview-reader-shell__contents-row"
+        >
+          <button
+            type="button"
+            class="shelfview-reader-shell__contents-link"
+            :class="{'shelfview-reader-shell__contents-link--active': isCurrentTextContentsItem(item)}"
+            data-testid="shelfview-contents-item"
+            @click="goToTextContentsItem(item)"
+          >
+            <span class="shelfview-reader-shell__contents-index">{{ item.paragraphIndex + 1 }}</span>
+            <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
+            <v-icon
+              v-if="isCurrentTextContentsItem(item)"
+              small
+              class="shelfview-reader-shell__contents-active-icon"
+            >mdi-check</v-icon>
+          </button>
+        </li>
+      </ul>
+    </aside>
+
+    <aside
+      v-if="dictionaryDrawerOpen"
+      class="shelfview-reader-shell__dictionary-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shelfview-dictionary-title"
+      data-testid="shelfview-dictionary-drawer"
+    >
+      <header class="shelfview-reader-shell__drawer-header">
+        <h2 id="shelfview-dictionary-title">{{ $t('shelfview_reader.dictionary') }}</h2>
+        <v-btn
+          icon
+          :aria-label="$t('shelfview_reader.close')"
+          data-testid="shelfview-dictionary-close"
+          @click="closeDictionaryDrawer"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </header>
+
+      <v-text-field
+        v-model="dictionaryQuery"
+        dense
+        outlined
+        hide-details
+        :label="$t('shelfview_reader.dictionary_query')"
+        data-testid="shelfview-dictionary-query"
+      />
+
+      <div class="shelfview-reader-shell__dictionary-actions">
+        <v-btn
+          small
+          outlined
+          data-testid="shelfview-dictionary-import"
+          @click="openDictionaryPackImport"
+        >
+          <v-icon small>mdi-upload</v-icon>
+          {{ $t('shelfview_reader.dictionary_pack_import') }}
+        </v-btn>
+        <input
+          ref="dictionaryPackInput"
+          class="shelfview-reader-shell__dictionary-file-input"
+          type="file"
+          accept="application/json,.json"
+          data-testid="shelfview-dictionary-import-input"
+          @change="onDictionaryPackFileSelected"
+        />
+        <v-btn
+          v-if="dictionaryLocalEntries.length > 0"
+          small
+          outlined
+          data-testid="shelfview-dictionary-clear"
+          @click="clearDictionaryPack"
+        >
+          <v-icon small>mdi-delete-outline</v-icon>
+          {{ $t('shelfview_reader.dictionary_pack_clear') }}
+        </v-btn>
+      </div>
+
+      <p
+        v-if="!dictionaryQueryReady"
+        class="shelfview-reader-shell__dictionary-empty"
+        data-testid="shelfview-dictionary-empty"
+      >
+        {{ $t('shelfview_reader.dictionary_empty') }}
+      </p>
+
+      <ul
+        v-else
+        class="shelfview-reader-shell__dictionary-results"
+        data-testid="shelfview-dictionary-results"
+      >
+        <li
+          v-for="result in dictionaryLookupResults"
+          :key="result.key"
+          class="shelfview-reader-shell__dictionary-result"
+          :data-provider-kind="result.kind"
+          data-testid="shelfview-dictionary-result"
+        >
+          <span class="shelfview-reader-shell__dictionary-provider">{{ result.providerLabel }}</span>
+          <strong
+            v-if="result.term"
+            class="shelfview-reader-shell__dictionary-term"
+            data-testid="shelfview-dictionary-term"
+          >{{ result.term }}</strong>
+          <p
+            v-if="result.definition"
+            class="shelfview-reader-shell__dictionary-definition"
+            data-testid="shelfview-dictionary-definition"
+          >{{ result.definition }}</p>
+          <span
+            v-if="result.sourceName"
+            class="shelfview-reader-shell__dictionary-source"
+            data-testid="shelfview-dictionary-source"
+          >{{ result.sourceName }}</span>
+          <a
+            v-if="result.url"
+            class="shelfview-reader-shell__dictionary-link"
+            :href="result.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="shelfview-dictionary-search"
+          >
+            <v-icon small>mdi-open-in-new</v-icon>
+            {{ result.label }}
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <aside
       v-if="bookmarksDrawerOpen"
       class="shelfview-reader-shell__bookmarks-drawer"
       role="dialog"
@@ -577,7 +837,7 @@
       aria-labelledby="shelfview-bookmarks-title"
       data-testid="shelfview-bookmarks-drawer"
     >
-      <header class="shelfview-reader-shell__bookmarks-header">
+      <header class="shelfview-reader-shell__drawer-header">
         <h2 id="shelfview-bookmarks-title">{{ $t('shelfview_reader.bookmarks') }}</h2>
         <v-btn
           icon
@@ -616,14 +876,69 @@
           :key="bookmark.id"
           class="shelfview-reader-shell__bookmark-row"
         >
-          <button
-            type="button"
-            class="shelfview-reader-shell__bookmark-link"
-            data-testid="shelfview-bookmark-go"
-            @click="goToBookmark(bookmark)"
+          <div class="shelfview-reader-shell__bookmark-main">
+            <button
+              type="button"
+              class="shelfview-reader-shell__bookmark-link"
+              data-testid="shelfview-bookmark-go"
+              @click="goToBookmark(bookmark)"
+            >
+              {{ bookmarkLabel(bookmark) }}
+            </button>
+            <p
+              v-if="bookmark.note && editingBookmarkId !== bookmark.id"
+              class="shelfview-reader-shell__bookmark-note"
+              data-testid="shelfview-bookmark-note"
+            >
+              {{ bookmark.note }}
+            </p>
+            <form
+              v-if="editingBookmarkId === bookmark.id"
+              class="shelfview-reader-shell__bookmark-note-editor"
+              data-testid="shelfview-bookmark-note-editor"
+              @submit.prevent="saveBookmarkNote(bookmark)"
+            >
+              <v-text-field
+                v-model="bookmarkNoteDraft"
+                dense
+                outlined
+                hide-details
+                :label="$t('shelfview_reader.bookmark_note')"
+                data-testid="shelfview-bookmark-note-input"
+              />
+              <div class="shelfview-reader-shell__bookmark-note-actions">
+                <v-btn
+                  icon
+                  small
+                  type="button"
+                  :aria-label="$t('shelfview_reader.save_bookmark_note')"
+                  data-testid="shelfview-bookmark-note-save"
+                  @click="saveBookmarkNote(bookmark)"
+                >
+                  <v-icon small>mdi-check</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  small
+                  type="button"
+                  :aria-label="$t('shelfview_reader.cancel_bookmark_note')"
+                  data-testid="shelfview-bookmark-note-cancel"
+                  @click="cancelBookmarkNoteEdit"
+                >
+                  <v-icon small>mdi-close</v-icon>
+                </v-btn>
+              </div>
+            </form>
+          </div>
+          <v-btn
+            icon
+            small
+            :aria-label="$t('shelfview_reader.edit_bookmark_note')"
+            data-testid="shelfview-bookmark-note-edit"
+            @click="startBookmarkNoteEdit(bookmark)"
           >
-            {{ bookmarkLabel(bookmark) }}
-          </button>
+            <v-icon small>mdi-note-edit-outline</v-icon>
+          </v-btn>
           <v-btn
             icon
             small
@@ -976,6 +1291,36 @@
           />
         </div>
 
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-tts-rate">
+            {{ $t('shelfview_reader.read_aloud_speed') }}
+            <span>{{ textToSpeechRate.toFixed(1) }}x</span>
+          </label>
+          <v-slider
+            id="shelfview-text-tts-rate"
+            v-model.number="textToSpeechRate"
+            min="0.7"
+            max="1.4"
+            step="0.1"
+            hide-details
+            data-testid="shelfview-reader-tts-rate"
+            @input="onTextToSpeechRateChanged"
+          />
+        </div>
+
+        <v-select
+          v-if="textToSpeechVoiceOptions.length > 1"
+          v-model="textToSpeechVoiceURI"
+          :items="textToSpeechVoiceOptions"
+          item-text="text"
+          item-value="value"
+          dense
+          outlined
+          hide-details
+          :label="$t('shelfview_reader.read_aloud_voice')"
+          data-testid="shelfview-reader-tts-voice"
+        />
+
         <v-btn
           block
           color="secondary"
@@ -1023,19 +1368,37 @@ import {SeriesDto} from '@/types/komga-series'
 import {Context, ContextOrigin} from '@/types/context'
 import {getBookTitleCompact} from '@/functions/book-title'
 import {getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
-import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
+import {
+  ShelfViewManifest,
+  ShelfViewManifestContentsItem,
+  ShelfViewManifestItem,
+} from '@/shelfview/models/shelfview-manifest'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
 import {ReaderAdapter} from '@/shelfview/adapters/reader-adapter'
 import {FixedPageAdapter} from '@/shelfview/adapters/fixed-page-adapter'
 import {TextReflowAdapter} from '@/shelfview/adapters/text-reflow-adapter'
 import {MixedContentAdapter} from '@/shelfview/adapters/mixed-content-adapter'
-import {ShelfViewLocator, ShelfViewTextLocator} from '@/shelfview/models/shelfview-locator'
+import ShelfViewControlMenu from '@/shelfview/components/ShelfViewControlMenu.vue'
+import ShelfViewCanvasImagePage from '@/shelfview/components/ShelfViewCanvasImagePage.vue'
+import {ShelfViewControlMenuOption} from '@/shelfview/models/shelfview-control-menu'
+import {
+  SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+  ShelfViewLocator,
+  ShelfViewPageLocator,
+  ShelfViewTextLocator,
+} from '@/shelfview/models/shelfview-locator'
 import {ShelfViewTextParagraph} from '@/shelfview/models/shelfview-text'
 import {
+  SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION,
   ShelfViewBookmarkDto,
   ShelfViewFixedPagePreferenceSettings,
+  ShelfViewHighlightColor,
+  ShelfViewHighlightDto,
+  ShelfViewHighlightSelector,
+  ShelfViewHighlightUpdateDto,
   ShelfViewPreferenceFormat,
   ShelfViewPositionDto,
+  ShelfViewTextRangeHighlightSelector,
 } from '@/shelfview/models/shelfview-state'
 import {
   SHELFVIEW_FIXED_PAGE_FITS,
@@ -1060,6 +1423,7 @@ import {
   ShelfViewImageFilterPreset,
   shelfViewImageFilterPreset,
   shelfViewImageFilterStyle,
+  shelfViewImageFilterUsesCanvas,
 } from '@/shelfview/functions/image-filter-presets'
 import {
   ShelfViewReaderInputAction,
@@ -1068,6 +1432,30 @@ import {
   shelfViewShouldIgnoreShortcutTarget,
   shelfViewTouchAction,
 } from '@/shelfview/functions/reader-input'
+import {
+  SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS,
+  SHELFVIEW_TEXT_DISPLAY_DEFAULTS,
+  shelfViewNormalizeFixedPageDisplaySettings,
+  shelfViewNormalizeFixedPageScale,
+  shelfViewNormalizeTextDisplaySettings,
+} from '@/shelfview/functions/reader-display-settings'
+import {
+  ShelfViewDictionaryPack,
+  ShelfViewDictionaryLocalEntry,
+  ShelfViewDictionaryLookupResult,
+  shelfViewDictionaryLookupResults,
+  shelfViewNormalizeDictionaryQuery,
+  shelfViewParseDictionaryPack,
+  shelfViewWebDictionaryUrl,
+} from '@/shelfview/functions/dictionary-lookup'
+import {
+  ShelfViewPanStart,
+  shelfViewAnchoredZoomScroll,
+  shelfViewPanScroll,
+  shelfViewShouldStartPanning,
+  shelfViewTextCharacterOffsetForScroll,
+  shelfViewTextScrollTopForOffset,
+} from '@/shelfview/functions/reader-viewport'
 import {shelfViewThumbnailUrl} from '@/shelfview/functions/shelfview-urls'
 import {
   SHELFVIEW_TEXT_ALIGNS,
@@ -1086,24 +1474,50 @@ interface ShelfViewPageSource {
   url: string,
 }
 
-interface ShelfViewControlOption {
-  value: string | number,
-  icon: string,
-  label: string,
-  active: boolean,
-}
-
 interface ShelfViewTextSearchMatch {
   paragraphIndex: number,
   characterOffset: number,
 }
 
-interface ShelfViewFixedPagePanStart {
-  pointerId: number,
-  x: number,
-  y: number,
-  scrollLeft: number,
-  scrollTop: number,
+interface ShelfViewTextContentsItem {
+  paragraphIndex: number,
+  label: string,
+}
+
+interface ShelfViewReaderSelectOption {
+  text: string,
+  value: string,
+}
+
+interface ShelfViewTextParagraphSegment {
+  key: string,
+  text: string,
+  highlighted: boolean,
+  color?: ShelfViewHighlightColor,
+}
+
+interface ShelfViewTextHighlightRange {
+  start: number,
+  end: number,
+  color: ShelfViewHighlightColor,
+}
+
+interface ShelfViewTextSelectionEndpoint {
+  paragraphIndex: number,
+  characterOffset: number,
+}
+
+interface ShelfViewSelectedTextRange {
+  startParagraph: number,
+  startCharacterOffset: number,
+  endParagraph: number,
+  endCharacterOffset: number,
+  textQuote?: string,
+}
+
+interface ShelfViewDictionaryLookupDisplayResult extends ShelfViewDictionaryLookupResult {
+  providerLabel: string,
+  label: string,
 }
 
 type ShelfViewReaderStateStatus =
@@ -1119,38 +1533,21 @@ const SHELFVIEW_TEXT_FORMAT: ShelfViewPreferenceFormat = 'TEXT_REFLOW'
 const POSITION_SAVE_DEBOUNCE_MS = 2000
 const PREFERENCE_SAVE_DEBOUNCE_MS = 600
 const SLIDESHOW_INTERVAL_MS = 5000
-const FIXED_PAGE_SCALE_MIN = 50
-const FIXED_PAGE_SCALE_MAX = 300
 const FIXED_PAGE_WHEEL_SCALE_STEP = 10
-
-const TEXT_DISPLAY_DEFAULTS = {
-  textTheme: 'PAPER' as ShelfViewTextTheme,
-  textFontFamily: 'SYSTEM' as ShelfViewTextFontFamily,
-  textFontSize: 20,
-  textLineHeight: 1.75,
-  textLetterSpacing: 0,
-  textWordSpacing: 0,
-  textContentWidth: 760,
-  textPageMargin: 56,
-  textParagraphSpacing: 1.35,
-  textAlign: 'LEFT' as ShelfViewTextAlign,
-  textFontWeight: 400,
-  textBrightness: 1,
-}
-
-const FIXED_PAGE_DISPLAY_DEFAULTS = {
-  fixedPageRotation: 0 as ShelfViewFixedPageRotation,
-  fixedPageCoverSingle: false,
-  fixedPageScale: 100,
-  fixedPageGap: 12,
-  fixedPageMargin: 16,
-  fixedPageBackground: 'DARK' as ShelfViewFixedPageBackground,
-  fixedPageBrightness: 1,
-  fixedPageContrast: 1,
-}
+const TEXT_CONTENTS_LABEL_MAX_LENGTH = 80
+const TEXT_CONTENTS_HEADING_MAX_LENGTH = 96
+const TEXT_HIGHLIGHT_QUOTE_MAX_LENGTH = 500
+const TEXT_TO_SPEECH_RATE_DEFAULT = 1
+const TEXT_TO_SPEECH_RATE_MIN = 0.7
+const TEXT_TO_SPEECH_RATE_MAX = 1.4
+const DICTIONARY_PACK_STORAGE_KEY = 'shelfview.dictionaryPack.v1'
 
 export default Vue.extend({
   name: 'ShelfViewReaderShell',
+  components: {
+    ShelfViewCanvasImagePage,
+    ShelfViewControlMenu,
+  },
   props: {
     bookId: {
       type: String,
@@ -1173,26 +1570,26 @@ export default Vue.extend({
     readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
-    fixedPageRotation: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageRotation,
-    fixedPageCoverSingle: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageCoverSingle,
-    fixedPageScale: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageScale,
-    fixedPageGap: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageGap,
-    fixedPageMargin: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageMargin,
-    fixedPageBackground: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBackground,
-    fixedPageBrightness: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBrightness,
-    fixedPageContrast: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageContrast,
-    textTheme: TEXT_DISPLAY_DEFAULTS.textTheme,
-    textFontFamily: TEXT_DISPLAY_DEFAULTS.textFontFamily,
-    textFontSize: TEXT_DISPLAY_DEFAULTS.textFontSize,
-    textLineHeight: TEXT_DISPLAY_DEFAULTS.textLineHeight,
-    textLetterSpacing: TEXT_DISPLAY_DEFAULTS.textLetterSpacing,
-    textWordSpacing: TEXT_DISPLAY_DEFAULTS.textWordSpacing,
-    textContentWidth: TEXT_DISPLAY_DEFAULTS.textContentWidth,
-    textPageMargin: TEXT_DISPLAY_DEFAULTS.textPageMargin,
-    textParagraphSpacing: TEXT_DISPLAY_DEFAULTS.textParagraphSpacing,
-    textAlign: TEXT_DISPLAY_DEFAULTS.textAlign,
-    textFontWeight: TEXT_DISPLAY_DEFAULTS.textFontWeight,
-    textBrightness: TEXT_DISPLAY_DEFAULTS.textBrightness,
+    fixedPageRotation: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageRotation,
+    fixedPageCoverSingle: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageCoverSingle,
+    fixedPageScale: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageScale,
+    fixedPageGap: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageGap,
+    fixedPageMargin: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageMargin,
+    fixedPageBackground: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBackground,
+    fixedPageBrightness: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBrightness,
+    fixedPageContrast: SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageContrast,
+    textTheme: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textTheme,
+    textFontFamily: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textFontFamily,
+    textFontSize: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textFontSize,
+    textLineHeight: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textLineHeight,
+    textLetterSpacing: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textLetterSpacing,
+    textWordSpacing: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textWordSpacing,
+    textContentWidth: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textContentWidth,
+    textPageMargin: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textPageMargin,
+    textParagraphSpacing: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textParagraphSpacing,
+    textAlign: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textAlign,
+    textFontWeight: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textFontWeight,
+    textBrightness: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textBrightness,
     fixedPageSettingsOpen: false,
     textSettingsOpen: false,
     openControlMenu: null as string | null,
@@ -1200,18 +1597,30 @@ export default Vue.extend({
     textSearchOpen: false,
     textSearchQuery: '',
     textSearchMatchIndex: 0,
+    textToSpeechActive: false,
+    textToSpeechRate: TEXT_TO_SPEECH_RATE_DEFAULT,
+    textToSpeechVoiceURI: '',
+    textToSpeechVoices: [] as SpeechSynthesisVoice[],
+    textToSpeechUtterance: undefined as SpeechSynthesisUtterance | undefined,
     pageJumpInput: '1',
     slideshowActive: false,
     slideshowTimer: undefined as number | undefined,
     showShortcutHelp: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
+    highlights: [] as ShelfViewHighlightDto[],
     bookmarksDrawerOpen: false,
+    contentsDrawerOpen: false,
+    dictionaryDrawerOpen: false,
+    dictionaryQuery: '',
+    dictionaryLocalEntries: [] as ShelfViewDictionaryLocalEntry[],
+    editingBookmarkId: null as string | null,
+    bookmarkNoteDraft: '',
     readerStateStatus: 'IDLE' as ShelfViewReaderStateStatus,
     readerStateMessage: '',
     positionSaveTimer: undefined as number | undefined,
     preferenceSaveTimer: undefined as number | undefined,
     touchStart: undefined as ShelfViewTouchPoint | undefined,
-    fixedPagePanStart: undefined as ShelfViewFixedPagePanStart | undefined,
+    fixedPagePanStart: undefined as ShelfViewPanStart | undefined,
     fixedPagePanning: false,
     setupRequestId: 0,
   }),
@@ -1222,6 +1631,10 @@ export default Vue.extend({
     window.addEventListener('orientationchange', this.onReaderViewportChanged)
     window.addEventListener('pagehide', this.onPageHide)
     document.addEventListener('visibilitychange', this.onVisibilityChange)
+    this.refreshTextToSpeechVoices()
+    if (this.browserTextToSpeechVoiceListAvailable()) {
+      window.speechSynthesis.addEventListener('voiceschanged', this.refreshTextToSpeechVoices)
+    }
     await this.setup(this.bookId)
   },
   beforeDestroy() {
@@ -1235,6 +1648,9 @@ export default Vue.extend({
     window.removeEventListener('orientationchange', this.onReaderViewportChanged)
     window.removeEventListener('pagehide', this.onPageHide)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    if (this.browserTextToSpeechVoiceListAvailable()) {
+      window.speechSynthesis.removeEventListener('voiceschanged', this.refreshTextToSpeechVoices)
+    }
     this.destroyAdapter()
   },
   async beforeRouteUpdate(to, from, next) {
@@ -1263,6 +1679,77 @@ export default Vue.extend({
     },
     textSearchAvailable(): boolean {
       return this.textControlsVisible && !!this.manifest?.capabilities.search
+    },
+    textToSpeechAvailable(): boolean {
+      return this.textControlsVisible && this.currentTextToSpeechText.length > 0 && this.browserTextToSpeechAvailable()
+    },
+    textToSpeechLabel(): string {
+      return this.textToSpeechActive
+        ? this.$t('shelfview_reader.stop_read_aloud') as string
+        : this.$t('shelfview_reader.read_aloud') as string
+    },
+    textToSpeechVoiceOptions(): ShelfViewReaderSelectOption[] {
+      return [
+        {
+          text: this.$t('shelfview_reader.read_aloud_voice_default') as string,
+          value: '',
+        },
+        ...this.textToSpeechVoices.map(voice => ({
+          text: voice.lang ? `${voice.name} (${voice.lang})` : voice.name,
+          value: voice.voiceURI,
+        })),
+      ]
+    },
+    currentTextToSpeechText(): string {
+      const locator = this.currentTextLocator()
+      if (!locator) return ''
+
+      return this.visibleTextParagraphs
+        .find(paragraph => paragraph.paragraphIndex === locator.paragraph)
+        ?.text
+        .trim() ?? ''
+    },
+    currentTextParagraphHighlighted(): boolean {
+      const locator = this.currentTextLocator()
+      return !!locator && (this.textParagraphBookmarked(locator.paragraph) || this.textParagraphHasDedicatedHighlight(locator.paragraph))
+    },
+    textHighlightAvailable(): boolean {
+      return !!this.currentTextLocator()
+    },
+    textHighlightLabel(): string {
+      return this.$t('shelfview_reader.highlight_selection') as string
+    },
+    dictionaryQueryReady(): boolean {
+      return this.normalizedDictionaryQuery(this.dictionaryQuery).length > 0
+    },
+    dictionarySearchUrl(): string {
+      return shelfViewWebDictionaryUrl(this.dictionaryQuery)
+    },
+    dictionaryLookupResults(): ShelfViewDictionaryLookupDisplayResult[] {
+      return shelfViewDictionaryLookupResults(this.dictionaryQuery, this.dictionaryLocalEntries)
+        .map(result => ({
+          ...result,
+          providerLabel: this.$t(result.providerLabelKey) as string,
+          label: result.actionLabelKey ? this.$t(result.actionLabelKey) as string : result.term ?? '',
+        }))
+    },
+    contentsAvailable(): boolean {
+      return this.manifestContentsItems.length > 0 || this.mixedContentsItems.length > 1 || this.textContentsItems.length > 1
+    },
+    manifestContentsItems(): ShelfViewManifestContentsItem[] {
+      return this.manifest?.contents ?? []
+    },
+    mixedContentsItems(): ShelfViewManifestItem[] {
+      if (this.manifest?.kind !== 'MIXED_CONTENT_SEQUENCE') return []
+      return [...(this.manifest.items ?? [])].sort((a, b) => a.index - b.index)
+    },
+    textContentsItems(): ShelfViewTextContentsItem[] {
+      if (!this.textControlsVisible || this.mixedContentsItems.length > 1) return []
+
+      return this.textContentsParagraphs().map(paragraph => ({
+        paragraphIndex: paragraph.paragraphIndex,
+        label: this.textContentsLabel(paragraph),
+      }))
     },
     readerStateNoticeVisible(): boolean {
       return this.readerStateStatus !== 'IDLE' && this.readerStateMessage.length > 0
@@ -1452,6 +1939,11 @@ export default Vue.extend({
     imageFiltersAvailable(): boolean {
       return !!this.manifest?.capabilities.imageFilters
     },
+    canvasImageProcessingEnabled(): boolean {
+      return this.imageFiltersAvailable &&
+        this.readerLayout !== 'CONTINUOUS_SCROLL' &&
+        shelfViewImageFilterUsesCanvas(this.imageFilterPreset)
+    },
     imageFilterStyle(): Record<string, string> {
       const style = this.imageFiltersAvailable ? shelfViewImageFilterStyle(this.imageFilterPreset) : shelfViewImageFilterStyle('ORIGINAL')
       style['--sv-brightness'] = roundNumber((Number(style['--sv-brightness']) || 1) * this.fixedPageBrightness, 4).toString()
@@ -1547,7 +2039,7 @@ export default Vue.extend({
     pageFitLabel(): string {
       return this.pageFitLabelFor(this.pageFit)
     },
-    readerLayoutOptions(): ShelfViewControlOption[] {
+    readerLayoutOptions(): ShelfViewControlMenuOption[] {
       return this.availableReaderLayouts.map(value => ({
         value,
         icon: this.readerLayoutIconFor(value),
@@ -1555,7 +2047,7 @@ export default Vue.extend({
         active: value === this.readerLayout,
       }))
     },
-    pageFitOptions(): ShelfViewControlOption[] {
+    pageFitOptions(): ShelfViewControlMenuOption[] {
       return SHELFVIEW_FIXED_PAGE_FITS.map(value => ({
         value,
         icon: this.pageFitIconFor(value),
@@ -1563,7 +2055,7 @@ export default Vue.extend({
         active: value === this.pageFit,
       }))
     },
-    readingDirectionOptions(): ShelfViewControlOption[] {
+    readingDirectionOptions(): ShelfViewControlMenuOption[] {
       return (['LTR', 'RTL'] as ShelfViewFixedPageReadingDirection[]).map(value => ({
         value,
         icon: this.readingDirectionIconFor(value),
@@ -1571,7 +2063,7 @@ export default Vue.extend({
         active: value === this.readingDirection,
       }))
     },
-    fixedPageRotationOptions(): ShelfViewControlOption[] {
+    fixedPageRotationOptions(): ShelfViewControlMenuOption[] {
       return SHELFVIEW_FIXED_PAGE_ROTATIONS.map(value => ({
         value,
         icon: 'mdi-rotate-right',
@@ -1579,7 +2071,7 @@ export default Vue.extend({
         active: value === this.fixedPageRotation,
       }))
     },
-    imageFilterPresetOptions(): ShelfViewControlOption[] {
+    imageFilterPresetOptions(): ShelfViewControlMenuOption[] {
       return SHELFVIEW_IMAGE_FILTER_PRESETS.map(option => ({
         value: option.id,
         icon: option.icon,
@@ -1587,7 +2079,7 @@ export default Vue.extend({
         active: option.id === this.imageFilterPreset,
       }))
     },
-    textThemeOptions(): ShelfViewControlOption[] {
+    textThemeOptions(): ShelfViewControlMenuOption[] {
       return SHELFVIEW_TEXT_THEMES.map(value => ({
         value,
         icon: shelfViewTextTheme(value).icon,
@@ -1595,7 +2087,7 @@ export default Vue.extend({
         active: value === this.textTheme,
       }))
     },
-    controlMenuOptions(): ShelfViewControlOption[] {
+    controlMenuOptions(): ShelfViewControlMenuOption[] {
       switch (this.openControlMenu) {
         case 'layout':
           return this.readerLayoutOptions
@@ -1722,7 +2214,13 @@ export default Vue.extend({
       this.error = undefined
       this.manifest = undefined as unknown as ShelfViewManifest
       this.bookmarks = []
+      this.highlights = []
       this.bookmarksDrawerOpen = false
+      this.contentsDrawerOpen = false
+      this.dictionaryDrawerOpen = false
+      this.dictionaryQuery = ''
+      this.dictionaryLocalEntries = []
+      this.loadDictionaryPackFromBrowserStorage()
       this.textSearchOpen = false
       this.textSearchQuery = ''
       this.textSearchMatchIndex = 0
@@ -1778,9 +2276,10 @@ export default Vue.extend({
       preferenceFormats: ShelfViewPreferenceFormat[],
     ): Promise<ShelfViewPositionDto | undefined> {
       try {
-        const [savedPosition, bookmarks, preferences] = await Promise.all([
+        const [savedPosition, bookmarks, highlights, preferences] = await Promise.all([
           this.$shelfViewState.getPosition(bookId),
           this.$shelfViewState.getBookmarks(bookId),
+          this.$shelfViewState.getHighlights(bookId),
           Promise.all(preferenceFormats.map(format =>
             this.$shelfViewState.getPreference({
               scopeType: 'BOOK',
@@ -1791,6 +2290,7 @@ export default Vue.extend({
         ])
 
         this.bookmarks = bookmarks
+        this.highlights = highlights
         preferences.forEach(preference => this.applyPreferenceSettings(preference.effectiveSettings, false, preference.format))
         this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_restored') as string)
 
@@ -1899,6 +2399,7 @@ export default Vue.extend({
       return error.message.toLowerCase().includes('encoding')
     },
     destroyAdapter() {
+      this.stopTextToSpeech()
       this.adapter?.destroy()
       this.adapter = undefined
       this.currentLocator = undefined
@@ -2120,7 +2621,7 @@ export default Vue.extend({
       this.$nextTick(() => this.focusReaderStage())
     },
     resetFixedPageDisplaySettings() {
-      this.applyFixedPagePreferenceSettings(FIXED_PAGE_DISPLAY_DEFAULTS)
+      this.applyFixedPagePreferenceSettings(SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS)
       this.onFixedPageDisplaySettingChanged()
     },
     onFixedPageDisplaySettingChanged() {
@@ -2142,13 +2643,19 @@ export default Vue.extend({
       this.$nextTick(() => this.focusReaderStage())
     },
     resetTextDisplaySettings() {
-      this.applyTextPreferenceSettings(TEXT_DISPLAY_DEFAULTS)
+      this.applyTextPreferenceSettings(SHELFVIEW_TEXT_DISPLAY_DEFAULTS)
       this.onTextDisplaySettingChanged()
     },
     onTextDisplaySettingChanged() {
       this.normalizeTextDisplaySettings()
       this.$nextTick(() => this.restoreCurrentTextScrollPosition())
       this.schedulePreferenceSave()
+    },
+    onTextToSpeechRateChanged() {
+      const rate = Number(this.textToSpeechRate)
+      this.textToSpeechRate = Number.isFinite(rate)
+        ? roundNumber(clampNumber(rate, TEXT_TO_SPEECH_RATE_MIN, TEXT_TO_SPEECH_RATE_MAX), 1)
+        : TEXT_TO_SPEECH_RATE_DEFAULT
     },
     applyPreferenceSettings(
       settings: ShelfViewFixedPagePreferenceSettings,
@@ -2197,18 +2704,28 @@ export default Vue.extend({
       this.normalizeFixedPageDisplaySettings()
     },
     normalizeFixedPageDisplaySettings() {
-      this.fixedPageScale = this.normalizedFixedPageScale(this.fixedPageScale)
-      this.fixedPageGap = Math.round(clampNumber(this.fixedPageGap, 0, 64) / 2) * 2
-      this.fixedPageMargin = Math.round(clampNumber(this.fixedPageMargin, 0, 96) / 4) * 4
-      if (!SHELFVIEW_FIXED_PAGE_BACKGROUNDS.some(option => option.id === this.fixedPageBackground)) {
-        this.fixedPageBackground = FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBackground
-      }
-      this.fixedPageRotation = normalizeFixedPageRotation(this.fixedPageRotation)
-      this.fixedPageBrightness = roundNumber(clampNumber(this.fixedPageBrightness, 0.8, 1.2), 2)
-      this.fixedPageContrast = roundNumber(clampNumber(this.fixedPageContrast, 0.85, 1.35), 2)
+      const settings = shelfViewNormalizeFixedPageDisplaySettings({
+        fixedPageRotation: this.fixedPageRotation,
+        fixedPageCoverSingle: this.fixedPageCoverSingle,
+        fixedPageScale: this.fixedPageScale,
+        fixedPageGap: this.fixedPageGap,
+        fixedPageMargin: this.fixedPageMargin,
+        fixedPageBackground: this.fixedPageBackground,
+        fixedPageBrightness: this.fixedPageBrightness,
+        fixedPageContrast: this.fixedPageContrast,
+      })
+
+      this.fixedPageRotation = settings.fixedPageRotation
+      this.fixedPageCoverSingle = settings.fixedPageCoverSingle
+      this.fixedPageScale = settings.fixedPageScale
+      this.fixedPageGap = settings.fixedPageGap
+      this.fixedPageMargin = settings.fixedPageMargin
+      this.fixedPageBackground = settings.fixedPageBackground
+      this.fixedPageBrightness = settings.fixedPageBrightness
+      this.fixedPageContrast = settings.fixedPageContrast
     },
     normalizedFixedPageScale(value: number): number {
-      return Math.round(clampNumber(value, FIXED_PAGE_SCALE_MIN, FIXED_PAGE_SCALE_MAX) / 5) * 5
+      return shelfViewNormalizeFixedPageScale(value)
     },
     applyTextPreferenceSettings(settings: ShelfViewFixedPagePreferenceSettings) {
       if (settings.textTheme && SHELFVIEW_TEXT_THEMES.includes(settings.textTheme)) this.textTheme = settings.textTheme
@@ -2226,18 +2743,33 @@ export default Vue.extend({
       this.normalizeTextDisplaySettings()
     },
     normalizeTextDisplaySettings() {
-      if (!SHELFVIEW_TEXT_THEMES.includes(this.textTheme)) this.textTheme = TEXT_DISPLAY_DEFAULTS.textTheme
-      if (!SHELFVIEW_TEXT_FONT_FAMILIES.includes(this.textFontFamily)) this.textFontFamily = TEXT_DISPLAY_DEFAULTS.textFontFamily
-      if (!SHELFVIEW_TEXT_ALIGNS.includes(this.textAlign)) this.textAlign = TEXT_DISPLAY_DEFAULTS.textAlign
-      this.textFontSize = Math.round(clampNumber(this.textFontSize, 14, 32))
-      this.textLineHeight = roundNumber(clampNumber(this.textLineHeight, 1.35, 2.4), 2)
-      this.textLetterSpacing = roundNumber(clampNumber(this.textLetterSpacing, 0, 2.5), 1)
-      this.textWordSpacing = roundNumber(clampNumber(this.textWordSpacing, 0, 8), 1)
-      this.textContentWidth = Math.round(clampNumber(this.textContentWidth, 520, 1180))
-      this.textPageMargin = Math.round(clampNumber(this.textPageMargin, 16, 120))
-      this.textParagraphSpacing = roundNumber(clampNumber(this.textParagraphSpacing, 0.6, 2.6), 2)
-      this.textFontWeight = Math.round(clampNumber(this.textFontWeight, 300, 700) / 50) * 50
-      this.textBrightness = roundNumber(clampNumber(this.textBrightness, 0.8, 1.2), 2)
+      const settings = shelfViewNormalizeTextDisplaySettings({
+        textTheme: this.textTheme,
+        textFontFamily: this.textFontFamily,
+        textFontSize: this.textFontSize,
+        textLineHeight: this.textLineHeight,
+        textLetterSpacing: this.textLetterSpacing,
+        textWordSpacing: this.textWordSpacing,
+        textContentWidth: this.textContentWidth,
+        textPageMargin: this.textPageMargin,
+        textParagraphSpacing: this.textParagraphSpacing,
+        textAlign: this.textAlign,
+        textFontWeight: this.textFontWeight,
+        textBrightness: this.textBrightness,
+      })
+
+      this.textTheme = settings.textTheme
+      this.textFontFamily = settings.textFontFamily
+      this.textFontSize = settings.textFontSize
+      this.textLineHeight = settings.textLineHeight
+      this.textLetterSpacing = settings.textLetterSpacing
+      this.textWordSpacing = settings.textWordSpacing
+      this.textContentWidth = settings.textContentWidth
+      this.textPageMargin = settings.textPageMargin
+      this.textParagraphSpacing = settings.textParagraphSpacing
+      this.textAlign = settings.textAlign
+      this.textFontWeight = settings.textFontWeight
+      this.textBrightness = settings.textBrightness
     },
     currentPreferenceSettings(format?: ShelfViewPreferenceFormat): ShelfViewFixedPagePreferenceSettings {
       if ((format ?? this.currentPreferenceFormat()) === SHELFVIEW_TEXT_FORMAT) {
@@ -2378,6 +2910,89 @@ export default Vue.extend({
       this.textSearchOpen = !this.textSearchOpen
       this.$nextTick(() => this.focusReaderStage())
     },
+    toggleTextToSpeech() {
+      if (this.textToSpeechActive) {
+        this.stopTextToSpeech()
+        return
+      }
+
+      this.startTextToSpeech()
+    },
+    startTextToSpeech() {
+      if (!this.textToSpeechAvailable) return
+
+      const text = this.selectedTextToSpeechText() || this.currentTextToSpeechText
+      if (!text) return
+
+      this.stopTextToSpeech()
+
+      const utterance = new window.SpeechSynthesisUtterance(text)
+      utterance.rate = this.textToSpeechRate
+      const voice = this.selectedTextToSpeechVoice()
+      if (voice) utterance.voice = voice
+      utterance.onend = () => this.clearTextToSpeechState(utterance)
+      utterance.onerror = () => this.clearTextToSpeechState(utterance)
+      this.textToSpeechUtterance = utterance
+      this.textToSpeechActive = true
+      window.speechSynthesis.speak(utterance)
+    },
+    selectedTextToSpeechText(): string {
+      const selection = window.getSelection?.()
+      if (
+        !selection ||
+        typeof selection.rangeCount !== 'number' ||
+        typeof selection.getRangeAt !== 'function' ||
+        selection.rangeCount === 0 ||
+        selection.isCollapsed
+      ) return ''
+
+      const range = selection.getRangeAt(0)
+      const start = this.textSelectionEndpoint(range.startContainer, range.startOffset)
+      const end = this.textSelectionEndpoint(range.endContainer, range.endOffset)
+      if (!start || !end) return ''
+
+      return selection.toString().replace(/\s+/g, ' ').trim()
+    },
+    refreshTextToSpeechVoices() {
+      if (!this.browserTextToSpeechVoiceListAvailable()) {
+        this.textToSpeechVoices = []
+        this.textToSpeechVoiceURI = ''
+        return
+      }
+
+      this.textToSpeechVoices = window.speechSynthesis.getVoices()
+      if (this.textToSpeechVoiceURI && !this.selectedTextToSpeechVoice()) {
+        this.textToSpeechVoiceURI = ''
+      }
+    },
+    selectedTextToSpeechVoice(): SpeechSynthesisVoice | undefined {
+      if (!this.textToSpeechVoiceURI) return undefined
+      return this.textToSpeechVoices.find(voice => voice.voiceURI === this.textToSpeechVoiceURI)
+    },
+    stopTextToSpeech() {
+      if (this.browserTextToSpeechAvailable()) window.speechSynthesis.cancel()
+      this.textToSpeechUtterance = undefined
+      this.textToSpeechActive = false
+    },
+    clearTextToSpeechState(utterance: SpeechSynthesisUtterance) {
+      if (this.textToSpeechUtterance !== utterance) return
+      this.textToSpeechUtterance = undefined
+      this.textToSpeechActive = false
+    },
+    browserTextToSpeechAvailable(): boolean {
+      return typeof window !== 'undefined' &&
+        !!window.speechSynthesis &&
+        typeof window.speechSynthesis.speak === 'function' &&
+        typeof window.speechSynthesis.cancel === 'function' &&
+        typeof window.SpeechSynthesisUtterance === 'function'
+    },
+    browserTextToSpeechVoiceListAvailable(): boolean {
+      return typeof window !== 'undefined' &&
+        !!window.speechSynthesis &&
+        typeof window.speechSynthesis.getVoices === 'function' &&
+        typeof window.speechSynthesis.addEventListener === 'function' &&
+        typeof window.speechSynthesis.removeEventListener === 'function'
+    },
     onTextSearchInput() {
       this.textSearchMatchIndex = 0
       if (this.textSearchMatches.length > 0) void this.goToTextSearchMatch(0)
@@ -2407,10 +3022,148 @@ export default Vue.extend({
     searchableTextParagraphs(): ShelfViewTextParagraph[] {
       return this.textAdapter?.getVisibleParagraphs('CONTINUOUS_SCROLL') ?? this.mixedContentAdapter?.getVisibleParagraphs('CONTINUOUS_SCROLL') ?? []
     },
+    textContentsParagraphs(): ShelfViewTextParagraph[] {
+      const paragraphs = this.searchableTextParagraphs()
+      const headings = paragraphs.filter(paragraph => this.textParagraphLooksLikeHeading(paragraph))
+      return headings.length > 1 ? headings : paragraphs
+    },
+    textContentsLabel(paragraph: ShelfViewTextParagraph): string {
+      const label = this.normalizedTextContentsLabel(paragraph.text)
+      if (!label) return this.$t('shelfview_reader.bookmark_paragraph', {n: paragraph.paragraphIndex + 1}) as string
+      return label.length > TEXT_CONTENTS_LABEL_MAX_LENGTH
+        ? `${label.slice(0, TEXT_CONTENTS_LABEL_MAX_LENGTH)}...`
+        : label
+    },
+    normalizedTextContentsLabel(text: string): string {
+      return text.replace(/\s+/g, ' ').trim().replace(/^#{1,6}\s+/, '')
+    },
+    textParagraphLooksLikeHeading(paragraph: ShelfViewTextParagraph): boolean {
+      const original = paragraph.text.replace(/\s+/g, ' ').trim()
+      const label = this.normalizedTextContentsLabel(paragraph.text)
+      if (!label || label.length > TEXT_CONTENTS_HEADING_MAX_LENGTH) return false
+
+      return /^#{1,6}\s+\S+/.test(original) ||
+        /^(chapter|part|book)\s+[\divxlcdm]+(?:\s|$|[.:)-])/i.test(label) ||
+        /^제\s*\d+\s*(장|부|화|편)(?:\s|$|[.:：-])/.test(label) ||
+        /^\d+(?:\.\d+)*[.)]?\s+\S+/.test(label)
+    },
     textParagraphClass(paragraphIndex: number): object {
       return {
+        'shelfview-reader-shell__text-paragraph--highlighted': this.textParagraphBookmarked(paragraphIndex),
         'shelfview-reader-shell__text-paragraph--search-current': this.currentTextSearchMatch?.paragraphIndex === paragraphIndex,
       }
+    },
+    textParagraphSegments(paragraph: ShelfViewTextParagraph): ShelfViewTextParagraphSegment[] {
+      const ranges = this.textDedicatedHighlightRangesForParagraph(paragraph.paragraphIndex, paragraph.text.length)
+      if (ranges.length === 0) {
+        return [{
+          key: `${paragraph.paragraphIndex}-plain`,
+          text: paragraph.text,
+          highlighted: false,
+        }]
+      }
+
+      const segments: ShelfViewTextParagraphSegment[] = []
+      let cursor = 0
+
+      ranges
+        .sort((a, b) => a.start - b.start || a.end - b.end)
+        .forEach((range, rangeIndex) => {
+          if (range.end <= cursor) return
+
+          const start = Math.max(cursor, range.start)
+          if (start > cursor) {
+            segments.push({
+              key: `${paragraph.paragraphIndex}-plain-${cursor}-${start}`,
+              text: paragraph.text.slice(cursor, start),
+              highlighted: false,
+            })
+          }
+
+          segments.push({
+            key: `${paragraph.paragraphIndex}-highlight-${rangeIndex}-${start}-${range.end}`,
+            text: paragraph.text.slice(start, range.end),
+            highlighted: true,
+            color: range.color,
+          })
+          cursor = range.end
+        })
+
+      if (cursor < paragraph.text.length) {
+        segments.push({
+          key: `${paragraph.paragraphIndex}-plain-${cursor}-end`,
+          text: paragraph.text.slice(cursor),
+          highlighted: false,
+        })
+      }
+
+      return segments
+    },
+    textParagraphSegmentClass(segment: ShelfViewTextParagraphSegment): object {
+      const classes: Record<string, boolean> = {
+        'shelfview-reader-shell__text-highlight': segment.highlighted,
+      }
+      if (segment.highlighted && segment.color) {
+        classes[`shelfview-reader-shell__text-highlight--${segment.color.toLowerCase()}`] = true
+      }
+      return classes
+    },
+    textParagraphHasDedicatedHighlight(paragraphIndex: number): boolean {
+      return this.textDedicatedHighlightRangesForParagraph(paragraphIndex, this.currentTextParagraphLength(paragraphIndex)).length > 0
+    },
+    textDedicatedHighlightRangesForParagraph(
+      paragraphIndex: number,
+      paragraphLength: number,
+    ): ShelfViewTextHighlightRange[] {
+      if (paragraphLength <= 0) return []
+
+      return this.highlights
+        .map(highlight => {
+          const selector = this.textHighlightSelectorForCurrentContent(highlight)
+          if (!selector) return undefined
+          if (paragraphIndex < selector.startParagraph || paragraphIndex > selector.endParagraph) return undefined
+
+          const start = selector.startParagraph === paragraphIndex ? selector.startCharacterOffset : 0
+          const end = selector.endParagraph === paragraphIndex ? selector.endCharacterOffset : paragraphLength
+          const clampedStart = Math.round(clampNumber(start, 0, paragraphLength))
+          const clampedEnd = Math.round(clampNumber(end, 0, paragraphLength))
+          if (clampedEnd <= clampedStart) return undefined
+
+          return {
+            start: clampedStart,
+            end: clampedEnd,
+            color: highlight.color,
+          }
+        })
+        .filter((range): range is ShelfViewTextHighlightRange => !!range)
+    },
+    textHighlightSelectorForCurrentContent(highlight: ShelfViewHighlightDto): ShelfViewTextRangeHighlightSelector | undefined {
+      if (highlight.selector.kind === 'TEXT_RANGE') {
+        if (this.currentLocator?.kind !== 'TEXT' || highlight.locator.kind !== 'TEXT') return undefined
+        return highlight.selector
+      }
+
+      if (highlight.selector.kind !== 'MIXED_TEXT_RANGE') return undefined
+      if (this.currentLocator?.kind !== 'MIXED' || highlight.locator.kind !== 'MIXED') return undefined
+      if (highlight.selector.itemId !== this.currentLocator.itemId || highlight.selector.itemIndex !== this.currentLocator.itemIndex) return undefined
+      if (highlight.locator.itemId !== this.currentLocator.itemId || highlight.locator.itemIndex !== this.currentLocator.itemIndex) return undefined
+      return highlight.selector.itemSelector
+    },
+    textParagraphBookmarked(paragraphIndex: number): boolean {
+      return this.bookmarks.some(bookmark => this.bookmarkMatchesCurrentTextParagraph(bookmark, paragraphIndex))
+    },
+    bookmarkMatchesCurrentTextParagraph(
+      bookmark: ShelfViewBookmarkDto,
+      paragraphIndex: number,
+    ): boolean {
+      if (this.currentLocator?.kind === 'MIXED') {
+        return bookmark.locator.kind === 'MIXED' &&
+          bookmark.locator.itemId === this.currentLocator.itemId &&
+          bookmark.locator.itemLocator.kind === 'TEXT' &&
+          bookmark.locator.itemLocator.paragraph === paragraphIndex
+      }
+
+      return bookmark.locator.kind === 'TEXT' && bookmark.locator.paragraph === paragraphIndex
     },
     async goToPageJumpInput() {
       const pageNumber = Number(this.pageJumpInput)
@@ -2460,7 +3213,165 @@ export default Vue.extend({
     },
     closeBookmarksDrawer() {
       this.bookmarksDrawerOpen = false
+      this.cancelBookmarkNoteEdit()
       this.$nextTick(() => this.focusReaderStage())
+    },
+    closeContentsDrawer() {
+      this.contentsDrawerOpen = false
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    closeDictionaryDrawer() {
+      this.dictionaryDrawerOpen = false
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    openDictionaryLookup() {
+      const selectedText = this.normalizedDictionaryQuery(window.getSelection?.()?.toString() ?? '')
+      if (selectedText) this.dictionaryQuery = selectedText
+      this.dictionaryDrawerOpen = true
+    },
+    openDictionaryPackImport() {
+      const input = this.$refs.dictionaryPackInput as HTMLInputElement | undefined
+      input?.click()
+    },
+    async onDictionaryPackFileSelected(event: Event) {
+      const input = event.target as HTMLInputElement | null
+      const file = input?.files?.[0]
+      if (!file) return
+
+      try {
+        await this.importDictionaryPackJson(await file.text())
+      } catch (e) {
+        this.setReaderStateStatus('ERROR', this.$t('shelfview_reader.status_dictionary_pack_failed') as string)
+      } finally {
+        if (input) input.value = ''
+      }
+    },
+    async importDictionaryPackJson(rawJson: string) {
+      const pack = shelfViewParseDictionaryPack(rawJson)
+      this.applyDictionaryPack(pack)
+      this.saveDictionaryPackToBrowserStorage(pack)
+      this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_dictionary_pack_loaded') as string)
+    },
+    applyDictionaryPack(pack: ShelfViewDictionaryPack) {
+      this.dictionaryLocalEntries = pack.entries.map(entry => ({
+        ...entry,
+        sourceName: entry.sourceName ?? pack.metadata.sourceName,
+        sourceUrl: entry.sourceUrl ?? pack.metadata.sourceUrl,
+        licenseName: entry.licenseName ?? pack.metadata.licenseName,
+      }))
+    },
+    loadDictionaryPackFromBrowserStorage() {
+      const storage = this.browserStorage()
+      if (!storage) return
+
+      const storedPack = storage.getItem(DICTIONARY_PACK_STORAGE_KEY)
+      if (!storedPack) return
+
+      try {
+        this.applyDictionaryPack(shelfViewParseDictionaryPack(storedPack))
+      } catch (e) {
+        storage.removeItem(DICTIONARY_PACK_STORAGE_KEY)
+      }
+    },
+    saveDictionaryPackToBrowserStorage(pack: ShelfViewDictionaryPack) {
+      const storage = this.browserStorage()
+      if (!storage) return
+
+      try {
+        storage.setItem(DICTIONARY_PACK_STORAGE_KEY, JSON.stringify(pack))
+      } catch (e) {
+        storage.removeItem(DICTIONARY_PACK_STORAGE_KEY)
+      }
+    },
+    clearDictionaryPack() {
+      const storage = this.browserStorage()
+      storage?.removeItem(DICTIONARY_PACK_STORAGE_KEY)
+      this.dictionaryLocalEntries = []
+      this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_dictionary_pack_cleared') as string)
+    },
+    browserStorage(): Storage | undefined {
+      try {
+        return typeof window !== 'undefined' ? window.localStorage : undefined
+      } catch (e) {
+        return undefined
+      }
+    },
+    normalizedDictionaryQuery(text: string): string {
+      return shelfViewNormalizeDictionaryQuery(text)
+    },
+    isCurrentManifestContentsItem(item: ShelfViewManifestContentsItem): boolean {
+      return this.sameReaderTarget(item.locator, this.currentLocator)
+    },
+    isCurrentMixedItem(item: ShelfViewManifestItem): boolean {
+      return this.currentLocator?.kind === 'MIXED' && this.currentLocator.itemId === item.itemId
+    },
+    isCurrentTextContentsItem(item: ShelfViewTextContentsItem): boolean {
+      return this.currentTextLocator()?.paragraph === item.paragraphIndex
+    },
+    async goToManifestContentsItem(item: ShelfViewManifestContentsItem) {
+      if (!this.adapter) return
+
+      await this.adapter.goTo(item.locator)
+      this.normalizeReaderLayout()
+      this.syncAdapterState()
+      this.closeContentsDrawer()
+      this.$nextTick(() => this.restoreCurrentVisibleContent())
+      this.schedulePositionSave()
+    },
+    async goToMixedContentItem(item: ShelfViewManifestItem) {
+      if (!this.adapter || this.manifest?.kind !== 'MIXED_CONTENT_SEQUENCE') return
+
+      const itemIndex = this.mixedContentsItems.findIndex(existing => existing.itemId === item.itemId)
+      if (itemIndex < 0) return
+
+      const itemLocator = this.firstLocatorForMixedContentItem(item)
+
+      await this.adapter.goTo({
+        schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+        kind: 'MIXED',
+        itemId: item.itemId,
+        itemIndex,
+        itemLocator,
+        contentFingerprint: this.manifest.contentFingerprint,
+      })
+      this.normalizeReaderLayout()
+      this.syncAdapterState()
+      this.closeContentsDrawer()
+      this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+      this.schedulePositionSave()
+    },
+    firstLocatorForMixedContentItem(item: ShelfViewManifestItem): ShelfViewPageLocator | ShelfViewTextLocator {
+      if (item.kind === 'TEXT_REFLOW') {
+        return {
+          schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+          kind: 'TEXT',
+          paragraph: 0,
+          characterOffset: 0,
+          progression: 0,
+          normalizationVersion: item.text?.normalizationVersion ?? 1,
+          contentFingerprint: item.contentFingerprint,
+        }
+      }
+
+      return {
+        schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+        kind: 'PAGE',
+        page: 0,
+        offset: 0,
+        contentFingerprint: item.contentFingerprint,
+      }
+    },
+    async goToTextContentsItem(item: ShelfViewTextContentsItem) {
+      const currentTextLocator = this.currentTextLocator()
+      if (!currentTextLocator) return
+
+      await this.goToTextLocator({
+        ...currentTextLocator,
+        paragraph: item.paragraphIndex,
+        characterOffset: 0,
+      })
+      this.closeContentsDrawer()
+      this.$nextTick(() => this.restoreCurrentTextScrollPosition())
     },
     async addBookmarkForCurrentPage() {
       if (!this.currentLocator) return
@@ -2485,6 +3396,151 @@ export default Vue.extend({
         this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_bookmark_failed') as string)
       }
     },
+    async addTextHighlightForCurrentSelection() {
+      const selectedRange = this.selectedTextHighlightRange() ?? this.currentParagraphHighlightRange()
+      const locator = selectedRange ? this.textHighlightLocatorForRange(selectedRange) : undefined
+      const selector = selectedRange ? this.textHighlightSelectorForRange(selectedRange) : undefined
+      if (!locator || !selector) return
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
+        return
+      }
+
+      try {
+        const update: ShelfViewHighlightUpdateDto = {
+          locator,
+          selector,
+          color: 'YELLOW',
+        }
+        if (selectedRange?.textQuote) update.textQuote = selectedRange.textQuote
+
+        const highlight = await this.$shelfViewState.createHighlight(this.bookId, update)
+        this.highlights = [
+          ...this.highlights.filter(existing => existing.id !== highlight.id),
+          highlight,
+        ]
+        window.getSelection?.()?.removeAllRanges()
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_highlight_saved') as string)
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_highlight_failed') as string)
+      }
+    },
+    selectedTextHighlightRange(): ShelfViewSelectedTextRange | undefined {
+      const selection = window.getSelection?.()
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return undefined
+
+      const range = selection.getRangeAt(0)
+      const start = this.textSelectionEndpoint(range.startContainer, range.startOffset)
+      const end = this.textSelectionEndpoint(range.endContainer, range.endOffset)
+      if (!start || !end) return undefined
+      if (end.paragraphIndex < start.paragraphIndex) return undefined
+      if (end.paragraphIndex === start.paragraphIndex && end.characterOffset <= start.characterOffset) return undefined
+
+      return {
+        startParagraph: start.paragraphIndex,
+        startCharacterOffset: start.characterOffset,
+        endParagraph: end.paragraphIndex,
+        endCharacterOffset: end.characterOffset,
+        textQuote: this.normalizedTextQuote(selection.toString()),
+      }
+    },
+    textSelectionEndpoint(
+      container: Node,
+      offset: number,
+    ): ShelfViewTextSelectionEndpoint | undefined {
+      const element = container.nodeType === Node.ELEMENT_NODE
+        ? container as Element
+        : container.parentElement
+      const paragraph = element?.closest<HTMLElement>('[data-text-paragraph-index]')
+      if (!paragraph) return undefined
+
+      const paragraphIndex = Number(paragraph.dataset.textParagraphIndex)
+      if (!Number.isFinite(paragraphIndex)) return undefined
+
+      const range = document.createRange()
+      range.selectNodeContents(paragraph)
+      try {
+        range.setEnd(container, offset)
+      } catch (e) {
+        return undefined
+      }
+
+      const characterOffset = Math.round(clampNumber(
+        range.toString().length,
+        0,
+        this.currentTextParagraphLength(paragraphIndex),
+      ))
+
+      return {
+        paragraphIndex,
+        characterOffset,
+      }
+    },
+    currentParagraphHighlightRange(): ShelfViewSelectedTextRange | undefined {
+      const locator = this.currentTextLocator()
+      if (!locator) return undefined
+
+      const paragraph = this.visibleTextParagraphs.find(existing => existing.paragraphIndex === locator.paragraph)
+      const paragraphLength = paragraph?.text.length ?? this.currentTextParagraphLength(locator.paragraph)
+      if (paragraphLength <= 0) return undefined
+
+      return {
+        startParagraph: locator.paragraph,
+        startCharacterOffset: 0,
+        endParagraph: locator.paragraph,
+        endCharacterOffset: paragraphLength,
+        textQuote: this.normalizedTextQuote(paragraph?.text ?? ''),
+      }
+    },
+    textHighlightLocatorForRange(range: ShelfViewSelectedTextRange): ShelfViewLocator | undefined {
+      const currentTextLocator = this.currentTextLocator()
+      if (!currentTextLocator || !this.currentLocator) return undefined
+
+      const textLocator: ShelfViewTextLocator = {
+        ...currentTextLocator,
+        paragraph: range.startParagraph,
+        characterOffset: range.startCharacterOffset,
+        progression: 0,
+      }
+
+      if (this.currentLocator?.kind === 'MIXED') {
+        return {
+          ...this.currentLocator,
+          itemLocator: textLocator,
+        }
+      }
+
+      return textLocator
+    },
+    textHighlightSelectorForRange(range: ShelfViewSelectedTextRange): ShelfViewHighlightSelector | undefined {
+      const currentTextLocator = this.currentTextLocator()
+      if (!currentTextLocator) return undefined
+
+      const textSelector: ShelfViewTextRangeHighlightSelector = {
+        schemaVersion: SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION,
+        kind: 'TEXT_RANGE',
+        startParagraph: range.startParagraph,
+        startCharacterOffset: range.startCharacterOffset,
+        endParagraph: range.endParagraph,
+        endCharacterOffset: range.endCharacterOffset,
+        normalizationVersion: currentTextLocator.normalizationVersion,
+      }
+
+      if (this.currentLocator?.kind === 'MIXED') {
+        return {
+          schemaVersion: SHELFVIEW_HIGHLIGHT_SELECTOR_SCHEMA_VERSION,
+          kind: 'MIXED_TEXT_RANGE',
+          itemId: this.currentLocator.itemId,
+          itemIndex: this.currentLocator.itemIndex,
+          itemSelector: textSelector,
+        }
+      }
+
+      return textSelector
+    },
+    normalizedTextQuote(text: string): string {
+      return text.replace(/\s+/g, ' ').trim().slice(0, TEXT_HIGHLIGHT_QUOTE_MAX_LENGTH)
+    },
     async goToBookmark(bookmark: ShelfViewBookmarkDto) {
       if (!this.adapter) return
 
@@ -2506,7 +3562,37 @@ export default Vue.extend({
       try {
         await this.$shelfViewState.deleteBookmark(bookmark.id)
         this.bookmarks = this.bookmarks.filter(existing => existing.id !== bookmark.id)
+        if (this.editingBookmarkId === bookmark.id) this.cancelBookmarkNoteEdit()
         this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_bookmark_deleted') as string)
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_bookmark_failed') as string)
+      }
+    },
+    startBookmarkNoteEdit(bookmark: ShelfViewBookmarkDto) {
+      this.editingBookmarkId = bookmark.id
+      this.bookmarkNoteDraft = bookmark.note ?? ''
+    },
+    cancelBookmarkNoteEdit() {
+      this.editingBookmarkId = null
+      this.bookmarkNoteDraft = ''
+    },
+    async saveBookmarkNote(bookmark: ShelfViewBookmarkDto) {
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
+        return
+      }
+
+      const note = this.bookmarkNoteDraft.trim() || undefined
+
+      try {
+        const updatedBookmark = await this.$shelfViewState.updateBookmark(bookmark.id, {
+          locator: bookmark.locator,
+          label: bookmark.label,
+          note,
+        })
+        this.bookmarks = this.bookmarks.map(existing => existing.id === updatedBookmark.id ? updatedBookmark : existing)
+        this.cancelBookmarkNoteEdit()
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_bookmark_saved') as string)
       } catch (e) {
         this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_bookmark_failed') as string)
       }
@@ -2570,16 +3656,19 @@ export default Vue.extend({
 
       const previousScale = this.fixedPageScale
       const rect = readerStage.getBoundingClientRect()
-      const stageX = e.clientX - rect.left
-      const stageY = e.clientY - rect.top
-      const contentX = readerStage.scrollLeft + stageX
-      const contentY = readerStage.scrollTop + stageY
+      const nextScroll = shelfViewAnchoredZoomScroll({
+        previousScale,
+        nextScale,
+        scrollLeft: readerStage.scrollLeft,
+        scrollTop: readerStage.scrollTop,
+        stageX: e.clientX - rect.left,
+        stageY: e.clientY - rect.top,
+      })
 
       this.fixedPageScale = nextScale
       this.$nextTick(() => {
-        const scaleRatio = this.fixedPageScale / previousScale
-        readerStage.scrollLeft = Math.max(0, (contentX * scaleRatio) - stageX)
-        readerStage.scrollTop = Math.max(0, (contentY * scaleRatio) - stageY)
+        readerStage.scrollLeft = nextScroll.scrollLeft
+        readerStage.scrollTop = nextScroll.scrollTop
       })
       this.schedulePreferenceSave()
     },
@@ -2612,15 +3701,14 @@ export default Vue.extend({
         return
       }
 
-      const deltaX = e.clientX - this.fixedPagePanStart.x
-      const deltaY = e.clientY - this.fixedPagePanStart.y
-      if (!this.fixedPagePanning && Math.abs(deltaX) + Math.abs(deltaY) > 3) {
+      if (!this.fixedPagePanning && shelfViewShouldStartPanning(this.fixedPagePanStart, e.clientX, e.clientY)) {
         this.fixedPagePanning = true
       }
 
       if (this.fixedPagePanning) {
-        readerStage.scrollLeft = Math.max(0, this.fixedPagePanStart.scrollLeft - deltaX)
-        readerStage.scrollTop = Math.max(0, this.fixedPagePanStart.scrollTop - deltaY)
+        const nextScroll = shelfViewPanScroll(this.fixedPagePanStart, e.clientX, e.clientY)
+        readerStage.scrollLeft = nextScroll.scrollLeft
+        readerStage.scrollTop = nextScroll.scrollTop
       }
       if (e.cancelable) e.preventDefault()
     },
@@ -2728,14 +3816,16 @@ export default Vue.extend({
 
       const rect = closestParagraph.getBoundingClientRect()
       const textLength = this.currentTextParagraphLength(paragraph)
-      const offsetRatio = rect.height > 0
-        ? clampNumber((stageTop - rect.top) / rect.height, 0, 1)
-        : 0
 
       return {
         ...currentTextLocator,
         paragraph,
-        characterOffset: Math.floor(textLength * offsetRatio),
+        characterOffset: shelfViewTextCharacterOffsetForScroll({
+          stageTop,
+          paragraphTop: rect.top,
+          paragraphHeight: rect.height,
+          textLength,
+        }),
       }
     },
     sameTextLocator(
@@ -2747,6 +3837,29 @@ export default Vue.extend({
       return currentTextLocator?.kind === 'TEXT' &&
         locator.paragraph === currentTextLocator.paragraph &&
         locator.characterOffset === currentTextLocator.characterOffset
+    },
+    sameReaderTarget(
+      locator: ShelfViewLocator,
+      currentLocator?: ShelfViewLocator,
+    ): boolean {
+      if (!currentLocator || locator.kind !== currentLocator.kind) return false
+      if (locator.contentFingerprint !== currentLocator.contentFingerprint) return false
+
+      if (locator.kind === 'PAGE' && currentLocator.kind === 'PAGE') {
+        return locator.page === currentLocator.page
+      }
+
+      if (locator.kind === 'TEXT' && currentLocator.kind === 'TEXT') {
+        return locator.paragraph === currentLocator.paragraph
+      }
+
+      if (locator.kind === 'MIXED' && currentLocator.kind === 'MIXED') {
+        return locator.itemId === currentLocator.itemId &&
+          locator.itemIndex === currentLocator.itemIndex &&
+          this.sameReaderTarget(locator.itemLocator, currentLocator.itemLocator)
+      }
+
+      return false
     },
     restoreCurrentTextScrollPosition() {
       const currentTextLocator = this.currentTextLocator()
@@ -2761,11 +3874,12 @@ export default Vue.extend({
       if (!paragraph) return
 
       const paragraphLength = this.currentTextParagraphLength(currentTextLocator.paragraph)
-      const offsetRatio = paragraphLength > 0
-        ? clampNumber(currentTextLocator.characterOffset / paragraphLength, 0, 1)
-        : 0
-
-      readerStage.scrollTop = Math.max(0, paragraph.offsetTop + (paragraph.offsetHeight * offsetRatio))
+      readerStage.scrollTop = shelfViewTextScrollTopForOffset({
+        paragraphOffsetTop: paragraph.offsetTop,
+        paragraphHeight: paragraph.offsetHeight,
+        characterOffset: currentTextLocator.characterOffset,
+        textLength: paragraphLength,
+      })
     },
     restoreCurrentVisibleContent() {
       if (!this.adapter || this.hasDisplayError) return
@@ -2949,71 +4063,6 @@ function isFiniteNumber(value: unknown): value is number {
   white-space: nowrap;
 }
 
-.shelfview-reader-shell__control-scrim {
-  inset: 0;
-  position: fixed;
-  z-index: 3;
-}
-
-.shelfview-reader-shell__control-menu {
-  background: #1d232b;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  list-style: none;
-  margin: 0;
-  max-height: calc(100vh - 64px);
-  min-width: 200px;
-  overflow-y: auto;
-  padding: 6px;
-  position: fixed;
-  top: 50px;
-  z-index: 4;
-}
-
-.shelfview-reader-shell__control-menu-title {
-  color: #9fb0c3;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 4px 10px 6px;
-  text-transform: uppercase;
-}
-
-.shelfview-reader-shell__control-option {
-  align-items: center;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: #e6ecf3;
-  cursor: pointer;
-  display: flex;
-  font-size: 14px;
-  gap: 8px;
-  padding: 8px 10px;
-  text-align: left;
-  width: 100%;
-}
-
-.shelfview-reader-shell__control-option:hover,
-.shelfview-reader-shell__control-option:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  outline: none;
-}
-
-.shelfview-reader-shell__control-option--active {
-  background: rgba(144, 202, 249, 0.16);
-  color: #90caf9;
-}
-
-.shelfview-reader-shell__control-option-label {
-  flex: 1 1 auto;
-}
-
-.shelfview-reader-shell__control-option-check {
-  flex: 0 0 auto;
-}
-
 .shelfview-reader-shell__page-counter {
   font-size: 14px;
   min-width: 56px;
@@ -3169,6 +4218,7 @@ function isFiniteNumber(value: unknown): value is number {
   filter:
     brightness(var(--sv-brightness, 1))
     contrast(var(--sv-contrast, 1))
+    saturate(var(--sv-saturate, 1))
     grayscale(var(--sv-grayscale, 0))
     sepia(var(--sv-sepia, 0))
     invert(var(--sv-invert, 0));
@@ -3274,8 +4324,41 @@ function isFiniteNumber(value: unknown): value is number {
   padding: 2px 0;
 }
 
+.shelfview-reader-shell__text-paragraph--highlighted {
+  background: rgba(255, 214, 102, 0.28);
+  box-shadow: inset 3px 0 0 rgba(229, 172, 45, 0.78);
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 .shelfview-reader-shell__text-paragraph--search-current {
   background: rgba(255, 193, 7, 0.24);
+}
+
+.shelfview-reader-shell__text-highlight {
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.shelfview-reader-shell__text-highlight--yellow {
+  background: rgba(255, 214, 102, 0.46);
+}
+
+.shelfview-reader-shell__text-highlight--green {
+  background: rgba(121, 215, 162, 0.38);
+}
+
+.shelfview-reader-shell__text-highlight--blue {
+  background: rgba(114, 183, 255, 0.35);
+}
+
+.shelfview-reader-shell__text-highlight--pink {
+  background: rgba(255, 145, 180, 0.38);
+}
+
+.shelfview-reader-shell__text-highlight--underline {
+  background: transparent;
+  box-shadow: inset 0 -0.16em 0 rgba(229, 172, 45, 0.75);
 }
 
 .shelfview-reader-shell__text-paragraph:last-child {
@@ -3356,6 +4439,8 @@ function isFiniteNumber(value: unknown): value is number {
   font-size: 13px;
 }
 
+.shelfview-reader-shell__contents-drawer,
+.shelfview-reader-shell__dictionary-drawer,
 .shelfview-reader-shell__bookmarks-drawer {
   background: #202020;
   bottom: 0;
@@ -3369,6 +4454,134 @@ function isFiniteNumber(value: unknown): value is number {
   top: 48px;
   width: 360px;
   z-index: 3;
+}
+
+.shelfview-reader-shell__contents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shelfview-reader-shell__contents-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.shelfview-reader-shell__contents-link {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #f5f5f5;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 0;
+  text-align: left;
+  width: 100%;
+}
+
+.shelfview-reader-shell__contents-link:hover,
+.shelfview-reader-shell__contents-link:focus-visible {
+  color: #90caf9;
+  outline: none;
+}
+
+.shelfview-reader-shell__contents-link--active {
+  color: #90caf9;
+}
+
+.shelfview-reader-shell__contents-index {
+  color: #b8d7f1;
+  flex: 0 0 28px;
+  font-size: 13px;
+  text-align: right;
+}
+
+.shelfview-reader-shell__contents-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelfview-reader-shell__contents-active-icon {
+  flex: 0 0 auto;
+}
+
+.shelfview-reader-shell__dictionary-empty {
+  color: #d0d0d0;
+  font-size: 14px;
+  margin: 16px 0 0;
+}
+
+.shelfview-reader-shell__dictionary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.shelfview-reader-shell__dictionary-file-input {
+  display: none;
+}
+
+.shelfview-reader-shell__dictionary-results {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.shelfview-reader-shell__dictionary-result {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shelfview-reader-shell__dictionary-provider {
+  color: #d0d0d0;
+  font-size: 13px;
+}
+
+.shelfview-reader-shell__dictionary-term {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.shelfview-reader-shell__dictionary-definition {
+  color: #f1f1f1;
+  flex: 1 0 100%;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.shelfview-reader-shell__dictionary-source {
+  color: #aeb7c2;
+  font-size: 12px;
+}
+
+.shelfview-reader-shell__dictionary-link {
+  align-items: center;
+  background: #1976d2;
+  border-radius: 4px;
+  color: #ffffff;
+  display: inline-flex;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.shelfview-reader-shell__dictionary-link:hover,
+.shelfview-reader-shell__dictionary-link:focus-visible {
+  background: #2196f3;
+  outline: none;
 }
 
 .shelfview-reader-shell__text-settings {
@@ -3419,14 +4632,14 @@ function isFiniteNumber(value: unknown): value is number {
   font-weight: 500;
 }
 
-.shelfview-reader-shell__bookmarks-header {
+.shelfview-reader-shell__drawer-header {
   align-items: center;
   display: flex;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.shelfview-reader-shell__bookmarks-header h2 {
+.shelfview-reader-shell__drawer-header h2 {
   font-size: 18px;
   font-weight: 500;
   margin: 0;
@@ -3445,11 +4658,17 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__bookmark-row {
-  align-items: center;
+  align-items: flex-start;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   gap: 8px;
   min-height: 44px;
+  padding: 6px 0;
+}
+
+.shelfview-reader-shell__bookmark-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .shelfview-reader-shell__bookmark-link {
@@ -3465,6 +4684,29 @@ function isFiniteNumber(value: unknown): value is number {
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.shelfview-reader-shell__bookmark-note {
+  color: #d7dce2;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: -4px 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.shelfview-reader-shell__bookmark-note-editor {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+
+.shelfview-reader-shell__bookmark-note-editor .v-input {
+  flex: 1;
+}
+
+.shelfview-reader-shell__bookmark-note-actions {
+  display: flex;
+  flex: 0 0 auto;
 }
 
 .shelfview-reader-shell__shortcut-dialog {

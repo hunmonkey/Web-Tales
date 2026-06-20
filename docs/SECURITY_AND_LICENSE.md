@@ -23,6 +23,7 @@ Media files, archives, text, images, metadata, filenames, bookmark notes and set
 - Do not copy GPL/AGPL code into the default codebase.
 - Koodo/Kookit, Kavita and BookLore are reference-only unless the owner intentionally changes the distribution obligations.
 - Record any copied source file, origin URL, commit, license and modifications in `THIRD_PARTY_NOTICES.md`.
+- Treat bundled dictionary data as third-party content unless it is fully first-party; record source, license, attribution and update policy before packaging it.
 - AI-generated code that closely mirrors a third-party implementation must be rewritten or attributed after review.
 
 ## Dependency review checklist
@@ -46,6 +47,8 @@ Create an ADR and request owner review for:
 - source-media write access
 - GPL/AGPL reuse
 - direct PDF.js integration
+- bundled third-party dictionary data
 - server-side archive extraction strategy change
+- client-side WebGL/Canvas image-processing pipeline
 - user upload from the public internet
 - framework-wide upgrade

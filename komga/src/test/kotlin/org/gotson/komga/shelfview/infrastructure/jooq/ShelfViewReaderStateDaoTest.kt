@@ -11,6 +11,7 @@ import org.gotson.komga.domain.persistence.LibraryRepository
 import org.gotson.komga.domain.persistence.SeriesRepository
 import org.gotson.komga.infrastructure.jooq.offset
 import org.gotson.komga.shelfview.domain.ShelfViewBookmark
+import org.gotson.komga.shelfview.domain.ShelfViewHighlight
 import org.gotson.komga.shelfview.domain.ShelfViewReaderPosition
 import org.gotson.komga.shelfview.domain.ShelfViewReaderPreference
 import org.junit.jupiter.api.AfterAll
@@ -49,6 +50,7 @@ class ShelfViewReaderStateDaoTest(
   @AfterEach
   fun cleanup() {
     shelfViewReaderStateDao.deleteAllPreferences()
+    shelfViewReaderStateDao.deleteAllHighlights()
     shelfViewReaderStateDao.deleteAllBookmarks()
     shelfViewReaderStateDao.deleteAllPositions()
   }
@@ -166,6 +168,77 @@ class ShelfViewReaderStateDaoTest(
   }
 
   @Test
+  fun `given highlights for several users when fetching book highlights then only matching user highlights are returned`() {
+    val highlight1 =
+      ShelfViewHighlight(
+        id = "highlight-1",
+        userId = user1.id,
+        bookId = book1.id,
+        locatorJson = textLocatorJson(paragraph = 0),
+        selectorJson = textRangeSelectorJson(startOffset = 0, endOffset = 12),
+        contentFingerprint = "fingerprint-a",
+        color = "YELLOW",
+        note = "Important",
+        textQuote = "Opening text",
+      )
+    val highlight2 =
+      ShelfViewHighlight(
+        id = "highlight-2",
+        userId = user2.id,
+        bookId = book1.id,
+        locatorJson = textLocatorJson(paragraph = 1),
+        selectorJson = textRangeSelectorJson(paragraph = 1, startOffset = 0, endOffset = 8),
+        contentFingerprint = "fingerprint-a",
+        color = "GREEN",
+      )
+
+    shelfViewReaderStateDao.saveHighlight(highlight1)
+    shelfViewReaderStateDao.saveHighlight(highlight2)
+
+    val fetched = shelfViewReaderStateDao.findHighlights(book1.id, user1.id)
+
+    assertThat(fetched).hasSize(1)
+    with(fetched.first()) {
+      assertThat(id).isEqualTo("highlight-1")
+      assertThat(selectorJson).contains("TEXT_RANGE")
+      assertThat(contentFingerprint).isEqualTo("fingerprint-a")
+      assertThat(color).isEqualTo("YELLOW")
+      assertThat(note).isEqualTo("Important")
+      assertThat(textQuote).isEqualTo("Opening text")
+      assertThat(createdAt).isCloseTo(highlight1.createdAt, offset)
+    }
+
+    val modificationDate = LocalDateTime.now()
+
+    shelfViewReaderStateDao.saveHighlight(
+      highlight1.copy(
+        selectorJson = textRangeSelectorJson(startOffset = 3, endOffset = 18),
+        contentFingerprint = "fingerprint-b",
+        color = "BLUE",
+        note = null,
+        textQuote = "Updated text",
+      ),
+    )
+
+    val updated = shelfViewReaderStateDao.findHighlightByIdAndUserIdOrNull("highlight-1", user1.id)
+
+    assertThat(updated).isNotNull
+    with(updated!!) {
+      assertThat(selectorJson).contains("\"endCharacterOffset\": 18")
+      assertThat(contentFingerprint).isEqualTo("fingerprint-b")
+      assertThat(color).isEqualTo("BLUE")
+      assertThat(note).isNull()
+      assertThat(textQuote).isEqualTo("Updated text")
+      assertThat(updatedAt).isCloseTo(modificationDate, offset)
+    }
+
+    shelfViewReaderStateDao.deleteHighlight("highlight-1", user1.id)
+
+    assertThat(shelfViewReaderStateDao.findHighlights(book1.id, user1.id)).isEmpty()
+    assertThat(shelfViewReaderStateDao.findHighlights(book1.id, user2.id)).hasSize(1)
+  }
+
+  @Test
   fun `given reader preference when saving same scope then settings are updated`() {
     shelfViewReaderStateDao.savePreference(
       ShelfViewReaderPreference(
@@ -235,4 +308,30 @@ class ShelfViewReaderStateDaoTest(
     ).isNull()
     assertThat(shelfViewReaderStateDao.findPreferencesByUserId(user1.id)).hasSize(1)
   }
+
+  private fun textLocatorJson(paragraph: Int): String =
+    """
+    {
+      "schemaVersion": 1,
+      "kind": "TEXT",
+      "paragraph": $paragraph
+    }
+    """.trimIndent()
+
+  private fun textRangeSelectorJson(
+    paragraph: Int = 0,
+    startOffset: Int,
+    endOffset: Int,
+  ): String =
+    """
+    {
+      "schemaVersion": 1,
+      "kind": "TEXT_RANGE",
+      "startParagraph": $paragraph,
+      "startCharacterOffset": $startOffset,
+      "endParagraph": $paragraph,
+      "endCharacterOffset": $endOffset,
+      "normalizationVersion": 1
+    }
+    """.trimIndent()
 }
