@@ -181,6 +181,12 @@ function textProgression(
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0))
 const mountedWrappers: Wrapper<Vue>[] = []
 
+async function chooseControlOption(wrapper: Wrapper<Vue>, toggleTestId: string, optionTestId: string) {
+  await wrapper.find(`[data-testid="${toggleTestId}"]`).trigger('click')
+  await Vue.nextTick()
+  await wrapper.find(`[data-testid="${optionTestId}"]`).trigger('click')
+}
+
 describe('ShelfViewReaderShell', () => {
   afterEach(() => {
     mountedWrappers.splice(0).forEach(wrapper => wrapper.destroy())
@@ -243,7 +249,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('paragraph 1 of 3')
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Paragraph 1 of 3')
 
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
     await flushPromises()
     await Vue.nextTick()
 
@@ -450,7 +456,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
     await flushPromises()
     await Vue.nextTick()
 
@@ -550,12 +556,12 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.find('[data-testid="shelfview-reader-text"]').classes()).toContain('shelfview-reader-shell__text--paper')
 
-    await wrapper.find('[data-testid="shelfview-reader-text-theme-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-text-theme-toggle', 'shelfview-reader-text-theme-option-DARK')
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-text"]').classes()).toContain('shelfview-reader-shell__text--dark')
 
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
     await flushPromises()
     await Vue.nextTick()
 
@@ -740,7 +746,7 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.find('[data-testid="shelfview-reader-rotate-toggle"]').exists()).toBe(true)
 
-    await wrapper.find('[data-testid="shelfview-reader-rotate-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-rotate-toggle', 'shelfview-reader-rotate-option-90')
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-rotation: 90deg;')
@@ -917,9 +923,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
-    await Vue.nextTick()
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
     await Vue.nextTick()
     await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
     await flushPromises()
@@ -1077,7 +1081,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-DOUBLE_PAGE')
     await flushPromises()
     await Vue.nextTick()
 
@@ -1100,8 +1104,8 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
-    await wrapper.find('[data-testid="shelfview-reader-direction-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-DOUBLE_PAGE')
+    await chooseControlOption(wrapper, 'shelfview-reader-direction-toggle', 'shelfview-reader-direction-option-RTL')
     await flushPromises()
     await Vue.nextTick()
 
@@ -1115,8 +1119,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
-    await wrapper.find('[data-testid="shelfview-reader-layout-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
     await flushPromises()
     await Vue.nextTick()
 
@@ -1133,7 +1136,7 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-screen')
 
-    await wrapper.find('[data-testid="shelfview-reader-fit-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-fit-toggle', 'shelfview-reader-fit-option-WIDTH')
     await flushPromises()
     await Vue.nextTick()
 
@@ -1152,7 +1155,7 @@ describe('ShelfViewReaderShell', () => {
     expect(originalPage.attributes('style')).toContain('--sv-brightness: 1;')
     expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').classes()).not.toContain('shelfview-page-content')
 
-    await wrapper.find('[data-testid="shelfview-reader-filter-toggle"]').trigger('click')
+    await chooseControlOption(wrapper, 'shelfview-reader-filter-toggle', 'shelfview-reader-filter-option-EYE_COMFORT')
     await flushPromises()
     await Vue.nextTick()
 

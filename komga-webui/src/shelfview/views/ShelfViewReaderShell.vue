@@ -30,36 +30,36 @@
         class="shelfview-reader-shell__page-controls"
         data-testid="shelfview-reader-page-controls"
       >
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              icon
-              :aria-label="readerLayoutLabel"
-              data-testid="shelfview-reader-layout-toggle"
-              v-on="on"
-              @click="cycleReaderLayout"
-            >
-              <v-icon>{{ readerLayoutIcon }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ readerLayoutLabel }}</span>
-        </v-tooltip>
+        <v-btn
+          text
+          small
+          class="shelfview-reader-shell__control-toggle"
+          :aria-label="readerLayoutLabel"
+          :aria-expanded="openControlMenu === 'layout' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          data-testid="shelfview-reader-layout-toggle"
+          @click="toggleControlMenu('layout', $event)"
+        >
+          <v-icon small>{{ readerLayoutIcon }}</v-icon>
+          <span class="shelfview-reader-shell__control-toggle-label">{{ readerLayoutLabel }}</span>
+          <v-icon small>mdi-menu-down</v-icon>
+        </v-btn>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="textControlsVisible"
-              icon
-              :aria-label="textThemeLabel"
-              data-testid="shelfview-reader-text-theme-toggle"
-              v-on="on"
-              @click="cycleTextTheme"
-            >
-              <v-icon>{{ textThemeIcon }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ textThemeLabel }}</span>
-        </v-tooltip>
+        <v-btn
+          v-if="textControlsVisible"
+          text
+          small
+          class="shelfview-reader-shell__control-toggle"
+          :aria-label="textThemeLabel"
+          :aria-expanded="openControlMenu === 'text-theme' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          data-testid="shelfview-reader-text-theme-toggle"
+          @click="toggleControlMenu('text-theme', $event)"
+        >
+          <v-icon small>{{ textThemeIcon }}</v-icon>
+          <span class="shelfview-reader-shell__control-toggle-label">{{ textThemeLabel }}</span>
+          <v-icon small>mdi-menu-down</v-icon>
+        </v-btn>
 
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
@@ -109,21 +109,21 @@
           <span>{{ $t('shelfview_reader.fixed_settings') }}</span>
         </v-tooltip>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="fixedPageControlsVisible"
-              icon
-              :aria-label="fixedPageRotationLabel"
-              data-testid="shelfview-reader-rotate-toggle"
-              v-on="on"
-              @click="cycleFixedPageRotation"
-            >
-              <v-icon>mdi-rotate-right</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ fixedPageRotationLabel }}</span>
-        </v-tooltip>
+        <v-btn
+          v-if="fixedPageControlsVisible"
+          text
+          small
+          class="shelfview-reader-shell__control-toggle"
+          :aria-label="fixedPageRotationLabel"
+          :aria-expanded="openControlMenu === 'rotate' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          data-testid="shelfview-reader-rotate-toggle"
+          @click="toggleControlMenu('rotate', $event)"
+        >
+          <v-icon small>mdi-rotate-right</v-icon>
+          <span class="shelfview-reader-shell__control-toggle-label">{{ fixedPageRotationShortLabel }}</span>
+          <v-icon small>mdi-menu-down</v-icon>
+        </v-btn>
 
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
@@ -141,55 +141,55 @@
           <span>{{ slideshowLabel }}</span>
         </v-tooltip>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="fixedPageControlsVisible"
-              icon
-              :aria-label="readingDirectionLabel"
-              :disabled="!rtlAvailable"
-              data-testid="shelfview-reader-direction-toggle"
-              v-on="on"
-              @click="toggleReadingDirection"
-            >
-              <v-icon>{{ readingDirectionIcon }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ readingDirectionLabel }}</span>
-        </v-tooltip>
+        <v-btn
+          v-if="fixedPageControlsVisible"
+          text
+          small
+          class="shelfview-reader-shell__control-toggle"
+          :aria-label="readingDirectionLabel"
+          :aria-expanded="openControlMenu === 'direction' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          :disabled="!rtlAvailable"
+          data-testid="shelfview-reader-direction-toggle"
+          @click="toggleControlMenu('direction', $event)"
+        >
+          <v-icon small>{{ readingDirectionIcon }}</v-icon>
+          <span class="shelfview-reader-shell__control-toggle-label">{{ readingDirectionLabel }}</span>
+          <v-icon small>mdi-menu-down</v-icon>
+        </v-btn>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="fixedPageControlsVisible"
-              icon
-              :aria-label="pageFitLabel"
-              data-testid="shelfview-reader-fit-toggle"
-              v-on="on"
-              @click="cyclePageFit"
-            >
-              <v-icon>{{ pageFitIcon }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ pageFitLabel }}</span>
-        </v-tooltip>
+        <v-btn
+          v-if="fixedPageControlsVisible"
+          text
+          small
+          class="shelfview-reader-shell__control-toggle"
+          :aria-label="pageFitLabel"
+          :aria-expanded="openControlMenu === 'fit' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          data-testid="shelfview-reader-fit-toggle"
+          @click="toggleControlMenu('fit', $event)"
+        >
+          <v-icon small>{{ pageFitIcon }}</v-icon>
+          <span class="shelfview-reader-shell__control-toggle-label">{{ pageFitLabel }}</span>
+          <v-icon small>mdi-menu-down</v-icon>
+        </v-btn>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="fixedPageControlsVisible"
-              icon
-              :aria-label="imageFilterPresetLabel"
-              :disabled="!imageFiltersAvailable"
-              data-testid="shelfview-reader-filter-toggle"
-              v-on="on"
-              @click="cycleImageFilterPreset"
-            >
-              <v-icon>{{ imageFilterPresetIcon }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ imageFilterPresetLabel }}</span>
-        </v-tooltip>
+        <v-btn
+          v-if="fixedPageControlsVisible"
+          text
+          small
+          class="shelfview-reader-shell__control-toggle"
+          :aria-label="imageFilterPresetLabel"
+          :aria-expanded="openControlMenu === 'filter' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          :disabled="!imageFiltersAvailable"
+          data-testid="shelfview-reader-filter-toggle"
+          @click="toggleControlMenu('filter', $event)"
+        >
+          <v-icon small>{{ imageFilterPresetIcon }}</v-icon>
+          <span class="shelfview-reader-shell__control-toggle-label">{{ imageFilterPresetLabel }}</span>
+          <v-icon small>mdi-menu-down</v-icon>
+        </v-btn>
 
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
@@ -300,6 +300,49 @@
         <span>{{ $t('browse_book.read_book') }}</span>
       </v-tooltip>
     </v-toolbar>
+
+    <div
+      v-if="openControlMenu"
+      class="shelfview-reader-shell__control-scrim"
+      data-testid="shelfview-reader-control-scrim"
+      @click="closeControlMenu"
+    />
+    <ul
+      v-if="openControlMenu"
+      class="shelfview-reader-shell__control-menu"
+      :style="{ left: controlMenuLeft + 'px' }"
+      role="menu"
+      :aria-label="controlMenuTitle"
+      data-testid="shelfview-reader-control-menu"
+    >
+      <li
+        class="shelfview-reader-shell__control-menu-title"
+        role="presentation"
+      >{{ controlMenuTitle }}</li>
+      <li
+        v-for="option in controlMenuOptions"
+        :key="String(option.value)"
+        role="none"
+      >
+        <button
+          type="button"
+          role="menuitemradio"
+          :aria-checked="option.active ? 'true' : 'false'"
+          class="shelfview-reader-shell__control-option"
+          :class="{ 'shelfview-reader-shell__control-option--active': option.active }"
+          :data-testid="`shelfview-reader-${openControlMenu}-option-${option.value}`"
+          @click="selectControlOption(option.value)"
+        >
+          <v-icon small>{{ option.icon }}</v-icon>
+          <span class="shelfview-reader-shell__control-option-label">{{ option.label }}</span>
+          <v-icon
+            v-if="option.active"
+            small
+            class="shelfview-reader-shell__control-option-check"
+          >mdi-check</v-icon>
+        </button>
+      </li>
+    </ul>
 
     <section
       v-if="textSearchOpen && textSearchAvailable"
@@ -997,7 +1040,7 @@ import {
 import {
   SHELFVIEW_FIXED_PAGE_FITS,
   SHELFVIEW_FIXED_PAGE_BACKGROUNDS,
-  SHELFVIEW_FIXED_PAGE_LAYOUTS,
+  SHELFVIEW_FIXED_PAGE_ROTATIONS,
   ShelfViewFixedPageBackground,
   ShelfViewFixedPageFit,
   ShelfViewFixedPageLayout,
@@ -1013,10 +1056,10 @@ import {
   shelfViewVisiblePageIndexes,
 } from '@/shelfview/functions/fixed-page-view'
 import {
+  SHELFVIEW_IMAGE_FILTER_PRESETS,
   ShelfViewImageFilterPreset,
   shelfViewImageFilterPreset,
   shelfViewImageFilterStyle,
-  shelfViewNextImageFilterPreset,
 } from '@/shelfview/functions/image-filter-presets'
 import {
   ShelfViewReaderInputAction,
@@ -1033,7 +1076,6 @@ import {
   ShelfViewTextAlign,
   ShelfViewTextFontFamily,
   ShelfViewTextTheme,
-  shelfViewNextTextTheme,
   shelfViewTextAlign,
   shelfViewTextFontFamily,
   shelfViewTextTheme,
@@ -1042,6 +1084,13 @@ import {
 interface ShelfViewPageSource {
   pageIndex: number,
   url: string,
+}
+
+interface ShelfViewControlOption {
+  value: string | number,
+  icon: string,
+  label: string,
+  active: boolean,
 }
 
 interface ShelfViewTextSearchMatch {
@@ -1146,6 +1195,8 @@ export default Vue.extend({
     textBrightness: TEXT_DISPLAY_DEFAULTS.textBrightness,
     fixedPageSettingsOpen: false,
     textSettingsOpen: false,
+    openControlMenu: null as string | null,
+    controlMenuLeft: 0,
     textSearchOpen: false,
     textSearchQuery: '',
     textSearchMatchIndex: 0,
@@ -1473,58 +1524,111 @@ export default Vue.extend({
         : this.$t('shelfview_reader.slideshow_start') as string
     },
     readerLayoutIcon(): string {
-      switch (this.readerLayout) {
-        case 'DOUBLE_PAGE':
-          return 'mdi-book-open-variant'
-        case 'CONTINUOUS_SCROLL':
-          return 'mdi-view-sequential'
-        default:
-          return 'mdi-page-layout-body'
-      }
+      return this.readerLayoutIconFor(this.readerLayout)
     },
     readerLayoutLabel(): string {
-      switch (this.readerLayout) {
-        case 'DOUBLE_PAGE':
-          return this.$t('shelfview_reader.layout_double') as string
-        case 'CONTINUOUS_SCROLL':
-          return this.$t('shelfview_reader.layout_continuous') as string
-        default:
-          return this.$t('shelfview_reader.layout_single') as string
-      }
+      return this.readerLayoutLabelFor(this.readerLayout)
     },
     readingDirectionIcon(): string {
-      return this.readingDirection === 'RTL' ? 'mdi-format-textdirection-r-to-l' : 'mdi-format-textdirection-l-to-r'
+      return this.readingDirectionIconFor(this.readingDirection)
     },
     readingDirectionLabel(): string {
-      return this.readingDirection === 'RTL'
-        ? this.$t('shelfview_reader.direction_rtl') as string
-        : this.$t('shelfview_reader.direction_ltr') as string
+      return this.readingDirectionLabelFor(this.readingDirection)
     },
     fixedPageRotationLabel(): string {
       return this.$t('shelfview_reader.rotate_degrees', {degrees: this.fixedPageRotation}) as string
     },
+    fixedPageRotationShortLabel(): string {
+      return `${this.fixedPageRotation}°`
+    },
     pageFitIcon(): string {
-      switch (this.pageFit) {
-        case 'WIDTH':
-          return 'mdi-arrow-expand-horizontal'
-        case 'HEIGHT':
-          return 'mdi-arrow-expand-vertical'
-        case 'ORIGINAL':
-          return 'mdi-image-size-select-large'
-        default:
-          return 'mdi-fit-to-screen-outline'
-      }
+      return this.pageFitIconFor(this.pageFit)
     },
     pageFitLabel(): string {
-      switch (this.pageFit) {
-        case 'WIDTH':
-          return this.$t('shelfview_reader.fit_width') as string
-        case 'HEIGHT':
-          return this.$t('shelfview_reader.fit_height') as string
-        case 'ORIGINAL':
-          return this.$t('shelfview_reader.fit_original') as string
+      return this.pageFitLabelFor(this.pageFit)
+    },
+    readerLayoutOptions(): ShelfViewControlOption[] {
+      return this.availableReaderLayouts.map(value => ({
+        value,
+        icon: this.readerLayoutIconFor(value),
+        label: this.readerLayoutLabelFor(value),
+        active: value === this.readerLayout,
+      }))
+    },
+    pageFitOptions(): ShelfViewControlOption[] {
+      return SHELFVIEW_FIXED_PAGE_FITS.map(value => ({
+        value,
+        icon: this.pageFitIconFor(value),
+        label: this.pageFitLabelFor(value),
+        active: value === this.pageFit,
+      }))
+    },
+    readingDirectionOptions(): ShelfViewControlOption[] {
+      return (['LTR', 'RTL'] as ShelfViewFixedPageReadingDirection[]).map(value => ({
+        value,
+        icon: this.readingDirectionIconFor(value),
+        label: this.readingDirectionLabelFor(value),
+        active: value === this.readingDirection,
+      }))
+    },
+    fixedPageRotationOptions(): ShelfViewControlOption[] {
+      return SHELFVIEW_FIXED_PAGE_ROTATIONS.map(value => ({
+        value,
+        icon: 'mdi-rotate-right',
+        label: `${value}°`,
+        active: value === this.fixedPageRotation,
+      }))
+    },
+    imageFilterPresetOptions(): ShelfViewControlOption[] {
+      return SHELFVIEW_IMAGE_FILTER_PRESETS.map(option => ({
+        value: option.id,
+        icon: option.icon,
+        label: this.$t(`shelfview_reader.filter_${option.id.toLowerCase()}`) as string,
+        active: option.id === this.imageFilterPreset,
+      }))
+    },
+    textThemeOptions(): ShelfViewControlOption[] {
+      return SHELFVIEW_TEXT_THEMES.map(value => ({
+        value,
+        icon: shelfViewTextTheme(value).icon,
+        label: this.$t(`shelfview_reader.theme_${value.toLowerCase()}`) as string,
+        active: value === this.textTheme,
+      }))
+    },
+    controlMenuOptions(): ShelfViewControlOption[] {
+      switch (this.openControlMenu) {
+        case 'layout':
+          return this.readerLayoutOptions
+        case 'fit':
+          return this.pageFitOptions
+        case 'direction':
+          return this.readingDirectionOptions
+        case 'rotate':
+          return this.fixedPageRotationOptions
+        case 'filter':
+          return this.imageFilterPresetOptions
+        case 'text-theme':
+          return this.textThemeOptions
         default:
-          return this.$t('shelfview_reader.fit_screen') as string
+          return []
+      }
+    },
+    controlMenuTitle(): string {
+      switch (this.openControlMenu) {
+        case 'layout':
+          return this.$t('shelfview_reader.control_layout') as string
+        case 'fit':
+          return this.$t('shelfview_reader.control_fit') as string
+        case 'direction':
+          return this.$t('shelfview_reader.control_direction') as string
+        case 'rotate':
+          return this.$t('shelfview_reader.control_rotate') as string
+        case 'filter':
+          return this.$t('shelfview_reader.control_filter') as string
+        case 'text-theme':
+          return this.$t('shelfview_reader.control_text_theme') as string
+        default:
+          return ''
       }
     },
     empty(): boolean {
@@ -1881,37 +1985,130 @@ export default Vue.extend({
         this.readerLayout = 'SINGLE_PAGE'
       }
     },
-    cycleReaderLayout() {
-      const layouts = this.availableReaderLayouts.length > 0 ? this.availableReaderLayouts : SHELFVIEW_FIXED_PAGE_LAYOUTS
-      const currentIndex = layouts.indexOf(this.readerLayout)
-      this.readerLayout = layouts[(currentIndex + 1) % layouts.length]
+    readerLayoutIconFor(layout: ShelfViewFixedPageLayout): string {
+      switch (layout) {
+        case 'DOUBLE_PAGE':
+          return 'mdi-book-open-variant'
+        case 'CONTINUOUS_SCROLL':
+          return 'mdi-view-sequential'
+        default:
+          return 'mdi-page-layout-body'
+      }
+    },
+    readerLayoutLabelFor(layout: ShelfViewFixedPageLayout): string {
+      switch (layout) {
+        case 'DOUBLE_PAGE':
+          return this.$t('shelfview_reader.layout_double') as string
+        case 'CONTINUOUS_SCROLL':
+          return this.$t('shelfview_reader.layout_continuous') as string
+        default:
+          return this.$t('shelfview_reader.layout_single') as string
+      }
+    },
+    pageFitIconFor(fit: ShelfViewFixedPageFit): string {
+      switch (fit) {
+        case 'WIDTH':
+          return 'mdi-arrow-expand-horizontal'
+        case 'HEIGHT':
+          return 'mdi-arrow-expand-vertical'
+        case 'ORIGINAL':
+          return 'mdi-image-size-select-large'
+        default:
+          return 'mdi-fit-to-screen-outline'
+      }
+    },
+    pageFitLabelFor(fit: ShelfViewFixedPageFit): string {
+      switch (fit) {
+        case 'WIDTH':
+          return this.$t('shelfview_reader.fit_width') as string
+        case 'HEIGHT':
+          return this.$t('shelfview_reader.fit_height') as string
+        case 'ORIGINAL':
+          return this.$t('shelfview_reader.fit_original') as string
+        default:
+          return this.$t('shelfview_reader.fit_screen') as string
+      }
+    },
+    readingDirectionIconFor(direction: ShelfViewFixedPageReadingDirection): string {
+      return direction === 'RTL' ? 'mdi-format-textdirection-r-to-l' : 'mdi-format-textdirection-l-to-r'
+    },
+    readingDirectionLabelFor(direction: ShelfViewFixedPageReadingDirection): string {
+      return direction === 'RTL'
+        ? this.$t('shelfview_reader.direction_rtl') as string
+        : this.$t('shelfview_reader.direction_ltr') as string
+    },
+    toggleControlMenu(menu: string, event: MouseEvent) {
+      if (this.openControlMenu === menu) {
+        this.closeControlMenu()
+        return
+      }
+
+      const target = event.currentTarget as HTMLElement | null
+      const rect = target?.getBoundingClientRect()
+      const menuWidth = 240
+      const left = rect ? Math.min(rect.left, window.innerWidth - menuWidth - 8) : 8
+      this.controlMenuLeft = Math.max(8, left)
+      this.openControlMenu = menu
+    },
+    closeControlMenu() {
+      this.openControlMenu = null
+    },
+    selectControlOption(value: string | number) {
+      switch (this.openControlMenu) {
+        case 'layout':
+          this.setReaderLayout(value as ShelfViewFixedPageLayout)
+          break
+        case 'fit':
+          this.setPageFit(value as ShelfViewFixedPageFit)
+          break
+        case 'direction':
+          this.setReadingDirection(value as ShelfViewFixedPageReadingDirection)
+          break
+        case 'rotate':
+          this.setFixedPageRotation(Number(value))
+          break
+        case 'filter':
+          this.setImageFilterPreset(value as ShelfViewImageFilterPreset)
+          break
+        case 'text-theme':
+          this.setTextTheme(value as ShelfViewTextTheme)
+          break
+      }
+      this.closeControlMenu()
+    },
+    setReaderLayout(layout: ShelfViewFixedPageLayout) {
+      if (!this.availableReaderLayouts.includes(layout)) return
+
+      this.readerLayout = layout
       this.syncAdapterState()
       this.$nextTick(() => this.restoreCurrentTextScrollPosition())
       this.schedulePreferenceSave()
     },
-    toggleReadingDirection() {
+    setReadingDirection(direction: ShelfViewFixedPageReadingDirection) {
       if (!this.rtlAvailable) return
 
-      this.readingDirection = this.readingDirection === 'RTL' ? 'LTR' : 'RTL'
+      this.readingDirection = direction
       this.syncAdapterState()
       this.schedulePreferenceSave()
     },
-    cyclePageFit() {
-      const currentIndex = SHELFVIEW_FIXED_PAGE_FITS.indexOf(this.pageFit)
-      this.pageFit = SHELFVIEW_FIXED_PAGE_FITS[(currentIndex + 1) % SHELFVIEW_FIXED_PAGE_FITS.length]
+    setPageFit(fit: ShelfViewFixedPageFit) {
+      this.pageFit = fit
       this.schedulePreferenceSave()
     },
-    cycleFixedPageRotation() {
+    setFixedPageRotation(rotation: number) {
       if (!this.fixedPageControlsVisible) return
 
-      this.fixedPageRotation = shelfViewNextFixedPageRotation(this.fixedPageRotation)
+      this.fixedPageRotation = normalizeFixedPageRotation(rotation)
       this.$nextTick(() => this.restoreCurrentVisibleContent())
       this.schedulePreferenceSave()
     },
-    cycleImageFilterPreset() {
+    cycleFixedPageRotation() {
+      this.setFixedPageRotation(shelfViewNextFixedPageRotation(this.fixedPageRotation))
+    },
+    setImageFilterPreset(preset: ShelfViewImageFilterPreset) {
       if (!this.imageFiltersAvailable) return
 
-      this.imageFilterPreset = shelfViewNextImageFilterPreset(this.imageFilterPreset)
+      this.imageFilterPreset = preset
       this.schedulePreferenceSave()
     },
     openFixedPageSettings() {
@@ -1931,8 +2128,8 @@ export default Vue.extend({
       this.$nextTick(() => this.restoreCurrentVisibleContent())
       this.schedulePreferenceSave()
     },
-    cycleTextTheme() {
-      this.textTheme = shelfViewNextTextTheme(this.textTheme)
+    setTextTheme(theme: ShelfViewTextTheme) {
+      this.textTheme = theme
       this.$nextTick(() => this.restoreCurrentTextScrollPosition())
       this.schedulePreferenceSave()
     },
@@ -2736,6 +2933,85 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__page-controls::-webkit-scrollbar {
   display: none;
+}
+
+.shelfview-reader-shell__control-toggle {
+  flex: 0 0 auto;
+  text-transform: none;
+}
+
+.shelfview-reader-shell__control-toggle-label {
+  font-size: 12px;
+  margin: 0 2px 0 4px;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelfview-reader-shell__control-scrim {
+  inset: 0;
+  position: fixed;
+  z-index: 3;
+}
+
+.shelfview-reader-shell__control-menu {
+  background: #1d232b;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  list-style: none;
+  margin: 0;
+  max-height: calc(100vh - 64px);
+  min-width: 200px;
+  overflow-y: auto;
+  padding: 6px;
+  position: fixed;
+  top: 50px;
+  z-index: 4;
+}
+
+.shelfview-reader-shell__control-menu-title {
+  color: #9fb0c3;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 10px 6px;
+  text-transform: uppercase;
+}
+
+.shelfview-reader-shell__control-option {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #e6ecf3;
+  cursor: pointer;
+  display: flex;
+  font-size: 14px;
+  gap: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.shelfview-reader-shell__control-option:hover,
+.shelfview-reader-shell__control-option:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.shelfview-reader-shell__control-option--active {
+  background: rgba(144, 202, 249, 0.16);
+  color: #90caf9;
+}
+
+.shelfview-reader-shell__control-option-label {
+  flex: 1 1 auto;
+}
+
+.shelfview-reader-shell__control-option-check {
+  flex: 0 0 auto;
 }
 
 .shelfview-reader-shell__page-counter {
