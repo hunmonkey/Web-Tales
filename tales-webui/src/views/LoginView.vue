@@ -2,7 +2,7 @@
   <div class="ma-3">
     <v-container style="max-width: 550px">
       <v-row align="center" justify="center" class="ma-3">
-        <v-img src="../assets/logo.svg"
+        <v-img src="../assets/logo.png"
                :max-width="logoWidth"
         />
       </v-row>

@@ -1,7 +1,7 @@
 <template>
   <div class="pa-6">
     <v-row align="center" justify="center">
-      <v-img src="../assets/logo.svg"
+      <v-img src="../assets/logo.png"
              max-width="400"
       />
     </v-row>

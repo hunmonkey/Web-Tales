@@ -36,6 +36,7 @@ class WebMvcConfiguration : WebMvcConfigurer {
         "/android-chrome-192x192.png",
         "/android-chrome-512x512.png",
         "/tales-icon.svg",
+        "/tales-icon-square.png",
         "/manifest.json",
       ).addResourceLocations("classpath:public/")
       .setCacheControl(CacheControl.noStore())

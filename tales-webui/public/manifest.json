@@ -6,9 +6,16 @@
   "background_color": "#143d59",
   "theme_color": "#143d59",
   "description": "Self-hosted reader for comics, books and image archives",
-  "icons": [{
-    "src": "tales-icon.svg",
-    "sizes": "any",
-    "type": "image/svg+xml"
-  }]
+  "icons": [
+    {
+      "src": "tales-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "tales-icon-square.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
 }

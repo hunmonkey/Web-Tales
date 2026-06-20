@@ -21,7 +21,7 @@
     <v-navigation-drawer app v-model="drawerVisible" :right="$vuetify.rtl">
       <v-list-item @click="$router.push({name: 'home'})" inactive class="pb-2">
         <v-list-item-avatar>
-          <v-img src="../assets/logo.svg"/>
+          <v-img src="../assets/logo.png"/>
         </v-list-item-avatar>
 
         <v-list-item-content>
