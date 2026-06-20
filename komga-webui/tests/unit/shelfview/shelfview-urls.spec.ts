@@ -1,4 +1,4 @@
-import {shelfViewEndpointUrl, shelfViewPageUrl} from '@/shelfview/functions/shelfview-urls'
+import {shelfViewEndpointUrl, shelfViewPageUrl, shelfViewThumbnailUrl} from '@/shelfview/functions/shelfview-urls'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 
 const manifest: ShelfViewManifest = {
@@ -40,6 +40,18 @@ describe('ShelfView URL helpers', () => {
   it('resolves page indexes without converting them to one-based numbers', () => {
     expect(shelfViewPageUrl(manifest, 1, 'http://api.test')).toBe(
       'http://api.test/api/v1/books/book-1/pages/1?zero_based=true',
+    )
+  })
+
+  it('resolves thumbnail templates that need one-based page numbers', () => {
+    expect(shelfViewThumbnailUrl({
+      ...manifest,
+      pages: {
+        endpointTemplate: '/api/v1/books/book-1/pages/{page}?zero_based=true',
+        thumbnailEndpointTemplate: '/api/v1/books/book-1/pages/{pageOneBased}/thumbnail',
+      },
+    }, 1, 'http://api.test')).toBe(
+      'http://api.test/api/v1/books/book-1/pages/2/thumbnail',
     )
   })
 })

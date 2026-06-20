@@ -278,6 +278,7 @@ describe('ShelfViewReaderShell', () => {
             textParagraphSpacing: 1.55,
             textAlign: 'JUSTIFY',
             textFontWeight: 500,
+            textBrightness: 1.08,
           },
           sources: [],
         }),
@@ -293,6 +294,7 @@ describe('ShelfViewReaderShell', () => {
     expect(text.attributes('style')).toContain('--sv-text-font-size: 22px;')
     expect(text.attributes('style')).toContain('--sv-text-content-width: 680px;')
     expect(text.attributes('style')).toContain('--sv-text-align: justify;')
+    expect(text.attributes('style')).toContain('--sv-text-brightness: 1.08;')
 
     await wrapper.find('[data-testid="shelfview-reader-text-settings-toggle"]').trigger('click')
     await Vue.nextTick()
@@ -303,6 +305,7 @@ describe('ShelfViewReaderShell', () => {
       textFontSize: 26,
       textLetterSpacing: 1.2,
       textContentWidth: 640,
+      textBrightness: 0.92,
     })
     const vm = wrapper.vm as any
     vm.onTextDisplaySettingChanged()
@@ -321,6 +324,7 @@ describe('ShelfViewReaderShell', () => {
         textLetterSpacing: 1.2,
         textContentWidth: 640,
         textAlign: 'JUSTIFY',
+        textBrightness: 0.92,
       }),
     })
   })
@@ -558,6 +562,41 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.findAll('[data-testid="shelfview-reader-text-paragraph"]').wrappers.map(paragraph => paragraph.attributes('data-text-paragraph-index'))).toEqual(['0', '1', '2'])
   })
 
+  it('searches TXT paragraphs and jumps to the matching paragraph', async () => {
+    const getManifest = jest.fn().mockResolvedValue({
+      ...textManifest,
+      capabilities: {
+        ...textManifest.capabilities,
+        search: true,
+      },
+    })
+    const savePosition = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {savePosition},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-search-toggle"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-reader-search-input"]').setValue('마지막')
+    await flushPromises()
+    await Vue.nextTick()
+    await (wrapper.vm as any).flushPositionSave()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-search-status"]').text()).toBe('shelfview_reader.search_match_status')
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 3')
+    expect(wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').classes()).toContain('shelfview-reader-shell__text-paragraph--search-current')
+    expect(savePosition).toHaveBeenCalledWith('book-1', expect.objectContaining({
+      locator: expect.objectContaining({
+        kind: 'TEXT',
+        paragraph: 2,
+      }),
+    }))
+  })
+
   it('restores saved position, bookmarks and effective settings', async () => {
     const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 4})
     const wrapper = mountShell({
@@ -582,6 +621,7 @@ describe('ShelfViewReaderShell', () => {
             readingDirection: 'RTL',
             pageFit: 'WIDTH',
             imageFilterPreset: 'MONO_COMIC',
+            fixedPageRotation: 90,
             fixedPageScale: 125,
             fixedPageGap: 24,
             fixedPageMargin: 32,
@@ -603,6 +643,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-grayscale: 1;')
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('style')).toContain('--sv-brightness: 1.08;')
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-scale: 1.25;')
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-rotation: 90deg;')
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-background: #f4ecd9;')
 
     await wrapper.find('[data-testid="shelfview-reader-bookmarks-toggle"]').trigger('click')
@@ -627,6 +668,7 @@ describe('ShelfViewReaderShell', () => {
             readingDirection: 'LTR',
             pageFit: 'SCREEN',
             imageFilterPreset: 'ORIGINAL',
+            fixedPageRotation: 0,
             fixedPageScale: 130,
             fixedPageGap: 18,
             fixedPageMargin: 28,
@@ -659,6 +701,7 @@ describe('ShelfViewReaderShell', () => {
       fixedPageGap: 28,
       fixedPageMargin: 44,
       fixedPageBackground: 'WHITE',
+      fixedPageRotation: 180,
       fixedPageBrightness: 1.12,
       fixedPageContrast: 1.2,
     })
@@ -676,6 +719,7 @@ describe('ShelfViewReaderShell', () => {
         readingDirection: 'LTR',
         pageFit: 'SCREEN',
         imageFilterPreset: 'ORIGINAL',
+        fixedPageRotation: 180,
         fixedPageScale: 145,
         fixedPageGap: 28,
         fixedPageMargin: 44,
@@ -684,6 +728,163 @@ describe('ShelfViewReaderShell', () => {
         fixedPageContrast: 1.2,
       }),
     })
+  })
+
+  it('rotates fixed pages from the toolbar and keyboard shortcut', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const savePreference = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({getManifest, shelfViewState: {savePreference}})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-rotate-toggle"]').exists()).toBe(true)
+
+    await wrapper.find('[data-testid="shelfview-reader-rotate-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-rotation: 90deg;')
+
+    const preventDefault = jest.fn()
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'R',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-stage"]').element,
+      preventDefault,
+    })
+    await Vue.nextTick()
+    await (wrapper.vm as any).flushPreferenceSave()
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-rotation: 180deg;')
+    expect(savePreference).toHaveBeenCalledWith(expect.objectContaining({
+      settings: expect.objectContaining({fixedPageRotation: 180}),
+    }))
+  })
+
+  it('jumps with thumbnails, direct page input and slideshow controls', async () => {
+    const getManifest = jest.fn().mockResolvedValue({
+      ...manifest,
+      pageCount: 3,
+      pages: {
+        ...manifest.pages!,
+        thumbnailEndpointTemplate: '/api/v1/books/book-1/pages/{pageOneBased}/thumbnail',
+      },
+    })
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.findAll('[data-testid="shelfview-reader-thumbnail"]').length).toBe(3)
+    expect(wrapper.find('[data-testid="shelfview-reader-thumbnail"] img').attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/1/thumbnail')
+
+    await wrapper.findAll('[data-testid="shelfview-reader-thumbnail"]').at(2).trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 3')
+
+    await wrapper.find('[data-testid="shelfview-reader-page-jump"]').setValue('2')
+    await wrapper.find('[data-testid="shelfview-reader-page-jump"]').trigger('change')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
+
+    await wrapper.find('[data-testid="shelfview-reader-slideshow-toggle"]').trigger('click')
+    await (wrapper.vm as any).advanceSlideshow()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 3')
+  })
+
+  it('zooms fixed pages with the mouse wheel and keeps the pointer area anchored', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const savePreference = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({getManifest, shelfViewState: {savePreference}})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
+    stage.getBoundingClientRect = jest.fn(() => ({top: 10, bottom: 410, left: 20, right: 620, width: 600, height: 400} as DOMRect))
+    Object.defineProperty(stage, 'scrollLeft', {value: 40, writable: true, configurable: true})
+    Object.defineProperty(stage, 'scrollTop', {value: 60, writable: true, configurable: true})
+    const preventDefault = jest.fn()
+    const vm = wrapper.vm as any
+
+    vm.onReaderWheel({
+      deltaY: -120,
+      clientX: 120,
+      clientY: 90,
+      ctrlKey: false,
+      metaKey: false,
+      cancelable: true,
+      target: stage,
+      preventDefault,
+    } as unknown as WheelEvent)
+    await Vue.nextTick()
+    await vm.flushPreferenceSave()
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('style')).toContain('--sv-fixed-page-scale: 1.1;')
+    expect(stage.scrollLeft).toBeCloseTo(54)
+    expect(stage.scrollTop).toBeCloseTo(74)
+    expect(savePreference).toHaveBeenCalledWith(expect.objectContaining({
+      settings: expect.objectContaining({fixedPageScale: 110}),
+    }))
+  })
+
+  it('pans fixed pages by dragging with the mouse', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
+    Object.defineProperty(stage, 'scrollLeft', {value: 70, writable: true, configurable: true})
+    Object.defineProperty(stage, 'scrollTop', {value: 25, writable: true, configurable: true})
+    stage.setPointerCapture = jest.fn()
+    stage.releasePointerCapture = jest.fn()
+    const downPreventDefault = jest.fn()
+    const movePreventDefault = jest.fn()
+    const vm = wrapper.vm as any
+
+    vm.onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 7,
+      clientX: 120,
+      clientY: 90,
+      cancelable: true,
+      target: stage,
+      preventDefault: downPreventDefault,
+    } as unknown as PointerEvent)
+    vm.onReaderPointerMove({
+      pointerType: 'mouse',
+      buttons: 1,
+      pointerId: 7,
+      clientX: 90,
+      clientY: 70,
+      cancelable: true,
+      preventDefault: movePreventDefault,
+    } as unknown as PointerEvent)
+
+    expect(downPreventDefault).toHaveBeenCalled()
+    expect(movePreventDefault).toHaveBeenCalled()
+    expect(stage.setPointerCapture).toHaveBeenCalledWith(7)
+    expect(stage.scrollLeft).toBe(100)
+    expect(stage.scrollTop).toBe(45)
+    expect(vm.fixedPagePanning).toBe(true)
+
+    vm.onReaderPointerUp({pointerId: 7} as PointerEvent)
+
+    expect(stage.releasePointerCapture).toHaveBeenCalledWith(7)
+    expect(vm.fixedPagePanning).toBe(false)
   })
 
   it('moves between fixed pages with adapter controls', async () => {
@@ -1145,12 +1346,15 @@ function mountShell({
         readingDirection: 'LTR',
         pageFit: 'SCREEN',
         imageFilterPreset: 'ORIGINAL',
+        fixedPageRotation: 0,
+        fixedPageCoverSingle: false,
         fixedPageScale: 100,
         fixedPageGap: 12,
         fixedPageMargin: 16,
         fixedPageBackground: 'DARK',
         fixedPageBrightness: 1,
         fixedPageContrast: 1,
+        textBrightness: 1,
       },
       sources: [],
     }),
@@ -1196,6 +1400,11 @@ function mountShell({
       'v-tooltip': {template: '<div><slot name="activator" :on="{}" /><slot /></div>'},
       'v-select': {template: '<select v-bind="$attrs" v-on="$listeners"><slot /></select>'},
       'v-slider': {template: '<input type="range" v-bind="$attrs" v-on="$listeners" />'},
+      'v-checkbox': {template: '<input type="checkbox" v-bind="$attrs" v-on="$listeners" />'},
+      'v-text-field': {
+        props: ['value'],
+        template: '<input v-bind="$attrs" :value="value" @input="$emit(\'input\', $event.target.value)" @keyup="$emit(\'keyup\', $event)" />',
+      },
       'v-progress-circular': {template: '<span />'},
     },
   })

@@ -13,6 +13,12 @@ export type ShelfViewFixedPageFit =
   | 'HEIGHT'
   | 'ORIGINAL'
 
+export type ShelfViewFixedPageRotation =
+  | 0
+  | 90
+  | 180
+  | 270
+
 export type ShelfViewFixedPageBackground =
   | 'BLACK'
   | 'DARK'
@@ -38,6 +44,13 @@ export const SHELFVIEW_FIXED_PAGE_FITS: ShelfViewFixedPageFit[] = [
   'ORIGINAL',
 ]
 
+export const SHELFVIEW_FIXED_PAGE_ROTATIONS: ShelfViewFixedPageRotation[] = [
+  0,
+  90,
+  180,
+  270,
+]
+
 export const SHELFVIEW_FIXED_PAGE_BACKGROUNDS: ShelfViewFixedPageBackgroundOption[] = [
   {id: 'BLACK', cssValue: '#000000'},
   {id: 'DARK', cssValue: '#111111'},
@@ -52,11 +65,28 @@ export function shelfViewFixedPageBackground(
   return SHELFVIEW_FIXED_PAGE_BACKGROUNDS.find(option => option.id === background) || SHELFVIEW_FIXED_PAGE_BACKGROUNDS[1]
 }
 
+export function shelfViewNextFixedPageRotation(
+  rotation: number,
+): ShelfViewFixedPageRotation {
+  const normalizedRotation = normalizeFixedPageRotation(rotation)
+  const currentIndex = SHELFVIEW_FIXED_PAGE_ROTATIONS.indexOf(normalizedRotation)
+  return SHELFVIEW_FIXED_PAGE_ROTATIONS[(currentIndex + 1) % SHELFVIEW_FIXED_PAGE_ROTATIONS.length]
+}
+
+export function normalizeFixedPageRotation(
+  rotation: number,
+): ShelfViewFixedPageRotation {
+  return SHELFVIEW_FIXED_PAGE_ROTATIONS.includes(rotation as ShelfViewFixedPageRotation)
+    ? rotation as ShelfViewFixedPageRotation
+    : 0
+}
+
 export function shelfViewVisiblePageIndexes(
   currentPageIndex: number,
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
   readingDirection: ShelfViewFixedPageReadingDirection,
+  coverSingle = false,
 ): number[] {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return []
@@ -67,8 +97,9 @@ export function shelfViewVisiblePageIndexes(
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
   if (layout === 'SINGLE_PAGE') return [current]
+  if (layout === 'DOUBLE_PAGE' && coverSingle && current === 0) return [0]
 
-  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout)
+  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
   const spread = [spreadStart]
   if (spreadStart + 1 < normalizedPageCount) spread.push(spreadStart + 1)
 
@@ -79,12 +110,15 @@ export function shelfViewSpreadStartPageIndex(
   currentPageIndex: number,
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
+  coverSingle = false,
 ): number {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return 0
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
   if (layout !== 'DOUBLE_PAGE') return current
+  if (coverSingle && current === 0) return 0
+  if (coverSingle) return current - ((current - 1) % 2)
 
   return current - (current % 2)
 }
@@ -93,14 +127,15 @@ export function shelfViewNextPageIndex(
   currentPageIndex: number,
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
+  coverSingle = false,
 ): number {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return 0
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
   const step = layout === 'DOUBLE_PAGE' ? 2 : 1
-  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout)
-  const target = spreadStart + step
+  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
+  const target = layout === 'DOUBLE_PAGE' && coverSingle && spreadStart === 0 ? 1 : spreadStart + step
   return target < normalizedPageCount ? target : spreadStart
 }
 
@@ -108,14 +143,15 @@ export function shelfViewPreviousPageIndex(
   currentPageIndex: number,
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
+  coverSingle = false,
 ): number {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return 0
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
   const step = layout === 'DOUBLE_PAGE' ? 2 : 1
-  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout)
-  const target = spreadStart - step
+  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
+  const target = layout === 'DOUBLE_PAGE' && coverSingle && spreadStart <= 1 ? 0 : spreadStart - step
   return target >= 0 ? target : spreadStart
 }
 
@@ -123,16 +159,18 @@ export function shelfViewCanGoNext(
   currentPageIndex: number,
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
+  coverSingle = false,
 ): boolean {
-  return shelfViewNextPageIndex(currentPageIndex, pageCount, layout) > shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout)
+  return shelfViewNextPageIndex(currentPageIndex, pageCount, layout, coverSingle) > shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout, coverSingle)
 }
 
 export function shelfViewCanGoPrevious(
   currentPageIndex: number,
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
+  coverSingle = false,
 ): boolean {
-  return shelfViewPreviousPageIndex(currentPageIndex, pageCount, layout) < shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout)
+  return shelfViewPreviousPageIndex(currentPageIndex, pageCount, layout, coverSingle) < shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout, coverSingle)
 }
 
 function normalizePageCount(pageCount: number): number {

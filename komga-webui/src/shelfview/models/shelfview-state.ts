@@ -1,4 +1,4 @@
-import {ShelfViewFixedPageBackground, ShelfViewFixedPageFit, ShelfViewFixedPageLayout, ShelfViewFixedPageReadingDirection} from '@/shelfview/functions/fixed-page-view'
+import {ShelfViewFixedPageBackground, ShelfViewFixedPageFit, ShelfViewFixedPageLayout, ShelfViewFixedPageReadingDirection, ShelfViewFixedPageRotation} from '@/shelfview/functions/fixed-page-view'
 import {ShelfViewImageFilterPreset} from '@/shelfview/functions/image-filter-presets'
 import {ShelfViewTextAlign, ShelfViewTextFontFamily, ShelfViewTextTheme} from '@/shelfview/functions/text-reflow-view'
 import {ShelfViewLocator} from '@/shelfview/models/shelfview-locator'
@@ -46,6 +46,8 @@ export interface ShelfViewFixedPagePreferenceSettings {
   readingDirection?: ShelfViewFixedPageReadingDirection,
   pageFit?: ShelfViewFixedPageFit,
   imageFilterPreset?: ShelfViewImageFilterPreset,
+  fixedPageRotation?: ShelfViewFixedPageRotation,
+  fixedPageCoverSingle?: boolean,
   fixedPageScale?: number,
   fixedPageGap?: number,
   fixedPageMargin?: number,
@@ -63,6 +65,7 @@ export interface ShelfViewFixedPagePreferenceSettings {
   textParagraphSpacing?: number,
   textAlign?: ShelfViewTextAlign,
   textFontWeight?: number,
+  textBrightness?: number,
 }
 
 export interface ShelfViewPreferenceDto {

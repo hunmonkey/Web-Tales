@@ -155,7 +155,9 @@ class ShelfViewPreferenceControllerTest(
               "readingDirection":"RTL",
               "pageFit":"WIDTH",
               "imageFilterPreset":"MONO_COMIC",
-              "fixedPageScale":125,
+              "fixedPageRotation":90,
+              "fixedPageCoverSingle":true,
+              "fixedPageScale":220,
               "fixedPageGap":24,
               "fixedPageMargin":32,
               "fixedPageBackground":"PAPER",
@@ -167,7 +169,9 @@ class ShelfViewPreferenceControllerTest(
       }.andExpect {
         status { isOk() }
         jsonPath("$.format") { value(FORMAT) }
-        jsonPath("$.settings.fixedPageScale") { value(125) }
+        jsonPath("$.settings.fixedPageScale") { value(220) }
+        jsonPath("$.settings.fixedPageRotation") { value(90) }
+        jsonPath("$.settings.fixedPageCoverSingle") { value(true) }
         jsonPath("$.settings.fixedPageGap") { value(24) }
         jsonPath("$.settings.fixedPageMargin") { value(32) }
         jsonPath("$.settings.fixedPageBackground") { value("PAPER") }
@@ -183,7 +187,9 @@ class ShelfViewPreferenceControllerTest(
       }.andExpect {
         status { isOk() }
         jsonPath("$.effectiveSettings.layout") { value("CONTINUOUS_SCROLL") }
-        jsonPath("$.effectiveSettings.fixedPageScale") { value(125) }
+        jsonPath("$.effectiveSettings.fixedPageScale") { value(220) }
+        jsonPath("$.effectiveSettings.fixedPageRotation") { value(90) }
+        jsonPath("$.effectiveSettings.fixedPageCoverSingle") { value(true) }
         jsonPath("$.effectiveSettings.fixedPageGap") { value(24) }
         jsonPath("$.effectiveSettings.fixedPageMargin") { value(32) }
         jsonPath("$.effectiveSettings.fixedPageBackground") { value("PAPER") }
@@ -208,7 +214,7 @@ class ShelfViewPreferenceControllerTest(
             {
               "layout":"CONTINUOUS_SCROLL",
               "textTheme":"DARK",
-              "textFontFamily":"READABLE_KR",
+              "textFontFamily":"GOWUN_DODUM",
               "textFontSize":24,
               "textLineHeight":1.9,
               "textLetterSpacing":0.8,
@@ -217,7 +223,8 @@ class ShelfViewPreferenceControllerTest(
               "textPageMargin":64,
               "textParagraphSpacing":1.55,
               "textAlign":"JUSTIFY",
-              "textFontWeight":500
+              "textFontWeight":500,
+              "textBrightness":0.92
             }
             """.trimIndent(),
             TEXT_FORMAT,
@@ -226,10 +233,11 @@ class ShelfViewPreferenceControllerTest(
         status { isOk() }
         jsonPath("$.format") { value(TEXT_FORMAT) }
         jsonPath("$.settings.textTheme") { value("DARK") }
-        jsonPath("$.settings.textFontFamily") { value("READABLE_KR") }
+        jsonPath("$.settings.textFontFamily") { value("GOWUN_DODUM") }
         jsonPath("$.settings.textFontSize") { value(24) }
         jsonPath("$.settings.textContentWidth") { value(700) }
         jsonPath("$.settings.textAlign") { value("JUSTIFY") }
+        jsonPath("$.settings.textBrightness") { value(0.92) }
       }
 
     mockMvc
@@ -246,6 +254,7 @@ class ShelfViewPreferenceControllerTest(
         jsonPath("$.effectiveSettings.textLetterSpacing") { value(0.8) }
         jsonPath("$.effectiveSettings.textContentWidth") { value(700) }
         jsonPath("$.effectiveSettings.textFontWeight") { value(500) }
+        jsonPath("$.effectiveSettings.textBrightness") { value(0.92) }
       }
   }
 
@@ -296,6 +305,8 @@ class ShelfViewPreferenceControllerTest(
         jsonPath("$.effectiveSettings.pageFit") { value("SCREEN") }
         jsonPath("$.effectiveSettings.imageFilterPreset") { value("ORIGINAL") }
         jsonPath("$.effectiveSettings.fixedPageScale") { value(100) }
+        jsonPath("$.effectiveSettings.fixedPageRotation") { value(0) }
+        jsonPath("$.effectiveSettings.fixedPageCoverSingle") { value(false) }
         jsonPath("$.effectiveSettings.fixedPageGap") { value(12) }
         jsonPath("$.effectiveSettings.fixedPageMargin") { value(16) }
         jsonPath("$.effectiveSettings.fixedPageBackground") { value("DARK") }
@@ -314,11 +325,14 @@ class ShelfViewPreferenceControllerTest(
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"unknown":"value"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"layout":"BAD"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"pageFit":3}}""",
-      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageScale":220}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageRotation":45}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageCoverSingle":"yes"}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageScale":320}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageBackground":"BLUE"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"FIXED_PAGE_SEQUENCE","settings":{"fixedPageBrightness":1.8}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"imageFilterPreset":"ORIGINAL"}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textFontSize":99}}""",
+      """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textBrightness":0.2}}""",
       """{"scopeType":"GLOBAL","scopeId":"GLOBAL","format":"TEXT_REFLOW","settings":{"textTheme":"BAD"}}""",
     ],
   )

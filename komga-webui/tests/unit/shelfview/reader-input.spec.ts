@@ -18,6 +18,8 @@ describe('ShelfView reader input helpers', () => {
     expect(shelfViewReaderKeyboardAction('PageUp', 'LTR')).toBe('PREVIOUS')
     expect(shelfViewReaderKeyboardAction('Home', 'LTR')).toBe('FIRST')
     expect(shelfViewReaderKeyboardAction('End', 'LTR')).toBe('LAST')
+    expect(shelfViewReaderKeyboardAction('r', 'LTR')).toBe('ROTATE')
+    expect(shelfViewReaderKeyboardAction('R', 'LTR')).toBe('ROTATE')
     expect(shelfViewReaderKeyboardAction('?', 'LTR')).toBe('SHOW_SHORTCUTS')
     expect(shelfViewReaderKeyboardAction('F1', 'LTR')).toBe('SHOW_SHORTCUTS')
     expect(shelfViewReaderKeyboardAction('x', 'LTR')).toBeUndefined()

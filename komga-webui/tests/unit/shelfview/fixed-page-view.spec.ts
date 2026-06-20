@@ -1,6 +1,8 @@
 import {
+  normalizeFixedPageRotation,
   shelfViewCanGoNext,
   shelfViewCanGoPrevious,
+  shelfViewNextFixedPageRotation,
   shelfViewNextPageIndex,
   shelfViewPreviousPageIndex,
   shelfViewSpreadStartPageIndex,
@@ -33,8 +35,24 @@ describe('ShelfView fixed page view helpers', () => {
     expect(shelfViewNextPageIndex(3, 4, 'DOUBLE_PAGE')).toBe(2)
   })
 
+  it('keeps the cover alone when double page cover-single mode is enabled', () => {
+    expect(shelfViewVisiblePageIndexes(0, 5, 'DOUBLE_PAGE', 'LTR', true)).toEqual([0])
+    expect(shelfViewVisiblePageIndexes(1, 5, 'DOUBLE_PAGE', 'LTR', true)).toEqual([1, 2])
+    expect(shelfViewVisiblePageIndexes(2, 5, 'DOUBLE_PAGE', 'LTR', true)).toEqual([1, 2])
+    expect(shelfViewNextPageIndex(0, 5, 'DOUBLE_PAGE', true)).toBe(1)
+    expect(shelfViewPreviousPageIndex(1, 5, 'DOUBLE_PAGE', true)).toBe(0)
+  })
+
   it('returns all pages for continuous scroll mode', () => {
     expect(shelfViewVisiblePageIndexes(2, 4, 'CONTINUOUS_SCROLL', 'RTL')).toEqual([0, 1, 2, 3])
+  })
+
+  it('cycles fixed page rotation by right angles', () => {
+    expect(shelfViewNextFixedPageRotation(0)).toBe(90)
+    expect(shelfViewNextFixedPageRotation(90)).toBe(180)
+    expect(shelfViewNextFixedPageRotation(180)).toBe(270)
+    expect(shelfViewNextFixedPageRotation(270)).toBe(0)
+    expect(normalizeFixedPageRotation(45)).toBe(0)
   })
 
   it('handles empty and out-of-range values safely', () => {

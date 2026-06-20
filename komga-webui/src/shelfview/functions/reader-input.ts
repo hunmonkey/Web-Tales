@@ -5,6 +5,7 @@ export type ShelfViewReaderInputAction =
   | 'PREVIOUS'
   | 'FIRST'
   | 'LAST'
+  | 'ROTATE'
   | 'SHOW_SHORTCUTS'
 
 export interface ShelfViewTouchPoint {
@@ -32,6 +33,9 @@ export function shelfViewReaderKeyboardAction(
       return 'FIRST'
     case 'End':
       return 'LAST'
+    case 'r':
+    case 'R':
+      return 'ROTATE'
     case '?':
     case 'F1':
       return 'SHOW_SHORTCUTS'

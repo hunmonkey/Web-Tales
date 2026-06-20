@@ -108,7 +108,11 @@ class ShelfViewManifestController(
       sourceFormat = sourceFormat,
       contentFingerprint = contentFingerprint,
       pageCount = shelfViewPageCount(media),
-      pages = ShelfViewPagesDto(endpointTemplate = fixedPageEndpointTemplate(book.id, mediaType)),
+      pages =
+        ShelfViewPagesDto(
+          endpointTemplate = fixedPageEndpointTemplate(book.id, mediaType),
+          thumbnailEndpointTemplate = fixedPageThumbnailEndpointTemplate(book.id, mediaType),
+        ),
       capabilities = fixedPageCapabilities,
     )
   }
@@ -146,6 +150,15 @@ class ShelfViewManifestController(
     when (mediaType) {
       KomgaMediaType.IMAGE_DIRECTORY -> "/api/shelfview/v1/books/$bookId/image-directory/pages/{page}?zero_based=true"
       else -> "/api/v1/books/$bookId/pages/{page}?zero_based=true"
+    }
+
+  private fun fixedPageThumbnailEndpointTemplate(
+    bookId: String,
+    mediaType: KomgaMediaType,
+  ): String? =
+    when (mediaType) {
+      KomgaMediaType.IMAGE_DIRECTORY -> null
+      else -> "/api/v1/books/$bookId/pages/{pageOneBased}/thumbnail"
     }
 
   private fun hasMixedZipEntries(files: List<MediaFile>): Boolean =
@@ -202,7 +215,7 @@ class ShelfViewManifestController(
 
     val textCapabilities =
       ShelfViewCapabilitiesDto(
-        search = false,
+        search = true,
         textSelection = true,
         doublePage = false,
         continuousScroll = true,
@@ -212,7 +225,7 @@ class ShelfViewManifestController(
 
     val mixedContentCapabilities =
       ShelfViewCapabilitiesDto(
-        search = false,
+        search = true,
         textSelection = true,
         doublePage = true,
         continuousScroll = true,

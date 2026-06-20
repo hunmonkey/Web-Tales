@@ -1,6 +1,10 @@
 <template>
   <v-container
     class="ma-0 pa-0 shelfview-reader-shell"
+    :class="{
+      'shelfview-reader-shell--search-open': textSearchOpen && textSearchAvailable,
+      'shelfview-reader-shell--thumbnails': thumbnailStripVisible,
+    }"
     fluid
     data-testid="shelfview-reader-shell"
   >
@@ -76,6 +80,22 @@
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
+              v-if="textSearchAvailable"
+              icon
+              :aria-label="$t('shelfview_reader.search')"
+              data-testid="shelfview-reader-search-toggle"
+              v-on="on"
+              @click="toggleTextSearch"
+            >
+              <v-icon>mdi-magnify</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ $t('shelfview_reader.search') }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
               v-if="fixedPageControlsVisible"
               icon
               :aria-label="$t('shelfview_reader.fixed_settings')"
@@ -87,6 +107,38 @@
             </v-btn>
           </template>
           <span>{{ $t('shelfview_reader.fixed_settings') }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              v-if="fixedPageControlsVisible"
+              icon
+              :aria-label="fixedPageRotationLabel"
+              data-testid="shelfview-reader-rotate-toggle"
+              v-on="on"
+              @click="cycleFixedPageRotation"
+            >
+              <v-icon>mdi-rotate-right</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ fixedPageRotationLabel }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
+              v-if="fixedPageControlsVisible"
+              icon
+              :aria-label="slideshowLabel"
+              data-testid="shelfview-reader-slideshow-toggle"
+              v-on="on"
+              @click="toggleSlideshow"
+            >
+              <v-icon>{{ slideshowActive ? 'mdi-pause-circle-outline' : 'mdi-play-circle-outline' }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ slideshowLabel }}</span>
         </v-tooltip>
 
         <v-tooltip bottom>
@@ -201,6 +253,19 @@
           {{ currentPageLabel }} / {{ pagesCount }}
         </span>
 
+        <input
+          v-if="fixedPageControlsVisible"
+          v-model="pageJumpInput"
+          class="shelfview-reader-shell__page-jump"
+          type="number"
+          min="1"
+          :max="pagesCount"
+          :aria-label="$t('shelfview_reader.page_jump')"
+          data-testid="shelfview-reader-page-jump"
+          @change="goToPageJumpInput"
+          @keyup.enter="goToPageJumpInput"
+        />
+
         <v-btn
           icon
           :disabled="!canGoNext"
@@ -236,6 +301,48 @@
       </v-tooltip>
     </v-toolbar>
 
+    <section
+      v-if="textSearchOpen && textSearchAvailable"
+      class="shelfview-reader-shell__search-bar"
+      data-testid="shelfview-reader-search-bar"
+    >
+      <v-text-field
+        v-model="textSearchQuery"
+        dense
+        outlined
+        hide-details
+        prepend-inner-icon="mdi-magnify"
+        :label="$t('shelfview_reader.search')"
+        data-testid="shelfview-reader-search-input"
+        @input="onTextSearchInput"
+        @keyup.enter="goToNextTextSearchMatch"
+      />
+      <span
+        class="shelfview-reader-shell__search-status"
+        data-testid="shelfview-reader-search-status"
+      >
+        {{ textSearchStatus }}
+      </span>
+      <v-btn
+        icon
+        :disabled="textSearchMatches.length === 0"
+        :aria-label="$t('shelfview_reader.search_previous')"
+        data-testid="shelfview-reader-search-previous"
+        @click="goToPreviousTextSearchMatch"
+      >
+        <v-icon>mdi-chevron-up</v-icon>
+      </v-btn>
+      <v-btn
+        icon
+        :disabled="textSearchMatches.length === 0"
+        :aria-label="$t('shelfview_reader.search_next')"
+        data-testid="shelfview-reader-search-next"
+        @click="goToNextTextSearchMatch"
+      >
+        <v-icon>mdi-chevron-down</v-icon>
+      </v-btn>
+    </section>
+
     <p
       id="shelfview-reader-shortcut-hint"
       class="shelfview-reader-shell__sr-only"
@@ -262,6 +369,11 @@
       aria-describedby="shelfview-reader-shortcut-hint"
       data-testid="shelfview-reader-stage"
       @keydown="onReaderKeydown"
+      @wheel="onReaderWheel"
+      @pointerdown="onReaderPointerDown"
+      @pointermove="onReaderPointerMove"
+      @pointerup="onReaderPointerUp"
+      @pointercancel="onReaderPointerCancel"
       @scroll="onReaderStageScroll"
       @touchstart="onReaderTouchStart"
       @touchend="onReaderTouchEnd"
@@ -361,10 +473,12 @@
           :style="imageFilterStyle"
           :src="page.url"
           :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
+          draggable="false"
           :data-page-index="page.pageIndex"
           :data-page-reload="pageImageReloadNonce"
           data-testid="shelfview-reader-page"
           @error="onPageImageError"
+          @dragstart.prevent
         />
       </div>
 
@@ -379,6 +493,7 @@
           v-for="paragraph in visibleTextParagraphs"
           :key="`paragraph-${paragraph.paragraphIndex}`"
           class="shelfview-reader-shell__text-paragraph"
+          :class="textParagraphClass(paragraph.paragraphIndex)"
           :data-text-paragraph-index="paragraph.paragraphIndex"
           data-testid="shelfview-reader-text-paragraph"
         >
@@ -386,6 +501,30 @@
         </p>
       </article>
     </main>
+
+    <section
+      v-if="thumbnailStripVisible"
+      class="shelfview-reader-shell__thumbnail-strip"
+      data-testid="shelfview-reader-thumbnail-strip"
+    >
+      <button
+        v-for="thumbnail in thumbnailPageSources"
+        :key="`thumbnail-${thumbnail.pageIndex}`"
+        type="button"
+        class="shelfview-reader-shell__thumbnail-button"
+        :class="{'shelfview-reader-shell__thumbnail-button--active': thumbnail.pageIndex === currentPageIndex}"
+        :aria-label="$t('shelfview_reader.page_n', {n: thumbnail.pageIndex + 1})"
+        :data-page-index="thumbnail.pageIndex"
+        data-testid="shelfview-reader-thumbnail"
+        @click="goToPageIndex(thumbnail.pageIndex)"
+      >
+        <img
+          :src="thumbnail.url"
+          :alt="$t('shelfview_reader.page_n', {n: thumbnail.pageIndex + 1})"
+          draggable="false"
+        />
+      </button>
+    </section>
 
     <aside
       v-if="bookmarksDrawerOpen"
@@ -497,8 +636,8 @@
           <v-slider
             id="shelfview-fixed-page-scale"
             v-model.number="fixedPageScale"
-            min="80"
-            max="180"
+            min="50"
+            max="300"
             step="5"
             hide-details
             data-testid="shelfview-reader-fixed-scale"
@@ -573,6 +712,15 @@
             @input="onFixedPageDisplaySettingChanged"
           />
         </div>
+
+        <v-checkbox
+          v-model="fixedPageCoverSingle"
+          dense
+          hide-details
+          :label="$t('shelfview_reader.cover_single')"
+          data-testid="shelfview-reader-fixed-cover-single"
+          @change="onFixedPageDisplaySettingChanged"
+        />
 
         <v-btn
           block
@@ -768,6 +916,23 @@
           />
         </div>
 
+        <div class="shelfview-reader-shell__text-setting-row">
+          <label for="shelfview-text-brightness">
+            {{ $t('shelfview_reader.brightness') }}
+            <span>{{ textBrightness.toFixed(2) }}</span>
+          </label>
+          <v-slider
+            id="shelfview-text-brightness"
+            v-model.number="textBrightness"
+            min="0.8"
+            max="1.2"
+            step="0.02"
+            hide-details
+            data-testid="shelfview-reader-text-brightness"
+            @input="onTextDisplaySettingChanged"
+          />
+        </div>
+
         <v-btn
           block
           color="secondary"
@@ -837,9 +1002,12 @@ import {
   ShelfViewFixedPageFit,
   ShelfViewFixedPageLayout,
   ShelfViewFixedPageReadingDirection,
+  ShelfViewFixedPageRotation,
+  normalizeFixedPageRotation,
   shelfViewFixedPageBackground,
   shelfViewCanGoNext,
   shelfViewCanGoPrevious,
+  shelfViewNextFixedPageRotation,
   shelfViewNextPageIndex,
   shelfViewPreviousPageIndex,
   shelfViewVisiblePageIndexes,
@@ -857,6 +1025,7 @@ import {
   shelfViewShouldIgnoreShortcutTarget,
   shelfViewTouchAction,
 } from '@/shelfview/functions/reader-input'
+import {shelfViewThumbnailUrl} from '@/shelfview/functions/shelfview-urls'
 import {
   SHELFVIEW_TEXT_ALIGNS,
   SHELFVIEW_TEXT_FONT_FAMILIES,
@@ -875,6 +1044,19 @@ interface ShelfViewPageSource {
   url: string,
 }
 
+interface ShelfViewTextSearchMatch {
+  paragraphIndex: number,
+  characterOffset: number,
+}
+
+interface ShelfViewFixedPagePanStart {
+  pointerId: number,
+  x: number,
+  y: number,
+  scrollLeft: number,
+  scrollTop: number,
+}
+
 type ShelfViewReaderStateStatus =
   | 'IDLE'
   | 'PENDING'
@@ -887,6 +1069,10 @@ const SHELFVIEW_FIXED_PAGE_FORMAT: ShelfViewPreferenceFormat = 'FIXED_PAGE_SEQUE
 const SHELFVIEW_TEXT_FORMAT: ShelfViewPreferenceFormat = 'TEXT_REFLOW'
 const POSITION_SAVE_DEBOUNCE_MS = 2000
 const PREFERENCE_SAVE_DEBOUNCE_MS = 600
+const SLIDESHOW_INTERVAL_MS = 5000
+const FIXED_PAGE_SCALE_MIN = 50
+const FIXED_PAGE_SCALE_MAX = 300
+const FIXED_PAGE_WHEEL_SCALE_STEP = 10
 
 const TEXT_DISPLAY_DEFAULTS = {
   textTheme: 'PAPER' as ShelfViewTextTheme,
@@ -900,9 +1086,12 @@ const TEXT_DISPLAY_DEFAULTS = {
   textParagraphSpacing: 1.35,
   textAlign: 'LEFT' as ShelfViewTextAlign,
   textFontWeight: 400,
+  textBrightness: 1,
 }
 
 const FIXED_PAGE_DISPLAY_DEFAULTS = {
+  fixedPageRotation: 0 as ShelfViewFixedPageRotation,
+  fixedPageCoverSingle: false,
   fixedPageScale: 100,
   fixedPageGap: 12,
   fixedPageMargin: 16,
@@ -935,6 +1124,8 @@ export default Vue.extend({
     readingDirection: 'LTR' as ShelfViewFixedPageReadingDirection,
     pageFit: 'SCREEN' as ShelfViewFixedPageFit,
     imageFilterPreset: 'ORIGINAL' as ShelfViewImageFilterPreset,
+    fixedPageRotation: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageRotation,
+    fixedPageCoverSingle: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageCoverSingle,
     fixedPageScale: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageScale,
     fixedPageGap: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageGap,
     fixedPageMargin: FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageMargin,
@@ -952,8 +1143,15 @@ export default Vue.extend({
     textParagraphSpacing: TEXT_DISPLAY_DEFAULTS.textParagraphSpacing,
     textAlign: TEXT_DISPLAY_DEFAULTS.textAlign,
     textFontWeight: TEXT_DISPLAY_DEFAULTS.textFontWeight,
+    textBrightness: TEXT_DISPLAY_DEFAULTS.textBrightness,
     fixedPageSettingsOpen: false,
     textSettingsOpen: false,
+    textSearchOpen: false,
+    textSearchQuery: '',
+    textSearchMatchIndex: 0,
+    pageJumpInput: '1',
+    slideshowActive: false,
+    slideshowTimer: undefined as number | undefined,
     showShortcutHelp: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
     bookmarksDrawerOpen: false,
@@ -962,6 +1160,8 @@ export default Vue.extend({
     positionSaveTimer: undefined as number | undefined,
     preferenceSaveTimer: undefined as number | undefined,
     touchStart: undefined as ShelfViewTouchPoint | undefined,
+    fixedPagePanStart: undefined as ShelfViewFixedPagePanStart | undefined,
+    fixedPagePanning: false,
     setupRequestId: 0,
   }),
   async mounted() {
@@ -977,6 +1177,7 @@ export default Vue.extend({
     this.setupRequestId += 1
     void this.flushReaderState()
     this.clearReaderStateTimers()
+    this.stopSlideshow()
     window.removeEventListener('online', this.onReaderOnline)
     window.removeEventListener('offline', this.onReaderOffline)
     window.removeEventListener('resize', this.onReaderViewportChanged)
@@ -1008,6 +1209,9 @@ export default Vue.extend({
     },
     textControlsVisible(): boolean {
       return this.manifest?.kind === 'TEXT_REFLOW' || !!this.mixedContentAdapter?.isCurrentText()
+    },
+    textSearchAvailable(): boolean {
+      return this.textControlsVisible && !!this.manifest?.capabilities.search
     },
     readerStateNoticeVisible(): boolean {
       return this.readerStateStatus !== 'IDLE' && this.readerStateMessage.length > 0
@@ -1083,18 +1287,19 @@ export default Vue.extend({
         {keys: this.$t('shelfview_reader.shortcut_keys_page') as string, label: this.$t('shelfview_reader.shortcut_move_pages') as string},
         {keys: this.$t('shelfview_reader.shortcut_keys_space') as string, label: this.$t('shelfview_reader.shortcut_next_page') as string},
         {keys: this.$t('shelfview_reader.shortcut_keys_home_end') as string, label: this.$t('shelfview_reader.shortcut_first_last') as string},
+        ...(this.fixedPageControlsVisible ? [{keys: this.$t('shelfview_reader.shortcut_keys_rotate') as string, label: this.$t('shelfview_reader.shortcut_rotate') as string}] : []),
         {keys: this.$t('shelfview_reader.shortcut_keys_help') as string, label: this.$t('shelfview_reader.shortcut_show') as string},
       ]
     },
     canGoPrevious(): boolean {
       if (this.mixedContentAdapter) return this.mixedContentAdapter.canGoPrevious()
       if (this.textAdapter) return this.textAdapter.canGoPrevious()
-      return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout)
+      return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle)
     },
     canGoNext(): boolean {
       if (this.mixedContentAdapter) return this.mixedContentAdapter.canGoNext()
       if (this.textAdapter) return this.textAdapter.canGoNext()
-      return !!this.adapter && shelfViewCanGoNext(this.currentPageIndex, this.pagesCount, this.readerLayout)
+      return !!this.adapter && shelfViewCanGoNext(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle)
     },
     rtlAvailable(): boolean {
       return !!this.manifest?.capabilities.rtl
@@ -1107,6 +1312,7 @@ export default Vue.extend({
         this.pagesCount,
         this.readerLayout,
         this.readingDirection,
+        this.fixedPageCoverSingle,
       )
         .map(pageIndex => ({
           pageIndex,
@@ -1117,8 +1323,51 @@ export default Vue.extend({
     readerPagesVisible(): boolean {
       return this.visiblePageSources.length > 0
     },
+    thumbnailPageSources(): ShelfViewPageSource[] {
+      if (!this.fixedPageControlsVisible || this.pagesCount < 1) return []
+
+      return Array.from({length: this.pagesCount}, (_, pageIndex) => ({
+        pageIndex,
+        url: this.fixedPageAdapter
+          ? shelfViewThumbnailUrl(this.manifest, pageIndex)
+          : this.mixedContentAdapter?.getPageUrl(pageIndex),
+      }))
+        .filter((page): page is ShelfViewPageSource => !!page.url)
+    },
+    thumbnailStripVisible(): boolean {
+      return this.fixedPageControlsVisible && this.thumbnailPageSources.length > 1
+    },
     visibleTextParagraphs(): ShelfViewTextParagraph[] {
       return this.textAdapter?.getVisibleParagraphs(this.readerLayout) ?? this.mixedContentAdapter?.getVisibleParagraphs(this.readerLayout) ?? []
+    },
+    textSearchMatches(): ShelfViewTextSearchMatch[] {
+      const query = this.textSearchQuery.trim().toLocaleLowerCase()
+      if (!query || !this.textSearchAvailable) return []
+
+      const matches: ShelfViewTextSearchMatch[] = []
+      this.searchableTextParagraphs().forEach(paragraph => {
+        const text = paragraph.text.toLocaleLowerCase()
+        let index = text.indexOf(query)
+        while (index >= 0) {
+          matches.push({
+            paragraphIndex: paragraph.paragraphIndex,
+            characterOffset: index,
+          })
+          index = text.indexOf(query, index + query.length)
+        }
+      })
+      return matches
+    },
+    currentTextSearchMatch(): ShelfViewTextSearchMatch | undefined {
+      return this.textSearchMatches[this.textSearchMatchIndex]
+    },
+    textSearchStatus(): string {
+      if (!this.textSearchQuery.trim()) return this.$t('shelfview_reader.search_empty') as string
+      if (this.textSearchMatches.length === 0) return this.$t('shelfview_reader.search_no_matches') as string
+      return this.$t('shelfview_reader.search_match_status', {
+        current: this.textSearchMatchIndex + 1,
+        total: this.textSearchMatches.length,
+      }) as string
     },
     readerTextVisible(): boolean {
       return this.visibleTextParagraphs.length > 0
@@ -1127,6 +1376,7 @@ export default Vue.extend({
       return {
         'shelfview-reader-shell__stage--continuous': this.readerLayout === 'CONTINUOUS_SCROLL',
         'shelfview-reader-shell__stage--fixed': this.fixedPageControlsVisible,
+        'shelfview-reader-shell__stage--panning': this.fixedPagePanning,
         'shelfview-reader-shell__stage--text': this.textControlsVisible,
       }
     },
@@ -1195,6 +1445,7 @@ export default Vue.extend({
 
       return {
         '--sv-fixed-page-scale': (this.fixedPageScale / 100).toString(),
+        '--sv-fixed-page-rotation': `${this.fixedPageRotation}deg`,
         '--sv-fixed-page-gap': `${this.fixedPageGap}px`,
         '--sv-fixed-page-margin': `${this.fixedPageMargin}px`,
         '--sv-fixed-background': shelfViewFixedPageBackground(this.fixedPageBackground).cssValue,
@@ -1213,7 +1464,13 @@ export default Vue.extend({
         '--sv-text-paragraph-spacing': `${this.textParagraphSpacing}em`,
         '--sv-text-align': shelfViewTextAlign(this.textAlign).cssValue,
         '--sv-text-font-weight': this.textFontWeight.toString(),
+        '--sv-text-brightness': this.textBrightness.toString(),
       }
+    },
+    slideshowLabel(): string {
+      return this.slideshowActive
+        ? this.$t('shelfview_reader.slideshow_stop') as string
+        : this.$t('shelfview_reader.slideshow_start') as string
     },
     readerLayoutIcon(): string {
       switch (this.readerLayout) {
@@ -1242,6 +1499,9 @@ export default Vue.extend({
       return this.readingDirection === 'RTL'
         ? this.$t('shelfview_reader.direction_rtl') as string
         : this.$t('shelfview_reader.direction_ltr') as string
+    },
+    fixedPageRotationLabel(): string {
+      return this.$t('shelfview_reader.rotate_degrees', {degrees: this.fixedPageRotation}) as string
     },
     pageFitIcon(): string {
       switch (this.pageFit) {
@@ -1359,6 +1619,10 @@ export default Vue.extend({
       this.manifest = undefined as unknown as ShelfViewManifest
       this.bookmarks = []
       this.bookmarksDrawerOpen = false
+      this.textSearchOpen = false
+      this.textSearchQuery = ''
+      this.textSearchMatchIndex = 0
+      this.stopSlideshow()
       this.clearReaderStateTimers()
       this.setReaderStateStatus('IDLE', '')
       this.destroyAdapter()
@@ -1542,6 +1806,7 @@ export default Vue.extend({
       }
 
       this.currentLocator = this.adapter.getCurrentLocator()
+      this.pageJumpInput = this.currentPageNumber.toString()
     },
     async previousPage() {
       if (!this.adapter) return
@@ -1562,7 +1827,7 @@ export default Vue.extend({
         return
       }
 
-      await this.goToPageIndex(shelfViewPreviousPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout))
+      await this.goToPageIndex(shelfViewPreviousPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle))
     },
     async nextPage() {
       if (!this.adapter) return
@@ -1583,7 +1848,7 @@ export default Vue.extend({
         return
       }
 
-      await this.goToPageIndex(shelfViewNextPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout))
+      await this.goToPageIndex(shelfViewNextPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle))
     },
     async goToPageIndex(pageIndex: number) {
       if (!this.adapter) return
@@ -1634,6 +1899,13 @@ export default Vue.extend({
     cyclePageFit() {
       const currentIndex = SHELFVIEW_FIXED_PAGE_FITS.indexOf(this.pageFit)
       this.pageFit = SHELFVIEW_FIXED_PAGE_FITS[(currentIndex + 1) % SHELFVIEW_FIXED_PAGE_FITS.length]
+      this.schedulePreferenceSave()
+    },
+    cycleFixedPageRotation() {
+      if (!this.fixedPageControlsVisible) return
+
+      this.fixedPageRotation = shelfViewNextFixedPageRotation(this.fixedPageRotation)
+      this.$nextTick(() => this.restoreCurrentVisibleContent())
       this.schedulePreferenceSave()
     },
     cycleImageFilterPreset() {
@@ -1699,6 +1971,9 @@ export default Vue.extend({
         if (settings.imageFilterPreset && this.imageFiltersAvailable) {
           this.imageFilterPreset = settings.imageFilterPreset
         }
+        if (isFiniteNumber(settings.fixedPageRotation)) {
+          this.fixedPageRotation = normalizeFixedPageRotation(settings.fixedPageRotation)
+        }
         if (!this.imageFiltersAvailable) this.imageFilterPreset = 'ORIGINAL'
         this.applyFixedPagePreferenceSettings(settings)
       }
@@ -1712,6 +1987,8 @@ export default Vue.extend({
       if (persist) this.schedulePreferenceSave()
     },
     applyFixedPagePreferenceSettings(settings: ShelfViewFixedPagePreferenceSettings) {
+      if (isFiniteNumber(settings.fixedPageRotation)) this.fixedPageRotation = normalizeFixedPageRotation(settings.fixedPageRotation)
+      if (typeof settings.fixedPageCoverSingle === 'boolean') this.fixedPageCoverSingle = settings.fixedPageCoverSingle
       if (isFiniteNumber(settings.fixedPageScale)) this.fixedPageScale = settings.fixedPageScale
       if (isFiniteNumber(settings.fixedPageGap)) this.fixedPageGap = settings.fixedPageGap
       if (isFiniteNumber(settings.fixedPageMargin)) this.fixedPageMargin = settings.fixedPageMargin
@@ -1723,14 +2000,18 @@ export default Vue.extend({
       this.normalizeFixedPageDisplaySettings()
     },
     normalizeFixedPageDisplaySettings() {
-      this.fixedPageScale = Math.round(clampNumber(this.fixedPageScale, 80, 180) / 5) * 5
+      this.fixedPageScale = this.normalizedFixedPageScale(this.fixedPageScale)
       this.fixedPageGap = Math.round(clampNumber(this.fixedPageGap, 0, 64) / 2) * 2
       this.fixedPageMargin = Math.round(clampNumber(this.fixedPageMargin, 0, 96) / 4) * 4
       if (!SHELFVIEW_FIXED_PAGE_BACKGROUNDS.some(option => option.id === this.fixedPageBackground)) {
         this.fixedPageBackground = FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageBackground
       }
+      this.fixedPageRotation = normalizeFixedPageRotation(this.fixedPageRotation)
       this.fixedPageBrightness = roundNumber(clampNumber(this.fixedPageBrightness, 0.8, 1.2), 2)
       this.fixedPageContrast = roundNumber(clampNumber(this.fixedPageContrast, 0.85, 1.35), 2)
+    },
+    normalizedFixedPageScale(value: number): number {
+      return Math.round(clampNumber(value, FIXED_PAGE_SCALE_MIN, FIXED_PAGE_SCALE_MAX) / 5) * 5
     },
     applyTextPreferenceSettings(settings: ShelfViewFixedPagePreferenceSettings) {
       if (settings.textTheme && SHELFVIEW_TEXT_THEMES.includes(settings.textTheme)) this.textTheme = settings.textTheme
@@ -1744,6 +2025,7 @@ export default Vue.extend({
       if (isFiniteNumber(settings.textPageMargin)) this.textPageMargin = settings.textPageMargin
       if (isFiniteNumber(settings.textParagraphSpacing)) this.textParagraphSpacing = settings.textParagraphSpacing
       if (isFiniteNumber(settings.textFontWeight)) this.textFontWeight = settings.textFontWeight
+      if (isFiniteNumber(settings.textBrightness)) this.textBrightness = settings.textBrightness
       this.normalizeTextDisplaySettings()
     },
     normalizeTextDisplaySettings() {
@@ -1758,6 +2040,7 @@ export default Vue.extend({
       this.textPageMargin = Math.round(clampNumber(this.textPageMargin, 16, 120))
       this.textParagraphSpacing = roundNumber(clampNumber(this.textParagraphSpacing, 0.6, 2.6), 2)
       this.textFontWeight = Math.round(clampNumber(this.textFontWeight, 300, 700) / 50) * 50
+      this.textBrightness = roundNumber(clampNumber(this.textBrightness, 0.8, 1.2), 2)
     },
     currentPreferenceSettings(format?: ShelfViewPreferenceFormat): ShelfViewFixedPagePreferenceSettings {
       if ((format ?? this.currentPreferenceFormat()) === SHELFVIEW_TEXT_FORMAT) {
@@ -1774,6 +2057,7 @@ export default Vue.extend({
           textParagraphSpacing: this.textParagraphSpacing,
           textAlign: this.textAlign,
           textFontWeight: this.textFontWeight,
+          textBrightness: this.textBrightness,
         }
       }
 
@@ -1782,6 +2066,8 @@ export default Vue.extend({
         readingDirection: this.readingDirection,
         pageFit: this.pageFit,
         imageFilterPreset: this.imageFilterPreset,
+        fixedPageRotation: this.fixedPageRotation,
+        fixedPageCoverSingle: this.fixedPageCoverSingle,
         fixedPageScale: this.fixedPageScale,
         fixedPageGap: this.fixedPageGap,
         fixedPageMargin: this.fixedPageMargin,
@@ -1891,6 +2177,86 @@ export default Vue.extend({
       const readerStage = this.$refs.readerStage as HTMLElement | undefined
       readerStage?.focus()
     },
+    toggleTextSearch() {
+      this.textSearchOpen = !this.textSearchOpen
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    onTextSearchInput() {
+      this.textSearchMatchIndex = 0
+      if (this.textSearchMatches.length > 0) void this.goToTextSearchMatch(0)
+    },
+    async goToNextTextSearchMatch() {
+      if (this.textSearchMatches.length === 0) return
+      await this.goToTextSearchMatch((this.textSearchMatchIndex + 1) % this.textSearchMatches.length)
+    },
+    async goToPreviousTextSearchMatch() {
+      if (this.textSearchMatches.length === 0) return
+      await this.goToTextSearchMatch((this.textSearchMatchIndex + this.textSearchMatches.length - 1) % this.textSearchMatches.length)
+    },
+    async goToTextSearchMatch(index: number) {
+      const matches = this.textSearchMatches
+      const match = matches[index]
+      const currentTextLocator = this.currentTextLocator()
+      if (!match || !currentTextLocator) return
+
+      this.textSearchMatchIndex = index
+      await this.goToTextLocator({
+        ...currentTextLocator,
+        paragraph: match.paragraphIndex,
+        characterOffset: match.characterOffset,
+      })
+      this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+    },
+    searchableTextParagraphs(): ShelfViewTextParagraph[] {
+      return this.textAdapter?.getVisibleParagraphs('CONTINUOUS_SCROLL') ?? this.mixedContentAdapter?.getVisibleParagraphs('CONTINUOUS_SCROLL') ?? []
+    },
+    textParagraphClass(paragraphIndex: number): object {
+      return {
+        'shelfview-reader-shell__text-paragraph--search-current': this.currentTextSearchMatch?.paragraphIndex === paragraphIndex,
+      }
+    },
+    async goToPageJumpInput() {
+      const pageNumber = Number(this.pageJumpInput)
+      if (!Number.isFinite(pageNumber)) {
+        this.pageJumpInput = this.currentPageNumber.toString()
+        return
+      }
+
+      await this.goToPageIndex(Math.round(clampNumber(pageNumber, 1, this.pagesCount)) - 1)
+      this.$nextTick(() => this.restoreCurrentVisibleContent())
+    },
+    toggleSlideshow() {
+      if (this.slideshowActive) {
+        this.stopSlideshow()
+        return
+      }
+
+      if (!this.fixedPageControlsVisible || this.pagesCount < 2) return
+      this.slideshowActive = true
+      this.slideshowTimer = window.setInterval(() => {
+        void this.advanceSlideshow()
+      }, SLIDESHOW_INTERVAL_MS)
+    },
+    async advanceSlideshow() {
+      if (!this.slideshowActive || !this.fixedPageControlsVisible) {
+        this.stopSlideshow()
+        return
+      }
+
+      if (!this.canGoNext) {
+        this.stopSlideshow()
+        return
+      }
+
+      await this.nextPage()
+    },
+    stopSlideshow() {
+      if (this.slideshowTimer !== undefined) {
+        window.clearInterval(this.slideshowTimer)
+        this.slideshowTimer = undefined
+      }
+      this.slideshowActive = false
+    },
     closeShortcutHelp() {
       this.showShortcutHelp = false
       this.$nextTick(() => this.focusReaderStage())
@@ -1988,6 +2354,93 @@ export default Vue.extend({
 
       e.preventDefault()
       await this.runReaderInputAction(action)
+    },
+    onReaderWheel(e: WheelEvent) {
+      if (!this.fixedPageControlsVisible || this.hasDisplayError || this.empty) return
+      if (this.readerLayout === 'CONTINUOUS_SCROLL' && !e.ctrlKey && !e.metaKey) return
+      if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
+      if (!Number.isFinite(e.deltaY) || e.deltaY === 0) return
+
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return
+
+      const nextScale = this.normalizedFixedPageScale(
+        this.fixedPageScale + (e.deltaY < 0 ? FIXED_PAGE_WHEEL_SCALE_STEP : -FIXED_PAGE_WHEEL_SCALE_STEP),
+      )
+      if (nextScale === this.fixedPageScale) return
+
+      if (e.cancelable) e.preventDefault()
+
+      const previousScale = this.fixedPageScale
+      const rect = readerStage.getBoundingClientRect()
+      const stageX = e.clientX - rect.left
+      const stageY = e.clientY - rect.top
+      const contentX = readerStage.scrollLeft + stageX
+      const contentY = readerStage.scrollTop + stageY
+
+      this.fixedPageScale = nextScale
+      this.$nextTick(() => {
+        const scaleRatio = this.fixedPageScale / previousScale
+        readerStage.scrollLeft = Math.max(0, (contentX * scaleRatio) - stageX)
+        readerStage.scrollTop = Math.max(0, (contentY * scaleRatio) - stageY)
+      })
+      this.schedulePreferenceSave()
+    },
+    onReaderPointerDown(e: PointerEvent) {
+      if (!this.fixedPageControlsVisible || e.pointerType !== 'mouse' || e.button !== 0) return
+      if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
+
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return
+
+      this.fixedPagePanStart = {
+        pointerId: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        scrollLeft: readerStage.scrollLeft,
+        scrollTop: readerStage.scrollTop,
+      }
+      this.fixedPagePanning = false
+      readerStage.setPointerCapture?.(e.pointerId)
+      if (e.cancelable) e.preventDefault()
+    },
+    onReaderPointerMove(e: PointerEvent) {
+      if (!this.fixedPagePanStart || e.pointerId !== this.fixedPagePanStart.pointerId) return
+
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return
+
+      if ((e.buttons & 1) !== 1) {
+        this.finishFixedPagePan(e)
+        return
+      }
+
+      const deltaX = e.clientX - this.fixedPagePanStart.x
+      const deltaY = e.clientY - this.fixedPagePanStart.y
+      if (!this.fixedPagePanning && Math.abs(deltaX) + Math.abs(deltaY) > 3) {
+        this.fixedPagePanning = true
+      }
+
+      if (this.fixedPagePanning) {
+        readerStage.scrollLeft = Math.max(0, this.fixedPagePanStart.scrollLeft - deltaX)
+        readerStage.scrollTop = Math.max(0, this.fixedPagePanStart.scrollTop - deltaY)
+      }
+      if (e.cancelable) e.preventDefault()
+    },
+    onReaderPointerUp(e: PointerEvent) {
+      this.finishFixedPagePan(e)
+    },
+    onReaderPointerCancel(e: PointerEvent) {
+      this.finishFixedPagePan(e)
+    },
+    finishFixedPagePan(e?: PointerEvent) {
+      if (!this.fixedPagePanStart) return
+      if (e && e.pointerId !== this.fixedPagePanStart.pointerId) return
+
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      readerStage?.releasePointerCapture?.(this.fixedPagePanStart.pointerId)
+      this.fixedPagePanStart = undefined
+      this.fixedPagePanning = false
     },
     onReaderTouchStart(e: TouchEvent) {
       const touch = e.changedTouches[0]
@@ -2186,6 +2639,9 @@ export default Vue.extend({
         case 'LAST':
           await this.goToPageIndex(this.pagesCount - 1)
           break
+        case 'ROTATE':
+          this.cycleFixedPageRotation()
+          break
         case 'SHOW_SHORTCUTS':
           this.showShortcutHelp = true
           break
@@ -2229,6 +2685,22 @@ function isFiniteNumber(value: unknown): value is number {
 </script>
 
 <style scoped>
+@font-face {
+  font-display: swap;
+  font-family: "ShelfView Gowun Dodum";
+  font-style: normal;
+  font-weight: 400;
+  src: url("~@/shelfview/assets/fonts/GowunDodum-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "ShelfView Gowun Batang";
+  font-style: normal;
+  font-weight: 400;
+  src: url("~@/shelfview/assets/fonts/GowunBatang-Regular.ttf") format("truetype");
+}
+
 .shelfview-reader-shell {
   background: #111111;
   height: 100vh;
@@ -2272,6 +2744,45 @@ function isFiniteNumber(value: unknown): value is number {
   text-align: center;
 }
 
+.shelfview-reader-shell__page-jump {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 13px;
+  height: 28px;
+  padding: 0 4px;
+  text-align: center;
+  width: 58px;
+}
+
+.shelfview-reader-shell__page-jump:focus {
+  border-color: #90caf9;
+  outline: none;
+}
+
+.shelfview-reader-shell__search-bar {
+  align-items: center;
+  background: #1d232b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(160px, 1fr) auto auto auto;
+  left: 0;
+  padding: 8px 12px;
+  position: fixed;
+  right: 0;
+  top: 48px;
+  z-index: 2;
+}
+
+.shelfview-reader-shell__search-status {
+  color: #d9e2ec;
+  font-size: 13px;
+  min-width: 72px;
+  text-align: center;
+}
+
 .shelfview-reader-shell__sync-status {
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 6px;
@@ -2306,6 +2817,14 @@ function isFiniteNumber(value: unknown): value is number {
   width: 100%;
 }
 
+.shelfview-reader-shell--search-open .shelfview-reader-shell__stage {
+  padding-top: 104px;
+}
+
+.shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage {
+  padding-bottom: 104px;
+}
+
 .shelfview-reader-shell__stage:focus {
   outline: 2px solid #90caf9;
   outline-offset: -6px;
@@ -2319,12 +2838,26 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__stage--fixed {
   background: var(--sv-fixed-background, #111111);
+  cursor: grab;
   overflow: auto;
   padding: 56px var(--sv-fixed-page-margin, 16px) var(--sv-fixed-page-margin, 16px);
 }
 
+.shelfview-reader-shell--search-open .shelfview-reader-shell__stage--fixed {
+  padding-top: 104px;
+}
+
+.shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage--fixed {
+  padding-bottom: 104px;
+}
+
+.shelfview-reader-shell__stage--panning {
+  cursor: grabbing;
+}
+
 .shelfview-reader-shell__stage--text {
   align-items: stretch;
+  cursor: auto;
   overflow-y: auto;
   padding-left: 0;
   padding-right: 0;
@@ -2336,6 +2869,7 @@ function isFiniteNumber(value: unknown): value is number {
   gap: var(--sv-fixed-page-gap, 8px);
   height: 100%;
   justify-content: center;
+  user-select: none;
   width: 100%;
 }
 
@@ -2349,6 +2883,10 @@ function isFiniteNumber(value: unknown): value is number {
 .shelfview-reader-shell__page {
   display: block;
   object-fit: contain;
+  transform: rotate(var(--sv-fixed-page-rotation, 0deg));
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .shelfview-page-content {
@@ -2406,6 +2944,7 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__text {
   color: #e8ebf0;
+  filter: brightness(var(--sv-text-brightness, 1));
   font-family: var(--sv-text-font-family, Roboto, Arial, sans-serif);
   font-size: var(--sv-text-font-size, 20px);
   font-weight: var(--sv-text-font-weight, 400);
@@ -2454,11 +2993,56 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__text-paragraph {
+  border-radius: 4px;
   margin: 0 0 var(--sv-text-paragraph-spacing, 1.35em);
+  padding: 2px 0;
+}
+
+.shelfview-reader-shell__text-paragraph--search-current {
+  background: rgba(255, 193, 7, 0.24);
 }
 
 .shelfview-reader-shell__text-paragraph:last-child {
   margin-bottom: 0;
+}
+
+.shelfview-reader-shell__thumbnail-strip {
+  align-items: center;
+  background: rgba(17, 17, 17, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  height: 88px;
+  left: 0;
+  overflow-x: auto;
+  padding: 8px 12px;
+  position: fixed;
+  right: 0;
+  z-index: 2;
+}
+
+.shelfview-reader-shell__thumbnail-button {
+  align-items: center;
+  background: #20242b;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex: 0 0 58px;
+  height: 70px;
+  justify-content: center;
+  padding: 3px;
+}
+
+.shelfview-reader-shell__thumbnail-button--active {
+  border-color: #90caf9;
+}
+
+.shelfview-reader-shell__thumbnail-button img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .shelfview-reader-shell__status {

@@ -85,3 +85,31 @@ closed as "not pursued for now" rather than treated as active development work.
 - [ ] Browser-local file opening with zip.js
 - [ ] Offline PWA
 - [ ] EPUB reader unification
+
+## Reopened Quick Wins from `0620.txt`
+
+Owner request on 2026-06-20: use `0620.txt` as a scoped improvement roadmap and
+continue one `SV-xxx` ticket at a time.
+
+- [x] SV-910 QW-1 fixed-page mouse wheel zoom and drag panning
+- [x] SV-911 QW-2 fixed-page 90-degree rotation and `R` shortcut
+- [x] SV-912 QW-3 TXT client-side search and jump
+- [x] SV-913 QW-4 TXT reader brightness slider
+- [x] SV-914 QW-5 fixed-page thumbnail filmstrip and direct page jump
+- [x] SV-915 QW-6 bundled OFL Korean web fonts
+- [x] SV-916 QW-7 double-page cover-alone toggle
+- [x] SV-917 QW-8 fixed-page slideshow mode
+
+## 0620 phased roadmap
+
+The immediate Quick Wins from `0620.txt` are complete. Larger roadmap phases
+remain tracked as future work because they require component decomposition,
+ADRs, dependency/license review, or broader product decisions.
+
+- [ ] SV-900 Phase 0 reader core decomposition
+- [ ] SV-901 Phase 0 viewport controller extraction
+- [ ] SV-902 Phase 0 toolbar and drawer component split
+- [ ] SV-920 Phase 2 EPUB integration ADR
+- [ ] SV-930 Phase 3 reading aids: TOC, highlight, memo, dictionary and TTS
+- [ ] SV-940 Phase 4 Tales bookshelf and collection experience
+- [ ] SV-950 Phase 5 format, performance and image-quality expansion

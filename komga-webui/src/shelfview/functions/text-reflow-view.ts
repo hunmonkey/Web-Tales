@@ -5,6 +5,8 @@ export type ShelfViewTextTheme =
 
 export type ShelfViewTextFontFamily =
   | 'SYSTEM'
+  | 'GOWUN_DODUM'
+  | 'GOWUN_BATANG'
   | 'READABLE_KR'
   | 'SERIF'
   | 'SANS'
@@ -34,7 +36,7 @@ export interface ShelfViewTextAlignDefinition {
 }
 
 export const SHELFVIEW_TEXT_THEMES: ShelfViewTextTheme[] = ['PAPER', 'DARK', 'OLED']
-export const SHELFVIEW_TEXT_FONT_FAMILIES: ShelfViewTextFontFamily[] = ['SYSTEM', 'READABLE_KR', 'SERIF', 'SANS', 'MONO']
+export const SHELFVIEW_TEXT_FONT_FAMILIES: ShelfViewTextFontFamily[] = ['SYSTEM', 'GOWUN_DODUM', 'GOWUN_BATANG', 'READABLE_KR', 'SERIF', 'SANS', 'MONO']
 export const SHELFVIEW_TEXT_ALIGNS: ShelfViewTextAlign[] = ['LEFT', 'JUSTIFY']
 
 const TEXT_THEME_DEFINITIONS: Record<ShelfViewTextTheme, ShelfViewTextThemeDefinition> = {
@@ -63,6 +65,16 @@ const TEXT_FONT_FAMILY_DEFINITIONS: Record<ShelfViewTextFontFamily, ShelfViewTex
     value: 'SYSTEM',
     label: 'System',
     cssValue: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+  GOWUN_DODUM: {
+    value: 'GOWUN_DODUM',
+    label: 'Gowun Dodum',
+    cssValue: '"ShelfView Gowun Dodum", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif',
+  },
+  GOWUN_BATANG: {
+    value: 'GOWUN_BATANG',
+    label: 'Gowun Batang',
+    cssValue: '"ShelfView Gowun Batang", "Noto Serif KR", serif',
   },
   READABLE_KR: {
     value: 'READABLE_KR',

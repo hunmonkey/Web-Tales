@@ -207,7 +207,9 @@ class ShelfViewPreferenceController(
           copyTextSetting(settings, target, "readingDirection", setOf("LTR", "RTL"))
           copyTextSetting(settings, target, "pageFit", setOf("SCREEN", "WIDTH", "HEIGHT", "ORIGINAL"))
           copyTextSetting(settings, target, "imageFilterPreset", setOf("ORIGINAL", "EYE_COMFORT", "MONO_COMIC", "LOW_LIGHT", "NIGHT_INVERT", "OLED_TEXT"))
-          copyIntegerSetting(settings, target, "fixedPageScale", 80, 180)
+          copyIntegerChoiceSetting(settings, target, "fixedPageRotation", setOf(0, 90, 180, 270))
+          copyBooleanSetting(settings, target, "fixedPageCoverSingle")
+          copyIntegerSetting(settings, target, "fixedPageScale", 50, 300)
           copyIntegerSetting(settings, target, "fixedPageGap", 0, 64)
           copyIntegerSetting(settings, target, "fixedPageMargin", 0, 96)
           copyTextSetting(settings, target, "fixedPageBackground", setOf("BLACK", "DARK", "GRAY", "PAPER", "WHITE"))
@@ -218,7 +220,7 @@ class ShelfViewPreferenceController(
         FORMAT_TEXT_REFLOW -> {
           copyTextSetting(settings, target, "layout", setOf("SINGLE_PAGE", "CONTINUOUS_SCROLL"))
           copyTextSetting(settings, target, "textTheme", setOf("PAPER", "DARK", "OLED"))
-          copyTextSetting(settings, target, "textFontFamily", setOf("SYSTEM", "READABLE_KR", "SERIF", "SANS", "MONO"))
+          copyTextSetting(settings, target, "textFontFamily", setOf("SYSTEM", "GOWUN_DODUM", "GOWUN_BATANG", "READABLE_KR", "SERIF", "SANS", "MONO"))
           copyIntegerSetting(settings, target, "textFontSize", 14, 32)
           copyDecimalSetting(settings, target, "textLineHeight", 1.35, 2.4)
           copyDecimalSetting(settings, target, "textLetterSpacing", 0.0, 2.5)
@@ -228,6 +230,7 @@ class ShelfViewPreferenceController(
           copyDecimalSetting(settings, target, "textParagraphSpacing", 0.6, 2.6)
           copyTextSetting(settings, target, "textAlign", setOf("LEFT", "JUSTIFY"))
           copyIntegerSetting(settings, target, "textFontWeight", 300, 700)
+          copyDecimalSetting(settings, target, "textBrightness", 0.8, 1.2)
         }
       }
     }
@@ -254,6 +257,27 @@ class ShelfViewPreferenceController(
     val value = source.get(field) ?: return
     if (!value.isIntegralNumber || value.asInt() !in min..max) invalid("$field has an invalid value")
     target.put(field, value.asInt())
+  }
+
+  private fun copyIntegerChoiceSetting(
+    source: JsonNode,
+    target: ObjectNode,
+    field: String,
+    allowedValues: Set<Int>,
+  ) {
+    val value = source.get(field) ?: return
+    if (!value.isIntegralNumber || value.asInt() !in allowedValues) invalid("$field has an invalid value")
+    target.put(field, value.asInt())
+  }
+
+  private fun copyBooleanSetting(
+    source: JsonNode,
+    target: ObjectNode,
+    field: String,
+  ) {
+    val value = source.get(field) ?: return
+    if (!value.isBoolean) invalid("$field has an invalid value")
+    target.put(field, value.asBoolean())
   }
 
   private fun copyDecimalSetting(
@@ -299,6 +323,7 @@ class ShelfViewPreferenceController(
           put("textParagraphSpacing", 1.35)
           put("textAlign", "LEFT")
           put("textFontWeight", 400)
+          put("textBrightness", 1.0)
         }
 
         else -> {
@@ -306,6 +331,8 @@ class ShelfViewPreferenceController(
           put("readingDirection", "LTR")
           put("pageFit", "SCREEN")
           put("imageFilterPreset", "ORIGINAL")
+          put("fixedPageRotation", 0)
+          put("fixedPageCoverSingle", false)
           put("fixedPageScale", 100)
           put("fixedPageGap", 12)
           put("fixedPageMargin", 16)
@@ -360,6 +387,8 @@ class ShelfViewPreferenceController(
         "readingDirection",
         "pageFit",
         "imageFilterPreset",
+        "fixedPageRotation",
+        "fixedPageCoverSingle",
         "fixedPageScale",
         "fixedPageGap",
         "fixedPageMargin",
@@ -381,6 +410,7 @@ class ShelfViewPreferenceController(
         "textParagraphSpacing",
         "textAlign",
         "textFontWeight",
+        "textBrightness",
       )
   }
 }

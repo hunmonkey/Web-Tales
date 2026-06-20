@@ -79,6 +79,7 @@ class ShelfViewManifestControllerTest(
         jsonPath("$.sourceFormat") { value("CBZ") }
         jsonPath("$.pageCount") { value(2) }
         jsonPath("$.pages.endpointTemplate") { value("/api/v1/books/${book.id}/pages/{page}?zero_based=true") }
+        jsonPath("$.pages.thumbnailEndpointTemplate") { value("/api/v1/books/${book.id}/pages/{pageOneBased}/thumbnail") }
         jsonPath("$.capabilities.search") { value(false) }
         jsonPath("$.capabilities.doublePage") { value(true) }
         jsonPath("$.capabilities.imageFilters") { value(true) }
@@ -150,6 +151,7 @@ class ShelfViewManifestControllerTest(
         jsonPath("$.items[2].pages.endpointTemplate") { value("/api/shelfview/v1/books/${book.id}/mixed/$pdfItemId/pages/{page}?zero_based=true") }
         jsonPath("$.pages") { doesNotExist() }
         jsonPath("$.capabilities.textSelection") { value(true) }
+        jsonPath("$.capabilities.search") { value(true) }
         jsonPath("$.capabilities.imageFilters") { value(true) }
       }
   }
@@ -203,6 +205,7 @@ class ShelfViewManifestControllerTest(
         jsonPath("$.sourceFormat") { value("IMAGE_DIRECTORY") }
         jsonPath("$.pageCount") { value(2) }
         jsonPath("$.pages.endpointTemplate") { value("/api/shelfview/v1/books/${book.id}/image-directory/pages/{page}?zero_based=true") }
+        jsonPath("$.pages.thumbnailEndpointTemplate") { doesNotExist() }
       }
   }
 
@@ -222,6 +225,7 @@ class ShelfViewManifestControllerTest(
         jsonPath("$.text.endpoint") { value("/api/shelfview/v1/books/${book.id}/text") }
         jsonPath("$.text.normalizationVersion") { value(1) }
         jsonPath("$.pages") { doesNotExist() }
+        jsonPath("$.capabilities.search") { value(true) }
         jsonPath("$.capabilities.textSelection") { value(true) }
         jsonPath("$.capabilities.doublePage") { value(false) }
         jsonPath("$.capabilities.imageFilters") { value(false) }
