@@ -286,6 +286,25 @@
           <span>{{ $t('shelfview_reader.add_bookmark') }}</span>
         </v-tooltip>
 
+        <v-tooltip
+          v-if="fullscreenAvailable"
+          bottom
+        >
+          <template v-slot:activator="{ on }">
+            <v-btn
+              icon
+              :aria-label="isFullscreen ? $t('shelfview_reader.exit_fullscreen') : $t('shelfview_reader.fullscreen')"
+              :aria-pressed="isFullscreen ? 'true' : 'false'"
+              data-testid="shelfview-reader-fullscreen-toggle"
+              v-on="on"
+              @click="toggleFullscreen"
+            >
+              <v-icon>{{ isFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen' }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ isFullscreen ? $t('shelfview_reader.exit_fullscreen') : $t('shelfview_reader.fullscreen') }}</span>
+        </v-tooltip>
+
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
@@ -1414,6 +1433,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import screenfull from 'screenfull'
 import {RawLocation} from 'vue-router/types/router'
 import {BookDto} from '@/types/tales-books'
 import {SeriesDto} from '@/types/tales-series'
@@ -1659,6 +1679,8 @@ export default Vue.extend({
     slideshowActive: false,
     slideshowTimer: undefined as number | undefined,
     showShortcutHelp: false,
+    fullscreenAvailable: false,
+    isFullscreen: false,
     endOfBookPromptOpen: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
     highlights: [] as ShelfViewHighlightDto[],
@@ -1685,6 +1707,11 @@ export default Vue.extend({
     window.addEventListener('orientationchange', this.onReaderViewportChanged)
     window.addEventListener('pagehide', this.onPageHide)
     document.addEventListener('visibilitychange', this.onVisibilityChange)
+    if (screenfull.isEnabled) {
+      this.fullscreenAvailable = true
+      this.isFullscreen = screenfull.isFullscreen
+      screenfull.on('change', this.onFullscreenChange)
+    }
     this.refreshTextToSpeechVoices()
     if (this.browserTextToSpeechVoiceListAvailable()) {
       window.speechSynthesis.addEventListener('voiceschanged', this.refreshTextToSpeechVoices)
@@ -1702,6 +1729,10 @@ export default Vue.extend({
     window.removeEventListener('orientationchange', this.onReaderViewportChanged)
     window.removeEventListener('pagehide', this.onPageHide)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    if (screenfull.isEnabled) {
+      screenfull.off('change', this.onFullscreenChange)
+      if (screenfull.isFullscreen) void screenfull.exit()
+    }
     if (this.browserTextToSpeechVoiceListAvailable()) {
       window.speechSynthesis.removeEventListener('voiceschanged', this.refreshTextToSpeechVoices)
     }
@@ -1887,6 +1918,7 @@ export default Vue.extend({
         {keys: this.$t('shelfview_reader.shortcut_keys_space') as string, label: this.$t('shelfview_reader.shortcut_next_page') as string},
         {keys: this.$t('shelfview_reader.shortcut_keys_home_end') as string, label: this.$t('shelfview_reader.shortcut_first_last') as string},
         ...(this.fixedPageControlsVisible ? [{keys: this.$t('shelfview_reader.shortcut_keys_rotate') as string, label: this.$t('shelfview_reader.shortcut_rotate') as string}] : []),
+        ...(this.fullscreenAvailable ? [{keys: this.$t('shelfview_reader.shortcut_keys_fullscreen') as string, label: this.$t('shelfview_reader.shortcut_fullscreen') as string}] : []),
         {keys: this.$t('shelfview_reader.shortcut_keys_help') as string, label: this.$t('shelfview_reader.shortcut_show') as string},
       ]
     },
@@ -3340,6 +3372,17 @@ export default Vue.extend({
       this.showShortcutHelp = false
       this.$nextTick(() => this.focusReaderStage())
     },
+    toggleFullscreen() {
+      if (!screenfull.isEnabled) return
+      if (screenfull.isFullscreen) {
+        void screenfull.exit()
+      } else {
+        void screenfull.request(document.documentElement, {navigationUI: 'hide'})
+      }
+    },
+    onFullscreenChange() {
+      this.isFullscreen = screenfull.isEnabled && screenfull.isFullscreen
+    },
     closeBookmarksDrawer() {
       this.bookmarksDrawerOpen = false
       this.cancelBookmarkNoteEdit()
@@ -3761,6 +3804,17 @@ export default Vue.extend({
       if (e.ctrlKey || e.altKey || e.metaKey) return
       if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
 
+      if (this.endOfBookPromptOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          this.closeEndOfBookPrompt()
+        } else if (e.key === 'ArrowRight' && this.siblingNext) {
+          e.preventDefault()
+          await this.goToNextBook()
+        }
+        return
+      }
+
       const action = shelfViewReaderKeyboardAction(e.key, this.readingDirection)
       if (!action) return
 
@@ -4124,6 +4178,9 @@ export default Vue.extend({
           break
         case 'ROTATE':
           this.cycleFixedPageRotation()
+          break
+        case 'TOGGLE_FULLSCREEN':
+          this.toggleFullscreen()
           break
         case 'SHOW_SHORTCUTS':
           this.showShortcutHelp = true

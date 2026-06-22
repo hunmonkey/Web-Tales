@@ -1,5 +1,6 @@
 import {shallowMount, Wrapper} from '@vue/test-utils'
 import Vue from 'vue'
+import screenfull from 'screenfull'
 import ShelfViewReaderShell from '@/shelfview/views/ShelfViewReaderShell.vue'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {ShelfViewApiError} from '@/shelfview/models/shelfview-errors'
@@ -14,6 +15,24 @@ jest.mock('@/functions/urls', () => ({
     originNoSlash: 'http://api.test',
   },
 }))
+
+jest.mock('screenfull', () => ({
+  isEnabled: false,
+  isFullscreen: false,
+  request: jest.fn(),
+  exit: jest.fn(),
+  on: jest.fn(),
+  off: jest.fn(),
+}))
+
+const mockScreenfull = screenfull as unknown as {
+  isEnabled: boolean,
+  isFullscreen: boolean,
+  request: jest.Mock,
+  exit: jest.Mock,
+  on: jest.Mock,
+  off: jest.Mock,
+}
 
 const book = {
   id: 'book-1',
@@ -205,6 +224,12 @@ describe('ShelfViewReaderShell', () => {
     mountedWrappers.splice(0).forEach(wrapper => wrapper.destroy())
     jest.useRealTimers()
     process.env.VUE_APP_SHELFVIEW_READER = originalReaderFlag
+    mockScreenfull.isEnabled = false
+    mockScreenfull.isFullscreen = false
+    mockScreenfull.request.mockClear()
+    mockScreenfull.exit.mockClear()
+    mockScreenfull.on.mockClear()
+    mockScreenfull.off.mockClear()
   })
 
   it('loads the manifest and renders the first fixed page', async () => {
@@ -673,6 +698,82 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
 
     expect(updateReadProgress).not.toHaveBeenCalled()
+  })
+
+  it('continues to the next book when ArrowRight is pressed on the end-of-book prompt', async () => {
+    process.env.VUE_APP_SHELFVIEW_READER = 'true'
+    const getBookSiblingNext = jest.fn().mockResolvedValue(nextBook)
+    const updateReadProgress = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      talesBooks: {getBookSiblingNext, updateReadProgress},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).goToPageIndex(1)
+    await Vue.nextTick()
+    await (wrapper.vm as any).runReaderInputAction('NEXT')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-end-prompt"]').exists()).toBe(true)
+
+    const preventDefault = jest.fn()
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'ArrowRight',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-end-prompt"]').element,
+      preventDefault,
+    })
+    await flushPromises()
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(updateReadProgress).toHaveBeenCalledWith('book-1', {completed: true})
+    expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
+      name: 'read-book-v2',
+      params: {bookId: 'book-2'},
+      query: {context: undefined, contextId: undefined, incognito: undefined},
+    })
+  })
+
+  it('closes the end-of-book prompt when Escape is pressed without leaving the book', async () => {
+    const getBookSiblingNext = jest.fn().mockResolvedValue(nextBook)
+    const updateReadProgress = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      talesBooks: {getBookSiblingNext, updateReadProgress},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).goToPageIndex(1)
+    await Vue.nextTick()
+    await (wrapper.vm as any).runReaderInputAction('NEXT')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-end-prompt"]').exists()).toBe(true)
+
+    const preventDefault = jest.fn()
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'Escape',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-end-prompt"]').element,
+      preventDefault,
+    })
+    await Vue.nextTick()
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="shelfview-reader-end-prompt"]').exists()).toBe(false)
+    expect(updateReadProgress).not.toHaveBeenCalled()
+    expect((wrapper.vm as any).$router.push).not.toHaveBeenCalled()
   })
 
   it('restores saved text paragraph and character offset', async () => {
@@ -1784,6 +1885,64 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+  })
+
+  it('shows the fullscreen toggle and requests fullscreen from the toolbar when supported', async () => {
+    mockScreenfull.isEnabled = true
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(mockScreenfull.on).toHaveBeenCalledWith('change', expect.any(Function))
+    const toggle = wrapper.find('[data-testid="shelfview-reader-fullscreen-toggle"]')
+    expect(toggle.exists()).toBe(true)
+
+    await toggle.trigger('click')
+    expect(mockScreenfull.request).toHaveBeenCalled()
+
+    const changeHandler = mockScreenfull.on.mock.calls.find((call: any[]) => call[0] === 'change')![1]
+    mockScreenfull.isFullscreen = true
+    changeHandler()
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).isFullscreen).toBe(true)
+
+    await wrapper.find('[data-testid="shelfview-reader-fullscreen-toggle"]').trigger('click')
+    expect(mockScreenfull.exit).toHaveBeenCalled()
+  })
+
+  it('toggles fullscreen with the F keyboard shortcut', async () => {
+    mockScreenfull.isEnabled = true
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const preventDefault = jest.fn()
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'f',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-stage"]').element,
+      preventDefault,
+    })
+    await flushPromises()
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(mockScreenfull.request).toHaveBeenCalled()
+  })
+
+  it('hides the fullscreen toggle when the browser does not support fullscreen', async () => {
+    mockScreenfull.isEnabled = false
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-fullscreen-toggle"]').exists()).toBe(false)
+    expect(mockScreenfull.on).not.toHaveBeenCalled()
   })
 
   it('opens and closes shortcut help from keyboard and button', async () => {
