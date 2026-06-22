@@ -432,7 +432,16 @@ export default Vue.extend({
       }
     },
     goto() {
-      this.$router.push(this.computedItem.to())
+      if (
+        this.computedItem.type() === ItemTypes.BOOK &&
+        this.bookReady &&
+        this.canReadPages &&
+        !this.disableFab
+      ) {
+        this.$router.push(this.computedItem.fabTo())
+      } else {
+        this.$router.push(this.computedItem.to())
+      }
     },
     selectItem(e: MouseEvent) {
       if (this.onSelected !== undefined) {

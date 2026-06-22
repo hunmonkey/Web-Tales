@@ -1357,6 +1357,58 @@
         </v-btn>
       </div>
     </section>
+
+    <section
+      v-if="endOfBookPromptOpen"
+      class="shelfview-reader-shell__end-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shelfview-reader-end-title"
+      data-testid="shelfview-reader-end-prompt"
+    >
+      <div class="shelfview-reader-shell__end-panel">
+        <h2 id="shelfview-reader-end-title">{{ $t('shelfview_reader.end_of_book_title') }}</h2>
+        <p>{{ $t('shelfview_reader.end_of_book_message') }}</p>
+        <p
+          v-if="siblingNext"
+          class="shelfview-reader-shell__end-next-title"
+          data-testid="shelfview-reader-end-next-title"
+        >
+          {{ siblingNextTitle }}
+        </p>
+        <p
+          v-else
+          class="shelfview-reader-shell__end-no-next"
+          data-testid="shelfview-reader-end-no-next"
+        >
+          {{ $t('shelfview_reader.no_next_book') }}
+        </p>
+        <div class="shelfview-reader-shell__end-actions">
+          <v-btn
+            v-if="siblingNext"
+            color="primary"
+            data-testid="shelfview-reader-end-next"
+            @click="goToNextBook"
+          >
+            {{ $t('shelfview_reader.read_next_book') }}
+          </v-btn>
+          <v-btn
+            color="secondary"
+            data-testid="shelfview-reader-end-exit"
+            @click="exitEndOfBookPrompt"
+          >
+            {{ $t('shelfview_reader.exit_reader') }}
+          </v-btn>
+          <v-btn
+            text
+            data-testid="shelfview-reader-end-close"
+            @click="closeEndOfBookPrompt"
+          >
+            {{ $t('shelfview_reader.shortcuts_close') }}
+          </v-btn>
+        </div>
+      </div>
+    </section>
   </v-container>
 </template>
 
@@ -1367,7 +1419,7 @@ import {BookDto} from '@/types/tales-books'
 import {SeriesDto} from '@/types/tales-series'
 import {Context, ContextOrigin} from '@/types/context'
 import {getBookTitleCompact} from '@/functions/book-title'
-import {getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
+import {getBookReadRouteFromMedia, getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
 import {
   ShelfViewManifest,
   ShelfViewManifestContentsItem,
@@ -1560,6 +1612,7 @@ export default Vue.extend({
     manifest: undefined as unknown as ShelfViewManifest,
     adapter: undefined as ReaderAdapter | undefined,
     currentLocator: undefined as ShelfViewLocator | undefined,
+    siblingNext: undefined as BookDto | undefined,
     context: {} as Context,
     error: undefined as Error | ShelfViewApiError | undefined,
     loading: true,
@@ -1606,6 +1659,7 @@ export default Vue.extend({
     slideshowActive: false,
     slideshowTimer: undefined as number | undefined,
     showShortcutHelp: false,
+    endOfBookPromptOpen: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
     highlights: [] as ShelfViewHighlightDto[],
     bookmarksDrawerOpen: false,
@@ -1667,6 +1721,10 @@ export default Vue.extend({
         return getBookTitleCompact(this.book.metadata.title, this.series.metadata.title, this.book.oneshot ? undefined : this.book.metadata.number)
       }
       return 'Tales'
+    },
+    siblingNextTitle(): string {
+      if (!this.siblingNext) return ''
+      return this.siblingNext.metadata?.title || this.siblingNext.name || this.$t('shelfview_reader.read_next_book') as string
     },
     pageControlsVisible(): boolean {
       return !!this.adapter && !this.hasDisplayError && !this.empty && this.pagesCount > 0
@@ -1759,6 +1817,9 @@ export default Vue.extend({
         'shelfview-reader-shell__sync-status--error': this.readerStateStatus === 'ERROR' || this.readerStateStatus === 'OFFLINE',
         'shelfview-reader-shell__sync-status--saved': this.readerStateStatus === 'SAVED',
       }
+    },
+    readerIncognito(): boolean {
+      return this.$route.query.incognito?.toString().toLowerCase() === 'true'
     },
     availableReaderLayouts(): ShelfViewFixedPageLayout[] {
       if (this.manifest?.kind === 'TEXT_REFLOW' || this.mixedContentAdapter?.isCurrentText()) {
@@ -2224,6 +2285,8 @@ export default Vue.extend({
       this.textSearchOpen = false
       this.textSearchQuery = ''
       this.textSearchMatchIndex = 0
+      this.siblingNext = undefined
+      this.endOfBookPromptOpen = false
       this.stopSlideshow()
       this.clearReaderStateTimers()
       this.setReaderStateStatus('IDLE', '')
@@ -2247,6 +2310,7 @@ export default Vue.extend({
         if (requestId !== this.setupRequestId) return
 
         this.book.context = this.context
+        void this.loadSiblingNext(bookId, requestId)
         this.manifest = await this.$shelfViewManifest.getManifest(bookId)
         if (requestId !== this.setupRequestId) return
 
@@ -2269,6 +2333,19 @@ export default Vue.extend({
         if (requestId === this.setupRequestId) this.error = e
       } finally {
         if (requestId === this.setupRequestId) this.loading = false
+      }
+    },
+    async loadSiblingNext(
+      bookId: string,
+      requestId: number,
+    ) {
+      try {
+        const siblingNext = this.context.origin === ContextOrigin.READLIST
+          ? await this.$talesReadLists.getBookSiblingNext(this.context.id, bookId)
+          : await this.$talesBooks.getBookSiblingNext(bookId)
+        if (requestId === this.setupRequestId) this.siblingNext = siblingNext
+      } catch (e) {
+        if (requestId === this.setupRequestId) this.siblingNext = undefined
       }
     },
     async loadShelfViewState(
@@ -2436,6 +2513,11 @@ export default Vue.extend({
     },
     async nextPage() {
       if (!this.adapter) return
+
+      if (!this.canGoNext) {
+        this.openEndOfBookPrompt()
+        return
+      }
 
       if (this.mixedContentAdapter) {
         await this.mixedContentAdapter.next()
@@ -3194,7 +3276,7 @@ export default Vue.extend({
       }
 
       if (!this.canGoNext) {
-        this.stopSlideshow()
+        this.openEndOfBookPrompt()
         return
       }
 
@@ -3206,6 +3288,53 @@ export default Vue.extend({
         this.slideshowTimer = undefined
       }
       this.slideshowActive = false
+    },
+    openEndOfBookPrompt() {
+      this.stopSlideshow()
+      this.endOfBookPromptOpen = true
+    },
+    closeEndOfBookPrompt() {
+      this.endOfBookPromptOpen = false
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    async goToNextBook() {
+      if (!this.siblingNext) {
+        await this.exitEndOfBookPrompt()
+        return
+      }
+
+      this.endOfBookPromptOpen = false
+      await this.completeCurrentBookFromEndPrompt()
+      this.$router.push({
+        name: getBookReadRouteFromMedia(this.siblingNext.media),
+        params: {bookId: this.siblingNext.id.toString()},
+        query: this.nextBookRouteQuery(),
+      })
+    },
+    async exitEndOfBookPrompt() {
+      this.endOfBookPromptOpen = false
+      await this.completeCurrentBookFromEndPrompt()
+      await this.closeBook()
+    },
+    async completeCurrentBookFromEndPrompt() {
+      await this.flushReaderState()
+      await this.markCurrentBookCompleted()
+    },
+    async markCurrentBookCompleted() {
+      if (this.readerIncognito) return
+
+      try {
+        await this.$talesBooks.updateReadProgress(this.bookId, {completed: true})
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_save_failed') as string)
+      }
+    },
+    nextBookRouteQuery(): Record<string, string | undefined> {
+      return {
+        context: this.context.origin,
+        contextId: this.context.id,
+        incognito: this.readerIncognito ? 'true' : undefined,
+      }
     },
     closeShortcutHelp() {
       this.showShortcutHelp = false
@@ -3639,8 +3768,11 @@ export default Vue.extend({
       await this.runReaderInputAction(action)
     },
     onReaderWheel(e: WheelEvent) {
+      if (this.readerLayout === 'CONTINUOUS_SCROLL' && !e.ctrlKey && !e.metaKey) {
+        this.openEndPromptForContinuousScrollEnd(e)
+        return
+      }
       if (!this.fixedPageControlsVisible || this.hasDisplayError || this.empty) return
-      if (this.readerLayout === 'CONTINUOUS_SCROLL' && !e.ctrlKey && !e.metaKey) return
       if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
       if (!Number.isFinite(e.deltaY) || e.deltaY === 0) return
 
@@ -3740,6 +3872,11 @@ export default Vue.extend({
       const touch = e.changedTouches[0]
       if (!this.touchStart || !touch) return
 
+      if (this.openEndPromptForContinuousTouchEnd(e, touch)) {
+        this.touchStart = undefined
+        return
+      }
+
       const action = shelfViewTouchAction(
         this.touchStart,
         {x: touch.clientX, y: touch.clientY},
@@ -3751,6 +3888,41 @@ export default Vue.extend({
 
       if (e.cancelable) e.preventDefault()
       await this.runReaderInputAction(action)
+    },
+    openEndPromptForContinuousScrollEnd(e: WheelEvent) {
+      if (!this.adapter || this.hasDisplayError || this.empty || this.endOfBookPromptOpen) return
+      if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
+      if (!Number.isFinite(e.deltaY) || e.deltaY <= 0) return
+      if (this.canGoNext || !this.readerStageAtVerticalEnd()) return
+
+      if (e.cancelable) e.preventDefault()
+      this.openEndOfBookPrompt()
+    },
+    openEndPromptForContinuousTouchEnd(
+      e: TouchEvent,
+      touch: Touch,
+    ): boolean {
+      if (!this.adapter || this.readerLayout !== 'CONTINUOUS_SCROLL' || this.hasDisplayError || this.empty || this.endOfBookPromptOpen) return false
+      if (shelfViewShouldIgnoreShortcutTarget(e.target)) return false
+      if (this.canGoNext || !this.readerStageAtVerticalEnd()) return false
+      if (!this.touchStart) return false
+
+      const deltaX = touch.clientX - this.touchStart.x
+      const deltaY = touch.clientY - this.touchStart.y
+      const absX = Math.abs(deltaX)
+      const absY = Math.abs(deltaY)
+      const swipedUpToScrollDown = deltaY < -48 && absY > absX * 1.2
+      if (!swipedUpToScrollDown) return false
+
+      if (e.cancelable) e.preventDefault()
+      this.openEndOfBookPrompt()
+      return true
+    },
+    readerStageAtVerticalEnd(): boolean {
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return false
+
+      return readerStage.scrollHeight - readerStage.scrollTop - readerStage.clientHeight <= 1
     },
     onReaderStageScroll() {
       if (!this.adapter) return
@@ -4709,7 +4881,8 @@ function isFiniteNumber(value: unknown): value is number {
   flex: 0 0 auto;
 }
 
-.shelfview-reader-shell__shortcut-dialog {
+.shelfview-reader-shell__shortcut-dialog,
+.shelfview-reader-shell__end-dialog {
   align-items: center;
   background: rgba(0, 0, 0, 0.72);
   display: flex;
@@ -4720,7 +4893,8 @@ function isFiniteNumber(value: unknown): value is number {
   z-index: 4;
 }
 
-.shelfview-reader-shell__shortcut-panel {
+.shelfview-reader-shell__shortcut-panel,
+.shelfview-reader-shell__end-panel {
   background: #202020;
   border-radius: 8px;
   color: #f5f5f5;
@@ -4729,10 +4903,38 @@ function isFiniteNumber(value: unknown): value is number {
   width: 100%;
 }
 
-.shelfview-reader-shell__shortcut-panel h2 {
+.shelfview-reader-shell__shortcut-panel h2,
+.shelfview-reader-shell__end-panel h2 {
   font-size: 20px;
   font-weight: 500;
   margin: 0 0 16px;
+}
+
+.shelfview-reader-shell__end-panel p {
+  color: #d7dce2;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.shelfview-reader-shell__end-next-title {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #ffffff !important;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+}
+
+.shelfview-reader-shell__end-no-next {
+  color: #cfd8dc !important;
+}
+
+.shelfview-reader-shell__end-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
 }
 
 .shelfview-reader-shell__shortcut-panel dl {

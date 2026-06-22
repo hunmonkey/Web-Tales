@@ -35,6 +35,17 @@ const book = {
   },
 } as unknown as BookDto
 
+const nextBook = {
+  ...book,
+  id: 'book-2',
+  name: 'Book Two',
+  metadata: {
+    ...book.metadata,
+    title: 'Book Two',
+    number: '2',
+  },
+} as unknown as BookDto
+
 const series = {
   id: 'series-1',
   metadata: {
@@ -188,9 +199,12 @@ async function chooseControlOption(wrapper: Wrapper<Vue>, toggleTestId: string, 
 }
 
 describe('ShelfViewReaderShell', () => {
+  const originalReaderFlag = process.env.VUE_APP_SHELFVIEW_READER
+
   afterEach(() => {
     mountedWrappers.splice(0).forEach(wrapper => wrapper.destroy())
     jest.useRealTimers()
+    process.env.VUE_APP_SHELFVIEW_READER = originalReaderFlag
   })
 
   it('loads the manifest and renders the first fixed page', async () => {
@@ -546,6 +560,98 @@ describe('ShelfViewReaderShell', () => {
       locator: textLocator(1),
       progression: 1 / 3,
     })
+  })
+
+  it('opens the end-of-book prompt and routes to the next book', async () => {
+    process.env.VUE_APP_SHELFVIEW_READER = 'true'
+    const getBookSiblingNext = jest.fn().mockResolvedValue(nextBook)
+    const updateReadProgress = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      talesBooks: {getBookSiblingNext, updateReadProgress},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).goToPageIndex(1)
+    await Vue.nextTick()
+    await (wrapper.vm as any).runReaderInputAction('NEXT')
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(getBookSiblingNext).toHaveBeenCalledWith('book-1')
+    expect(wrapper.find('[data-testid="shelfview-reader-end-prompt"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-end-next-title"]').text()).toContain('Book Two')
+
+    await wrapper.find('[data-testid="shelfview-reader-end-next"]').trigger('click')
+    await flushPromises()
+
+    expect(updateReadProgress).toHaveBeenCalledWith('book-1', {completed: true})
+    expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
+      name: 'read-book-v2',
+      params: {bookId: 'book-2'},
+      query: {context: undefined, contextId: undefined, incognito: undefined},
+    })
+  })
+
+  it('shows the last-volume prompt and exits the reader when there is no next book', async () => {
+    const updateReadProgress = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      talesBooks: {
+        getBookSiblingNext: jest.fn().mockRejectedValue(new Error('No next book')),
+        updateReadProgress,
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).goToPageIndex(1)
+    await Vue.nextTick()
+    await (wrapper.vm as any).nextPage()
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-end-no-next"]').text()).toBe('shelfview_reader.no_next_book')
+    expect(wrapper.find('[data-testid="shelfview-reader-end-next"]').exists()).toBe(false)
+
+    await wrapper.find('[data-testid="shelfview-reader-end-exit"]').trigger('click')
+    await flushPromises()
+
+    expect(updateReadProgress).toHaveBeenCalledWith('book-1', {completed: true})
+    expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
+      name: 'browse-book',
+      params: {bookId: 'book-1', seriesId: 'series-1'},
+      query: {context: undefined, contextId: undefined},
+    })
+  })
+
+  it('keeps incognito end-of-book actions from marking the book completed', async () => {
+    const updateReadProgress = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      talesBooks: {
+        getBookSiblingNext: jest.fn().mockRejectedValue(new Error('No next book')),
+        updateReadProgress,
+      },
+      routeQuery: {incognito: 'true'},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).goToPageIndex(1)
+    await Vue.nextTick()
+    await (wrapper.vm as any).nextPage()
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-end-exit"]').trigger('click')
+    await flushPromises()
+
+    expect(updateReadProgress).not.toHaveBeenCalled()
   })
 
   it('restores saved text paragraph and character offset', async () => {
@@ -1792,6 +1898,52 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.findAll('[data-testid="shelfview-reader-page"]').wrappers.map(page => page.attributes('data-page-index'))).toEqual(['0', '1', '2'])
   })
 
+  it('opens the end prompt when scrolling down again at the bottom of continuous scroll', async () => {
+    const getManifest = jest.fn().mockResolvedValue({...manifest, pageCount: 3})
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
+    await (wrapper.vm as any).goToPageIndex(2)
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
+    Object.defineProperty(stage, 'clientHeight', {value: 500, configurable: true})
+    Object.defineProperty(stage, 'scrollHeight', {value: 1500, configurable: true})
+    Object.defineProperty(stage, 'scrollTop', {value: 800, writable: true, configurable: true})
+    const preventDefault = jest.fn()
+    const vm = wrapper.vm as any
+
+    vm.onReaderWheel({
+      deltaY: 90,
+      ctrlKey: false,
+      metaKey: false,
+      cancelable: true,
+      target: stage,
+      preventDefault,
+    } as unknown as WheelEvent)
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-end-prompt"]').exists()).toBe(false)
+
+    stage.scrollTop = 1000
+    vm.onReaderWheel({
+      deltaY: 90,
+      ctrlKey: false,
+      metaKey: false,
+      cancelable: true,
+      target: stage,
+      preventDefault,
+    } as unknown as WheelEvent)
+    await Vue.nextTick()
+
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-testid="shelfview-reader-end-prompt"]').exists()).toBe(true)
+  })
+
   it('cycles page fit classes', async () => {
     const getManifest = jest.fn().mockResolvedValue(manifest)
     const wrapper = mountShell({getManifest})
@@ -2050,10 +2202,16 @@ function mountShell({
   getManifest,
   shelfViewState = {},
   shelfViewText = {},
+  talesBooks = {},
+  talesReadLists = {},
+  routeQuery = {},
 }: {
   getManifest: jest.Mock,
   shelfViewState?: Record<string, jest.Mock>,
   shelfViewText?: Record<string, jest.Mock>,
+  talesBooks?: Record<string, jest.Mock>,
+  talesReadLists?: Record<string, jest.Mock>,
+  routeQuery?: Record<string, unknown>,
 }) {
   const stateService = {
     getPosition: jest.fn().mockResolvedValue(undefined),
@@ -2102,6 +2260,13 @@ function mountShell({
     mocks: {
       $talesBooks: {
         getBook: jest.fn().mockResolvedValue({...book}),
+        getBookSiblingNext: jest.fn().mockRejectedValue(new Error('No next book')),
+        updateReadProgress: jest.fn().mockResolvedValue({}),
+        ...talesBooks,
+      },
+      $talesReadLists: {
+        getBookSiblingNext: jest.fn().mockRejectedValue(new Error('No next book')),
+        ...talesReadLists,
       },
       $talesSeries: {
         getOneSeries: jest.fn().mockResolvedValue(series),
@@ -2112,7 +2277,7 @@ function mountShell({
       $shelfViewState: stateService,
       $shelfViewText: textService,
       $route: {
-        query: {},
+        query: routeQuery,
       },
       $router: {
         push: jest.fn(),

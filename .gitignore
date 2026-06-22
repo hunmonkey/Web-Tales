@@ -66,6 +66,7 @@ lcov.info
 /tales-webui/.env.*.local
 docker-compose.override.yml
 docker-compose.local.yml
+.vscode/
 
 ### Local AI/tool state
 .codex/
