@@ -2260,7 +2260,7 @@ export default Vue.extend({
       return {
         name: this.book?.media ? getLegacyBookReadRouteFromMedia(this.book.media) : 'read-book',
         params: {bookId: this.bookId},
-        query: this.$route.query,
+        query: {...this.$route.query, forceLegacy: 'true'},
       }
     },
     textRecoveryAvailable(): boolean {

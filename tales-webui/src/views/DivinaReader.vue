@@ -682,6 +682,7 @@ export default Vue.extend({
     async setup(bookId: string, page?: number) {
       this.$debug('[setup]', `bookId:${bookId}`, `page:${page}`)
       this.book = await this.$talesBooks.getBook(bookId)
+      if (this.redirectToShelfViewIfNeeded()) return
       this.series = await this.$talesSeries.getOneSeries(this.book.seriesId)
 
       // parse query params to get context and contextId
@@ -744,6 +745,18 @@ export default Vue.extend({
       } catch (e) {
         this.siblingPrevious = {} as BookDto
       }
+    },
+    redirectToShelfViewIfNeeded(): boolean {
+      const forceLegacy = this.$route.query.forceLegacy?.toString().toLowerCase() === 'true'
+      if (forceLegacy) return false
+      if (getBookReadRouteFromMedia(this.book.media) !== 'read-book-v2') return false
+
+      this.$router.replace({
+        name: 'read-book-v2',
+        params: {bookId: this.bookId},
+        query: this.$route.query,
+      })
+      return true
     },
     getPageUrl(page: PageDto): string {
       if (!this.supportedMediaTypes.includes(page.mediaType)) {

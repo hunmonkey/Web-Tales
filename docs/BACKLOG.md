@@ -148,6 +148,11 @@ ADRs, dependency/license review, or broader product decisions.
   - [x] SV-950c Phase 5 scope closure
 - [x] SV-951 Owner-approved Canvas sharpen prototype
 
+## Reopened reader unification from `0622.txt`
+
+- [x] SV-961 Route supported fixed-page legacy reader entries into ShelfView
+  read-v2 while preserving the explicit existing-reader fallback
+
 ## Deferred after SV-930 closure
 
 - [ ] Owner-approved server/account-synced dictionary provider storage

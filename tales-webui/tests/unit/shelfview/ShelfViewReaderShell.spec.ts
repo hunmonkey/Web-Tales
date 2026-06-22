@@ -227,6 +227,27 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Page 1 of 2')
   })
 
+  it('adds forceLegacy to the existing-reader fallback location', async () => {
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      routeQuery: {context: 'series', contextId: 'series-1', incognito: 'true'},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).legacyReaderLocation).toEqual({
+      name: 'read-book',
+      params: {bookId: 'book-1'},
+      query: {
+        context: 'series',
+        contextId: 'series-1',
+        incognito: 'true',
+        forceLegacy: 'true',
+      },
+    })
+  })
+
   it('loads a text manifest and renders escaped paragraphs', async () => {
     const getManifest = jest.fn().mockResolvedValue(textManifest)
     const getPreference = jest.fn().mockResolvedValue({
