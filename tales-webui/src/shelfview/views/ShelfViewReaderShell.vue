@@ -220,6 +220,23 @@
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-btn
+              v-if="thumbnailStripAvailable"
+              icon
+              :aria-label="thumbnailStripOpen ? $t('shelfview_reader.hide_thumbnails') : $t('shelfview_reader.show_thumbnails')"
+              :aria-pressed="thumbnailStripOpen ? 'true' : 'false'"
+              data-testid="shelfview-reader-thumbnails-toggle"
+              v-on="on"
+              @click="toggleThumbnailStrip"
+            >
+              <v-icon>{{ thumbnailStripOpen ? 'mdi-view-carousel' : 'mdi-view-carousel-outline' }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ thumbnailStripOpen ? $t('shelfview_reader.hide_thumbnails') : $t('shelfview_reader.show_thumbnails') }}</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on }">
+            <v-btn
               v-if="fixedPageControlsVisible"
               icon
               :aria-label="$t('shelfview_reader.fixed_settings')"
@@ -521,7 +538,6 @@
       :aria-label="readerAriaLabel"
       aria-describedby="shelfview-reader-shortcut-hint"
       data-testid="shelfview-reader-stage"
-      @keydown="onReaderKeydown"
       @wheel="onReaderWheel"
       @pointerdown="onReaderPointerDown"
       @pointermove="onReaderPointerMove"
@@ -1796,6 +1812,7 @@ export default Vue.extend({
     controlMenuLeft: 0,
     chromeVisible: false,
     overflowMenuOpen: false,
+    thumbnailStripOpen: false,
     chromeHintVisible: false,
     chromeHintTimeoutMs: CHROME_HINT_TIMEOUT_MS,
     chromeAutoHideDelayMs: CHROME_AUTO_HIDE_DELAY_MS,
@@ -1840,6 +1857,7 @@ export default Vue.extend({
     window.addEventListener('resize', this.onReaderViewportChanged)
     window.addEventListener('orientationchange', this.onReaderViewportChanged)
     window.addEventListener('pagehide', this.onPageHide)
+    window.addEventListener('keydown', this.onReaderKeydown)
     document.addEventListener('visibilitychange', this.onVisibilityChange)
     if (screenfull.isEnabled) {
       this.fullscreenAvailable = true
@@ -1862,6 +1880,7 @@ export default Vue.extend({
     window.removeEventListener('resize', this.onReaderViewportChanged)
     window.removeEventListener('orientationchange', this.onReaderViewportChanged)
     window.removeEventListener('pagehide', this.onPageHide)
+    window.removeEventListener('keydown', this.onReaderKeydown)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
     if (screenfull.isEnabled) {
       screenfull.off('change', this.onFullscreenChange)
@@ -2135,8 +2154,11 @@ export default Vue.extend({
       }))
         .filter((page): page is ShelfViewPageSource => !!page.url)
     },
-    thumbnailStripVisible(): boolean {
+    thumbnailStripAvailable(): boolean {
       return this.fixedPageControlsVisible && this.thumbnailPageSources.length > 1
+    },
+    thumbnailStripVisible(): boolean {
+      return this.chromeVisible && this.thumbnailStripOpen && this.thumbnailStripAvailable
     },
     visibleTextParagraphs(): ShelfViewTextParagraph[] {
       return this.textAdapter?.getVisibleParagraphs(this.readerLayout) ?? this.mixedContentAdapter?.getVisibleParagraphs(this.readerLayout) ?? []
@@ -2492,6 +2514,7 @@ export default Vue.extend({
       this.textSearchMatchIndex = 0
       this.chromeVisible = false
       this.overflowMenuOpen = false
+      this.thumbnailStripOpen = false
       this.maybeShowChromeHint()
       this.siblingNext = undefined
       this.endOfBookPromptOpen = false
@@ -3598,11 +3621,23 @@ export default Vue.extend({
       this.chromeVisible = !this.chromeVisible
       if (!this.chromeVisible) this.closeOverflowMenu()
     },
+    showChromeFromReaderTap() {
+      if (!this.chromeVisible) {
+        this.chromeVisible = true
+        return
+      }
+
+      this.scheduleChromeAutoHide()
+    },
     toggleOverflowMenu() {
       this.overflowMenuOpen = !this.overflowMenuOpen
     },
     closeOverflowMenu() {
       this.overflowMenuOpen = false
+    },
+    toggleThumbnailStrip() {
+      this.thumbnailStripOpen = !this.thumbnailStripOpen
+      this.noteChromeActivity()
     },
     maybeShowChromeHint() {
       const storage = this.browserStorage()
@@ -4480,7 +4515,7 @@ export default Vue.extend({
           this.toggleFullscreen()
           break
         case 'TOGGLE_CHROME':
-          this.toggleChrome()
+          this.showChromeFromReaderTap()
           break
         case 'SHOW_SHORTCUTS':
           this.showShortcutHelp = true

@@ -325,6 +325,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').attributes('style') ?? '').not.toContain('display: none')
     expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-layout-toggle"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-filter-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-thumbnails-toggle"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-bookmarks-toggle"]').exists()).toBe(true)
   })
 
@@ -1850,6 +1851,11 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
+    expect(wrapper.find('[data-testid="shelfview-reader-thumbnail-strip"]').exists()).toBe(false)
+    await wrapper.setData({chromeVisible: true, overflowMenuOpen: true})
+    await wrapper.find('[data-testid="shelfview-reader-thumbnails-toggle"]').trigger('click')
+    await Vue.nextTick()
+
     expect(wrapper.findAll('[data-testid="shelfview-reader-thumbnail"]').length).toBe(3)
     expect(wrapper.find('[data-testid="shelfview-reader-thumbnail"] img').attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/1/thumbnail')
 
@@ -2032,6 +2038,16 @@ describe('ShelfViewReaderShell', () => {
 
     expect(preventDefault).toHaveBeenCalled()
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }))
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 3')
 
     await (wrapper.vm as any).onReaderKeydown({
       key: 'Home',
@@ -2217,7 +2233,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 2')
   })
 
-  it('toggles reader chrome with a fixed-page center mouse tap', async () => {
+  it('shows reader chrome with fixed-page center mouse taps without hiding it again', async () => {
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
 
     await flushPromises()
@@ -2254,7 +2270,7 @@ describe('ShelfViewReaderShell', () => {
       pointerType: 'mouse',
       button: 0,
       pointerId: 8,
-      clientX: 100,
+      clientX: 500,
       clientY: 120,
       target: stage.element,
       cancelable: true,
@@ -2262,7 +2278,7 @@ describe('ShelfViewReaderShell', () => {
     })
     await (wrapper.vm as any).onReaderPointerUp({
       pointerId: 8,
-      clientX: 104,
+      clientX: 504,
       clientY: 126,
       cancelable: true,
       preventDefault: jest.fn(),
@@ -2272,7 +2288,7 @@ describe('ShelfViewReaderShell', () => {
     expect((wrapper.vm as any).chromeVisible).toBe(true)
   })
 
-  it('toggles reader chrome with a touch center tap without moving pages', async () => {
+  it('shows reader chrome with a touch center tap without moving pages', async () => {
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
 
     await flushPromises()
@@ -2384,7 +2400,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
   })
 
-  it('toggles reader chrome from text mouse center taps without side paging', async () => {
+  it('shows reader chrome from text mouse center taps without side paging', async () => {
     const wrapper = mountShell({
       getManifest: jest.fn().mockResolvedValue(textManifest),
       shelfViewState: {

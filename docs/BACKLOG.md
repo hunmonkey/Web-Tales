@@ -164,6 +164,8 @@ ADRs, dependency/license review, or broader product decisions.
 - [x] SV-971 Reader chrome idle auto-hide
 - [x] SV-976 Text reflow immersive settings simplification
 - [x] SV-977 Shortcut help update for the new input map
+- [x] SV-978 Reader comfort follow-up: hidden page strip, show-only center tap
+  and global keyboard paging
 
 ## Deferred after SV-930 closure
 
