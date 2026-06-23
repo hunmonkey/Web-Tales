@@ -145,10 +145,26 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
   },
 ]
 
+export const SHELFVIEW_IMAGE_FILTER_PRIMARY: ShelfViewImageFilterPreset[] = [
+  'ORIGINAL',
+  'IMAGE_ENHANCE',
+  'MONO_COMIC',
+  'NIGHT_INVERT',
+]
+
+export const SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS: ShelfViewImageFilterPresetOption[] =
+  SHELFVIEW_IMAGE_FILTER_PRESETS.filter(option => SHELFVIEW_IMAGE_FILTER_PRIMARY.includes(option.id))
+
 export function shelfViewImageFilterPreset(
   preset: ShelfViewImageFilterPreset,
 ): ShelfViewImageFilterPresetOption {
   return SHELFVIEW_IMAGE_FILTER_PRESETS.find(option => option.id === preset) || SHELFVIEW_IMAGE_FILTER_PRESETS[0]
+}
+
+export function shelfViewImageFilterPrimaryPreset(
+  preset: ShelfViewImageFilterPreset,
+): ShelfViewImageFilterPreset {
+  return SHELFVIEW_IMAGE_FILTER_PRIMARY.includes(preset) ? preset : 'ORIGINAL'
 }
 
 export function shelfViewImageFilterUsesCanvas(

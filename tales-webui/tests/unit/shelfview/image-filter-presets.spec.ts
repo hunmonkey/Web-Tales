@@ -1,6 +1,9 @@
 import {
+  SHELFVIEW_IMAGE_FILTER_PRIMARY,
+  SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS,
   SHELFVIEW_IMAGE_FILTER_PRESETS,
   ShelfViewImageFilterPreset,
+  shelfViewImageFilterPrimaryPreset,
   shelfViewImageFilterPreset,
   shelfViewImageFilterStyle,
   shelfViewImageFilterUsesCanvas,
@@ -54,8 +57,16 @@ describe('ShelfView image filter presets', () => {
     expect(preset).toBe('ORIGINAL')
   })
 
+  it('exposes only four primary presets for the simplified menu', () => {
+    expect(SHELFVIEW_IMAGE_FILTER_PRIMARY).toEqual(['ORIGINAL', 'IMAGE_ENHANCE', 'MONO_COMIC', 'NIGHT_INVERT'])
+    expect(SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS.map(option => option.id)).toEqual(SHELFVIEW_IMAGE_FILTER_PRIMARY)
+    expect(SHELFVIEW_IMAGE_FILTER_PRIMARY).not.toContain('CANVAS_SHARPEN')
+    expect(SHELFVIEW_IMAGE_FILTER_PRIMARY.length).toBeLessThanOrEqual(4)
+  })
+
   it('falls back to original for unknown preset values', () => {
     expect(shelfViewImageFilterPreset('not-real' as any).id).toBe('ORIGINAL')
+    expect(shelfViewImageFilterPrimaryPreset('CANVAS_SHARPEN')).toBe('ORIGINAL')
   })
 
   it('marks only the canvas sharpen preset as canvas-backed', () => {

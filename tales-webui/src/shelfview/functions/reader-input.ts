@@ -7,6 +7,7 @@ export type ShelfViewReaderInputAction =
   | 'LAST'
   | 'ROTATE'
   | 'TOGGLE_FULLSCREEN'
+  | 'TOGGLE_CHROME'
   | 'SHOW_SHORTCUTS'
 
 export interface ShelfViewTouchPoint {
@@ -63,6 +64,39 @@ export function shelfViewTouchAction(
   const swipedLeft = deltaX < 0
   if (readingDirection === 'RTL') return swipedLeft ? 'PREVIOUS' : 'NEXT'
   return swipedLeft ? 'NEXT' : 'PREVIOUS'
+}
+
+export function shelfViewCenterTapAction(
+  start: ShelfViewTouchPoint,
+  end: ShelfViewTouchPoint,
+  stageWidth: number,
+): ShelfViewReaderInputAction | undefined {
+  return shelfViewTapAction(start, end, stageWidth, 'LTR', false)
+}
+
+export function shelfViewTapAction(
+  start: ShelfViewTouchPoint,
+  end: ShelfViewTouchPoint,
+  stageWidth: number,
+  readingDirection: ShelfViewFixedPageReadingDirection,
+  pagingEnabled: boolean,
+): ShelfViewReaderInputAction | undefined {
+  if (!Number.isFinite(stageWidth) || stageWidth <= 0) return undefined
+
+  const deltaX = end.x - start.x
+  const deltaY = end.y - start.y
+  if (Math.abs(deltaX) >= 10 || Math.abs(deltaY) >= 10) return undefined
+
+  const tapX = (start.x + end.x) / 2
+  const leftBoundary = stageWidth * 0.35
+  const rightBoundary = stageWidth * 0.65
+
+  if (tapX >= leftBoundary && tapX <= rightBoundary) return 'TOGGLE_CHROME'
+  if (!pagingEnabled) return undefined
+
+  const leftTap = tapX < leftBoundary
+  if (readingDirection === 'RTL') return leftTap ? 'NEXT' : 'PREVIOUS'
+  return leftTap ? 'PREVIOUS' : 'NEXT'
 }
 
 export function shelfViewShouldIgnoreShortcutTarget(target: EventTarget | null): boolean {

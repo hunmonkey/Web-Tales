@@ -153,6 +153,18 @@ ADRs, dependency/license review, or broader product decisions.
 - [x] SV-961 Route supported fixed-page legacy reader entries into ShelfView
   read-v2 while preserving the explicit existing-reader fallback
 
+## Reopened Honeyview-style reader simplification from `0623.txt`
+
+- [x] SV-970 Immersive reader chrome state, guarded Escape toggle and center
+  tap discovery
+- [x] SV-975 Shrink-only default fixed-page fit when no saved preference exists
+- [x] SV-972 Left/center/right tap-zone navigation with reading-direction rules
+- [x] SV-973 Toolbar surface reduction and overflow menu
+- [x] SV-974 Primary image-filter simplification
+- [x] SV-971 Reader chrome idle auto-hide
+- [x] SV-976 Text reflow immersive settings simplification
+- [x] SV-977 Shortcut help update for the new input map
+
 ## Deferred after SV-930 closure
 
 - [ ] Owner-approved server/account-synced dictionary provider storage

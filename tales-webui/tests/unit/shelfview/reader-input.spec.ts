@@ -1,6 +1,8 @@
 import {
+  shelfViewCenterTapAction,
   shelfViewReaderKeyboardAction,
   shelfViewShouldIgnoreShortcutTarget,
+  shelfViewTapAction,
   shelfViewTouchAction,
 } from '@/shelfview/functions/reader-input'
 
@@ -33,6 +35,25 @@ describe('ShelfView reader input helpers', () => {
     expect(shelfViewTouchAction({x: 200, y: 100}, {x: 40, y: 104}, 'RTL')).toBe('PREVIOUS')
     expect(shelfViewTouchAction({x: 40, y: 100}, {x: 200, y: 104}, 'RTL')).toBe('NEXT')
     expect(shelfViewTouchAction({x: 100, y: 100}, {x: 120, y: 260}, 'LTR')).toBeUndefined()
+  })
+
+  it('maps only short center taps to chrome toggle', () => {
+    expect(shelfViewCenterTapAction({x: 500, y: 100}, {x: 504, y: 106}, 1000)).toBe('TOGGLE_CHROME')
+    expect(shelfViewCenterTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000)).toBeUndefined()
+    expect(shelfViewCenterTapAction({x: 500, y: 100}, {x: 540, y: 106}, 1000)).toBeUndefined()
+    expect(shelfViewCenterTapAction({x: 500, y: 100}, {x: 504, y: 126}, 1000)).toBeUndefined()
+    expect(shelfViewCenterTapAction({x: 500, y: 100}, {x: 504, y: 106}, 0)).toBeUndefined()
+  })
+
+  it('maps tap zones by reading direction only when paging is enabled', () => {
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', true)).toBe('PREVIOUS')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'LTR', true)).toBe('NEXT')
+    expect(shelfViewTapAction({x: 500, y: 100}, {x: 504, y: 106}, 1000, 'LTR', true)).toBe('TOGGLE_CHROME')
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'RTL', true)).toBe('NEXT')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'RTL', true)).toBe('PREVIOUS')
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', false)).toBeUndefined()
+    expect(shelfViewTapAction({x: 500, y: 100}, {x: 504, y: 106}, 1000, 'LTR', false)).toBe('TOGGLE_CHROME')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 940, y: 106}, 1000, 'LTR', true)).toBeUndefined()
   })
 
   it('does not intercept shortcuts from editable targets', () => {

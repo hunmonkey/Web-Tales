@@ -208,10 +208,34 @@ function textProgression(
   return (paragraph + paragraphProgression) / textContent.paragraphs.length
 }
 
-const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0))
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const flushPromises = () => wait(0)
 const mountedWrappers: Wrapper<Vue>[] = []
+const overflowControlToggleTestIds = new Set([
+  'shelfview-reader-layout-toggle',
+  'shelfview-reader-text-theme-toggle',
+  'shelfview-reader-rotate-toggle',
+  'shelfview-reader-direction-toggle',
+  'shelfview-reader-filter-toggle',
+])
+
+function setReaderStageRect(wrapper: Wrapper<Vue>) {
+  const stage = wrapper.find('[data-testid="shelfview-reader-stage"]')
+  Object.defineProperty(stage.element, 'getBoundingClientRect', {
+    value: () => ({left: 0, top: 0, right: 1000, bottom: 700, width: 1000, height: 700}),
+    configurable: true,
+  })
+  return stage
+}
 
 async function chooseControlOption(wrapper: Wrapper<Vue>, toggleTestId: string, optionTestId: string) {
+  if (overflowControlToggleTestIds.has(toggleTestId) && !(wrapper.vm as any).overflowMenuOpen) {
+    const moreToggle = wrapper.find('[data-testid="shelfview-reader-more-toggle"]')
+    if (moreToggle.exists()) {
+      await moreToggle.trigger('click')
+      await Vue.nextTick()
+    }
+  }
   await wrapper.find(`[data-testid="${toggleTestId}"]`).trigger('click')
   await Vue.nextTick()
   await wrapper.find(`[data-testid="${optionTestId}"]`).trigger('click')
@@ -223,6 +247,7 @@ describe('ShelfViewReaderShell', () => {
   afterEach(() => {
     mountedWrappers.splice(0).forEach(wrapper => wrapper.destroy())
     jest.useRealTimers()
+    window.localStorage.removeItem('shelfview.chromeHintSeen.v1')
     process.env.VUE_APP_SHELFVIEW_READER = originalReaderFlag
     mockScreenfull.isEnabled = false
     mockScreenfull.isFullscreen = false
@@ -250,6 +275,90 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('role')).toBe('application')
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('page 1 of 2')
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Page 1 of 2')
+  })
+
+  it('starts with reader chrome hidden and shows the center-tap hint once', async () => {
+    window.localStorage.removeItem('shelfview.chromeHintSeen.v1')
+
+    const firstWrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect((firstWrapper.vm as any).chromeVisible).toBe(false)
+    expect(firstWrapper.find('[data-testid="shelfview-reader-toolbar"]').attributes('style')).toContain('display: none')
+    expect(firstWrapper.find('[data-testid="shelfview-reader-chrome-hint"]').exists()).toBe(true)
+    expect(window.localStorage.getItem('shelfview.chromeHintSeen.v1')).toBe('true')
+
+    const secondWrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect((secondWrapper.vm as any).chromeHintVisible).toBe(false)
+  })
+
+  it('keeps only primary controls on the toolbar surface and moves the rest to overflow', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+    await wrapper.setData({chromeVisible: true})
+
+    const primaryControls = wrapper.find('[data-testid="shelfview-reader-page-controls"]')
+    expect(primaryControls.find('[data-testid="shelfview-reader-previous"]').exists()).toBe(true)
+    expect(primaryControls.find('[data-testid="shelfview-reader-page-counter"]').exists()).toBe(true)
+    expect(primaryControls.find('[data-testid="shelfview-reader-next"]').exists()).toBe(true)
+    expect(primaryControls.find('[data-testid="shelfview-reader-fit-toggle"]').exists()).toBe(true)
+    expect(primaryControls.find('[data-testid="shelfview-reader-more-toggle"]').exists()).toBe(true)
+    expect(primaryControls.find('[data-testid="shelfview-reader-layout-toggle"]').exists()).toBe(false)
+    expect(primaryControls.find('[data-testid="shelfview-reader-filter-toggle"]').exists()).toBe(false)
+    expect(primaryControls.find('[data-testid="shelfview-reader-bookmarks-toggle"]').exists()).toBe(false)
+
+    const overflow = wrapper.find('[data-testid="shelfview-reader-overflow"]')
+    expect(overflow.attributes('style')).toContain('display: none')
+
+    await wrapper.find('[data-testid="shelfview-reader-more-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).overflowMenuOpen).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').attributes('style') ?? '').not.toContain('display: none')
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-layout-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-filter-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-bookmarks-toggle"]').exists()).toBe(true)
+  })
+
+  it('auto-hides reader chrome after idle and pauses while overflow is open', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.setData({chromeAutoHideDelayMs: 20, chromeVisible: true})
+    await wait(10)
+    vm.noteChromeActivity()
+    await wait(14)
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(true)
+
+    await wait(18)
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(false)
+
+    await wrapper.setData({chromeVisible: true, overflowMenuOpen: true})
+    await wait(28)
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(true)
+
+    vm.closeOverflowMenu()
+    await wait(28)
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(false)
   })
 
   it('adds forceLegacy to the existing-reader fallback location', async () => {
@@ -304,10 +413,23 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-filter-toggle"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shelfview-reader-fit-toggle"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shelfview-reader-direction-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-rotate-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-slideshow-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-page-jump"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-fixed-settings-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-thumbnail-strip"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shelfview-reader-text-theme-toggle"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-reader-text-settings-toggle"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-reader-stage"]').attributes('aria-label')).toContain('paragraph 1 of 3')
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Paragraph 1 of 3')
+
+    await wrapper.setData({chromeVisible: true, overflowMenuOpen: true})
+    await Vue.nextTick()
+
+    const primaryControls = wrapper.find('[data-testid="shelfview-reader-page-controls"]')
+    expect(primaryControls.find('[data-testid="shelfview-reader-text-theme-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-text-theme-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-text-settings-toggle"]').exists()).toBe(true)
 
     await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
     await flushPromises()
@@ -366,9 +488,19 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-text-settings"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-settings-primary"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-theme-chip-DARK"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-font-size-decrease"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-font-size-increase"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-line-height"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-settings-advanced"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-text-settings-more"]').exists()).toBe(true)
+
+    await wrapper.find('[data-testid="shelfview-reader-text-theme-chip-OLED"]').trigger('click')
+    await wrapper.find('[data-testid="shelfview-reader-text-font-size-increase"]').trigger('click')
+    await Vue.nextTick()
 
     await wrapper.setData({
-      textFontSize: 26,
       textLetterSpacing: 1.2,
       textContentWidth: 640,
       textBrightness: 0.92,
@@ -380,18 +512,18 @@ describe('ShelfViewReaderShell', () => {
 
     expect(savePreference).toHaveBeenCalledWith({
       scopeType: 'BOOK',
-      scopeId: 'book-1',
-      format: 'TEXT_REFLOW',
-      settings: expect.objectContaining({
-        layout: 'CONTINUOUS_SCROLL',
-        textTheme: 'DARK',
-        textFontFamily: 'READABLE_KR',
-        textFontSize: 26,
-        textLetterSpacing: 1.2,
-        textContentWidth: 640,
-        textAlign: 'JUSTIFY',
-        textBrightness: 0.92,
-      }),
+        scopeId: 'book-1',
+        format: 'TEXT_REFLOW',
+        settings: expect.objectContaining({
+          layout: 'CONTINUOUS_SCROLL',
+          textTheme: 'OLED',
+          textFontFamily: 'READABLE_KR',
+          textFontSize: 23,
+          textLetterSpacing: 1.2,
+          textContentWidth: 640,
+          textAlign: 'JUSTIFY',
+          textBrightness: 0.92,
+        }),
     })
   })
 
@@ -1528,7 +1660,13 @@ describe('ShelfViewReaderShell', () => {
             fixedPageBrightness: 1.08,
             fixedPageContrast: 1.12,
           },
-          sources: [],
+          sources: [{
+            scopeType: 'BOOK',
+            scopeId: 'book-1',
+            format: 'FIXED_PAGE_SEQUENCE',
+            settings: {pageFit: 'WIDTH'},
+            updatedAt: '2026-06-18T00:00:00Z',
+          }],
         }),
       },
     })
@@ -1550,6 +1688,41 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.find('[data-testid="shelfview-bookmarks-drawer"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-bookmark-go"]').text()).toBe('Saved page')
+  })
+
+  it('uses default screen fit only when no saved page fit exists', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const vm = wrapper.vm as any
+    vm.pageFit = 'WIDTH'
+    vm.applyPreferenceSettings(vm.settingsWithFormatDefaults({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'FIXED_PAGE_SEQUENCE',
+      effectiveSettings: {},
+      sources: [],
+    }), false, 'FIXED_PAGE_SEQUENCE')
+
+    expect(vm.pageFit).toBe('SCREEN')
+
+    vm.applyPreferenceSettings(vm.settingsWithFormatDefaults({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'FIXED_PAGE_SEQUENCE',
+      effectiveSettings: {pageFit: 'WIDTH'},
+      sources: [{
+        scopeType: 'BOOK',
+        scopeId: 'book-1',
+        format: 'FIXED_PAGE_SEQUENCE',
+        settings: {pageFit: 'WIDTH'},
+        updatedAt: '2026-06-18T00:00:00Z',
+      }],
+    }), false, 'FIXED_PAGE_SEQUENCE')
+
+    expect(vm.pageFit).toBe('WIDTH')
   })
 
   it('applies and saves fixed page display settings', async () => {
@@ -1887,6 +2060,45 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
   })
 
+  it('toggles reader chrome with Escape only when no chrome panel is open', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const preventDefault = jest.fn()
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'Escape',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-stage"]').element,
+      preventDefault,
+    })
+    await Vue.nextTick()
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+
+    const vm = wrapper.vm as any
+    vm.openControlMenu = 'layout'
+    await Vue.nextTick()
+
+    const panelPreventDefault = jest.fn()
+    await (wrapper.vm as any).onReaderKeydown({
+      key: 'Escape',
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      target: wrapper.find('[data-testid="shelfview-reader-stage"]').element,
+      preventDefault: panelPreventDefault,
+    })
+    await Vue.nextTick()
+
+    expect(panelPreventDefault).not.toHaveBeenCalled()
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+  })
+
   it('shows the fullscreen toggle and requests fullscreen from the toolbar when supported', async () => {
     mockScreenfull.isEnabled = true
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
@@ -1901,12 +2113,14 @@ describe('ShelfViewReaderShell', () => {
     await toggle.trigger('click')
     expect(mockScreenfull.request).toHaveBeenCalled()
 
+    await wrapper.setData({chromeVisible: true})
     const changeHandler = mockScreenfull.on.mock.calls.find((call: any[]) => call[0] === 'change')![1]
     mockScreenfull.isFullscreen = true
     changeHandler()
     await Vue.nextTick()
 
     expect((wrapper.vm as any).isFullscreen).toBe(true)
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
 
     await wrapper.find('[data-testid="shelfview-reader-fullscreen-toggle"]').trigger('click')
     expect(mockScreenfull.exit).toHaveBeenCalled()
@@ -1964,6 +2178,12 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').attributes('role')).toBe('dialog')
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').text()).toContain('shelfview_reader.shortcut_keys_escape')
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').text()).toContain('shelfview_reader.shortcut_toggle_chrome')
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').text()).toContain('shelfview_reader.shortcut_keys_side_tap')
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').text()).toContain('shelfview_reader.shortcut_side_tap_pages')
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').text()).toContain('shelfview_reader.shortcut_keys_center_tap')
+    expect(wrapper.find('[data-testid="shelfview-reader-shortcuts"]').text()).toContain('shelfview_reader.shortcut_center_tap_chrome')
 
     await wrapper.find('[data-testid="shelfview-reader-shortcuts-close"]').trigger('click')
     await Vue.nextTick()
@@ -1995,6 +2215,237 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 2')
+  })
+
+  it('toggles reader chrome with a fixed-page center mouse tap', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]')
+    Object.defineProperty(stage.element, 'getBoundingClientRect', {
+      value: () => ({left: 0, top: 0, right: 1000, bottom: 700, width: 1000, height: 700}),
+      configurable: true,
+    })
+
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 7,
+      clientX: 500,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 7,
+      clientX: 504,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 8,
+      clientX: 100,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 8,
+      clientX: 104,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+  })
+
+  it('toggles reader chrome with a touch center tap without moving pages', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]')
+    Object.defineProperty(stage.element, 'getBoundingClientRect', {
+      value: () => ({left: 0, top: 0, right: 1000, bottom: 700, width: 1000, height: 700}),
+      configurable: true,
+    })
+
+    await (wrapper.vm as any).onReaderTouchStart({
+      changedTouches: [{clientX: 500, clientY: 120}],
+    })
+    await (wrapper.vm as any).onReaderTouchEnd({
+      changedTouches: [{clientX: 504, clientY: 126}],
+      cancelable: true,
+      preventDefault: jest.fn(),
+      target: stage.element,
+    })
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
+  })
+
+  it('moves fixed pages with left and right mouse tap zones', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue({...manifest, pageCount: 3})})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = setReaderStageRect(wrapper)
+
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 10,
+      clientX: 900,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 10,
+      clientX: 904,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
+
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 11,
+      clientX: 100,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 11,
+      clientX: 104,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+  })
+
+  it('does not move fixed pages from side tap zones while zoomed', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue({...manifest, pageCount: 3})})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = setReaderStageRect(wrapper)
+    await wrapper.setData({fixedPageScale: 125})
+
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 12,
+      clientX: 900,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 12,
+      clientX: 904,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+  })
+
+  it('toggles reader chrome from text mouse center taps without side paging', async () => {
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(textManifest),
+      shelfViewState: {
+        getPreference: jest.fn().mockResolvedValue({
+          scopeType: 'BOOK',
+          scopeId: 'book-1',
+          format: 'TEXT_REFLOW',
+          effectiveSettings: {},
+          sources: [],
+        }),
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = setReaderStageRect(wrapper)
+
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 13,
+      clientX: 900,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 13,
+      clientX: 904,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
+
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 14,
+      clientX: 500,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 14,
+      clientX: 504,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
   })
 
   it('debounces position saving and flushes pending saves', async () => {
@@ -2140,6 +2591,26 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-width')
   })
 
+  it('shows only primary image filter options in the simplified menu', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-more-toggle"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-reader-filter-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-option-ORIGINAL"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-option-IMAGE_ENHANCE"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-option-MONO_COMIC"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-option-NIGHT_INVERT"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-option-CANVAS_SHARPEN"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-filter-option-FADED_SCAN"]').exists()).toBe(false)
+  })
+
   it('applies image filter presets only to page content', async () => {
     const getManifest = jest.fn().mockResolvedValue(manifest)
     const wrapper = mountShell({getManifest})
@@ -2170,8 +2641,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    await chooseControlOption(wrapper, 'shelfview-reader-filter-toggle', 'shelfview-reader-filter-option-CANVAS_SHARPEN')
-    await flushPromises()
+    await wrapper.setData({imageFilterPreset: 'CANVAS_SHARPEN'})
     await Vue.nextTick()
 
     const page = wrapper.find('[data-testid="shelfview-reader-page"]')
@@ -2187,7 +2657,7 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
-    await chooseControlOption(wrapper, 'shelfview-reader-filter-toggle', 'shelfview-reader-filter-option-CANVAS_SHARPEN')
+    await wrapper.setData({imageFilterPreset: 'CANVAS_SHARPEN'})
     await flushPromises()
     await Vue.nextTick()
 
@@ -2475,9 +2945,17 @@ function mountShell({
       'v-select': {template: '<select v-bind="$attrs" v-on="$listeners"><slot /></select>'},
       'v-slider': {template: '<input type="range" v-bind="$attrs" v-on="$listeners" />'},
       'v-checkbox': {template: '<input type="checkbox" v-bind="$attrs" v-on="$listeners" />'},
+      'v-expansion-panels': {template: '<div v-bind="$attrs"><slot /></div>'},
+      'v-expansion-panel': {template: '<section><slot /></section>'},
+      'v-expansion-panel-header': {template: '<button v-bind="$attrs" v-on="$listeners"><slot /></button>'},
+      'v-expansion-panel-content': {template: '<div><slot /></div>'},
       'v-text-field': {
         props: ['value'],
         template: '<input v-bind="$attrs" :value="value" @input="$emit(\'input\', $event.target.value)" @keyup="$emit(\'keyup\', $event)" />',
+      },
+      'v-snackbar': {
+        props: ['value'],
+        template: '<div v-if="value" v-bind="$attrs"><slot /></div>',
       },
       'v-progress-circular': {template: '<span />'},
       ShelfViewControlMenu: {
