@@ -362,7 +362,7 @@ describe('ShelfViewReaderShell', () => {
     expect(vm.chromeVisible).toBe(false)
   })
 
-  it('adds forceLegacy to the existing-reader fallback location', async () => {
+  it('does not expose a legacy-reader fallback from ShelfView', async () => {
     const wrapper = mountShell({
       getManifest: jest.fn().mockResolvedValue(manifest),
       routeQuery: {context: 'series', contextId: 'series-1', incognito: 'true'},
@@ -371,16 +371,8 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    expect((wrapper.vm as any).legacyReaderLocation).toEqual({
-      name: 'read-book',
-      params: {bookId: 'book-1'},
-      query: {
-        context: 'series',
-        contextId: 'series-1',
-        incognito: 'true',
-        forceLegacy: 'true',
-      },
-    })
+    expect(wrapper.html()).not.toContain('mdi-book-open-page-variant')
+    expect(wrapper.text()).not.toContain('browse_book.read_book')
   })
 
   it('loads a text manifest and renders escaped paragraphs', async () => {

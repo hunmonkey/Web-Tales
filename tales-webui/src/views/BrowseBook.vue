@@ -213,10 +213,9 @@
                   </v-btn>
                 </v-col>
 
-                <v-col cols="auto">
+                <v-col cols="auto" v-if="canDownload">
                   <v-btn :title="$t('browse_book.download_file')"
                          small
-                         :disabled="!canDownload"
                          :href="fileUrl">
                     <v-icon left small>mdi-file-download</v-icon>
                     {{ $t('common.download') }}
@@ -259,10 +258,9 @@
             </v-btn>
           </v-col>
 
-          <v-col cols="auto">
+          <v-col cols="auto" v-if="canDownload">
             <v-btn :title="$t('browse_book.download_file')"
                    small
-                   :disabled="!canDownload"
                    :href="fileUrl">
               <v-icon left small>mdi-file-download</v-icon>
               {{ $t('common.download') }}

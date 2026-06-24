@@ -182,7 +182,6 @@
   },
   "shelfview_reader": {
     "close": "닫기",
-    "open_legacy_reader": "기존 뷰어로 열기",
     "previous_page": "이전 페이지",
     "next_page": "다음 페이지",
     "contents": "목차",

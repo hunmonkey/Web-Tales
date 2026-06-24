@@ -408,20 +408,6 @@
           <span>{{ $t('shelfview_reader.shortcuts') }}</span>
         </v-tooltip>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              icon
-              :aria-label="$t('shelfview_reader.open_legacy_reader')"
-              :to="legacyReaderLocation"
-              v-on="on"
-            >
-              <v-icon>mdi-book-open-page-variant</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('browse_book.read_book') }}</span>
-        </v-tooltip>
-
         <span
           v-if="readerStateNoticeVisible"
           class="shelfview-reader-shell__sync-status"
@@ -595,13 +581,6 @@
             @click="retryTextEncoding()"
           >
             {{ $t('shelfview_reader.encoding_auto') }}
-          </v-btn>
-          <v-btn
-            color="secondary"
-            :to="legacyReaderLocation"
-            data-testid="shelfview-reader-legacy"
-          >
-            {{ $t('browse_book.read_book') }}
           </v-btn>
         </div>
         <p
@@ -1567,12 +1546,11 @@
 <script lang="ts">
 import Vue from 'vue'
 import screenfull from 'screenfull'
-import {RawLocation} from 'vue-router/types/router'
 import {BookDto} from '@/types/tales-books'
 import {SeriesDto} from '@/types/tales-series'
 import {Context, ContextOrigin} from '@/types/context'
 import {getBookTitleCompact} from '@/functions/book-title'
-import {getBookReadRouteFromMedia, getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
+import {getBookReadRouteFromMedia} from '@/functions/book-format'
 import {
   ShelfViewManifest,
   ShelfViewManifestContentsItem,
@@ -2499,13 +2477,6 @@ export default Vue.extend({
         return this.$t('shelfview_reader.error_book_changed_message') as string
       }
       return this.error?.message || this.$t('shelfview_reader.error_generic_message') as string
-    },
-    legacyReaderLocation(): RawLocation {
-      return {
-        name: this.book?.media ? getLegacyBookReadRouteFromMedia(this.book.media) : 'read-book',
-        params: {bookId: this.bookId},
-        query: {...this.$route.query, forceLegacy: 'true'},
-      }
     },
     textRecoveryAvailable(): boolean {
       return this.manifest?.kind === 'TEXT_REFLOW' || this.manifest?.kind === 'MIXED_CONTENT_SEQUENCE'

@@ -102,11 +102,10 @@
         </v-col>
       </v-row>
 
-      <v-row class="px-2">
+      <v-row class="px-2" v-if="canDownload">
         <v-col>
           <v-btn :title="$t('menu.download_readlist')"
                  small
-                 :disabled="!canDownload"
                  :href="fileUrl">
             <v-icon left small>mdi-file-download</v-icon>
             {{ $t('common.download') }}

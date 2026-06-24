@@ -192,11 +192,10 @@
                 </v-row>
               </read-more>
 
-              <v-row class="align-center">
+              <v-row class="align-center" v-if="canDownload">
                 <v-col cols="auto">
                   <v-btn :title="$t('menu.download_series')"
                          small
-                         :disabled="!canDownload"
                          :href="fileUrl">
                     <v-icon left small>mdi-file-download</v-icon>
                     {{ $t('common.download') }}
@@ -254,11 +253,10 @@
         </read-more>
 
         <!--   Download button     -->
-        <v-row class="align-center">
+        <v-row class="align-center" v-if="canDownload">
           <v-col cols="auto">
             <v-btn :title="$t('menu.download_series')"
                    small
-                   :disabled="!canDownload"
                    :href="fileUrl">
               <v-icon left small>mdi-file-download</v-icon>
               {{ $t('common.download') }}
