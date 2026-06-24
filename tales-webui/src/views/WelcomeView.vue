@@ -1,9 +1,7 @@
 <template>
   <div class="pa-6">
     <v-row align="center" justify="center">
-      <v-img src="../assets/logo.png"
-             max-width="400"
-      />
+      <logo-mark :max-width="400"/>
     </v-row>
     <v-row align="center" justify="center">
       <div class="text-center">
@@ -16,10 +14,12 @@
 </template>
 
 <script lang="ts">
+import LogoMark from '@/components/LogoMark.vue'
 import Vue from 'vue'
 
 export default Vue.extend({
   name: 'WelcomeView',
+  components: {LogoMark},
   computed: {
     isAdmin (): boolean {
       return this.$store.getters.meAdmin

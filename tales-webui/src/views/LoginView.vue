@@ -2,9 +2,7 @@
   <div class="ma-3">
     <v-container class="d-flex flex-column justify-center" style="max-width: 550px; min-height: 100vh">
       <v-row align="center" justify="center" class="ma-3">
-        <v-img src="../assets/logo.png"
-               :max-width="logoWidth"
-        />
+        <logo-mark :max-width="logoWidth"/>
       </v-row>
 
       <form novalidate @submit.prevent="performLogin">
@@ -136,6 +134,7 @@
 </template>
 
 <script lang="ts">
+import LogoMark from '@/components/LogoMark.vue'
 import Vue from 'vue'
 import {email, required} from 'vuelidate/lib/validators'
 import {Theme} from '@/types/themes'
@@ -147,6 +146,7 @@ import {CLIENT_SETTING} from '@/types/tales-clientsettings'
 
 export default Vue.extend({
   name: 'LoginView',
+  components: {LogoMark},
   data: function () {
     return {
       urls,

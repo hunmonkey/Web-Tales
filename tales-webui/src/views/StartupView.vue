@@ -1,16 +1,16 @@
 <template>
   <div class="pa-6 d-flex align-center justify-center" style="min-height: 100vh">
-    <v-img src="../assets/logo.png"
-           :max-width="logoWidth"
-    />
+    <logo-mark :max-width="logoWidth"/>
   </div>
 </template>
 
 <script lang="ts">
+import LogoMark from '@/components/LogoMark.vue'
 import Vue from 'vue'
 
 export default Vue.extend({
   name: 'StartupView',
+  components: {LogoMark},
   computed: {
     logoWidth(): number {
       let l = 100
@@ -43,9 +43,12 @@ export default Vue.extend({
       await this.$store.dispatch('getClientSettingsGlobal')
       await this.$store.dispatch('getClientSettingsUser')
       const redirect = this.$route.query.redirect?.toString()
-      const target = (redirect && !redirect.startsWith('/startup') && !redirect.startsWith('/login'))
-        ? redirect
-        : {name: 'home'}
+      const isSafeRedirect = !!redirect &&
+        redirect.startsWith('/') &&
+        !redirect.startsWith('//') &&
+        !redirect.startsWith('/startup') &&
+        !redirect.startsWith('/login')
+      const target = isSafeRedirect ? redirect : {name: 'home'}
       this.$router.replace(target).catch(() => {})
     } catch (e) {
       this.$router.push({name: 'login', query: {redirect: this.$route.query.redirect}})

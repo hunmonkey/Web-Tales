@@ -139,7 +139,6 @@ export default Vue.extend({
   },
   data: () => ({
     UserRoles,
-    modalAddUser: false,
     modalDeleteUser: false,
     userToDelete: {} as UserDto,
     modalEditRestrictions: false,

@@ -21,7 +21,7 @@
     <v-navigation-drawer app v-model="drawerVisible" :right="$vuetify.rtl">
       <v-list-item @click="$router.push({name: 'home'})" inactive class="pb-2">
         <v-list-item-avatar tile>
-          <v-img src="../assets/logo.png" contain/>
+          <logo-mark/>
         </v-list-item-avatar>
 
         <v-list-item-content>
@@ -325,6 +325,7 @@
 </template>
 
 <script lang="ts">
+import LogoMark from '@/components/LogoMark.vue'
 import ReusableDialogs from '@/components/ReusableDialogs.vue'
 import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
 import SearchBox from '@/components/SearchBox.vue'
@@ -341,6 +342,7 @@ import ReorderLibraries from '@/components/ReorderLibraries.vue'
 export default Vue.extend({
   name: 'HomeView',
   components: {
+    LogoMark,
     ReorderLibraries,
     LibrariesActionsMenu,
     ToasterNotification,
