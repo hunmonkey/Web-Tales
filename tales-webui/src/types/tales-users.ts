@@ -16,6 +16,7 @@ export interface UserDto {
 
 export interface UserCreationDto {
   email: string,
+  password: string,
   roles: string[]
 }
 

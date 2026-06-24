@@ -1,5 +1,14 @@
 <template>
   <div style="position: relative">
+    <div class="d-flex justify-end mb-3">
+      <v-btn color="primary"
+             :to="{name: 'settings-users-add'}"
+      >
+        <v-icon left>mdi-account-plus</v-icon>
+        {{ $t('dialog.add_user.dialog_title') }}
+      </v-btn>
+    </div>
+
     <v-list
       elevation="3"
       two-line
@@ -83,15 +92,6 @@
         <v-divider v-if="index !== users.length-1"/>
       </div>
     </v-list>
-
-    <v-btn fab absolute bottom color="primary"
-           :right="!$vuetify.rtl"
-           :left="$vuetify.rtl"
-           class="mx-6"
-           small
-           :to="{name: 'settings-users-add'}">
-      <v-icon>mdi-plus</v-icon>
-    </v-btn>
 
     <user-restrictions-edit-dialog v-model="modalEditRestrictions"
                                        :user="userToEditRestrictions"
