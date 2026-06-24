@@ -184,9 +184,63 @@ describe('TextReflowAdapter', () => {
     await adapter.open(manifest)
 
     expect(adapter.getParagraphsCount()).toBe(0)
+    expect(adapter.getPageCount()).toBe(0)
     expect(adapter.getVisibleParagraphs('SINGLE_PAGE')).toEqual([])
     expect(adapter.getProgression()).toBe(0)
     expect(adapter.canGoNext()).toBe(false)
     expect(adapter.canGoPrevious()).toBe(false)
+    expect(adapter.canGoNextPage()).toBe(false)
+    expect(adapter.canGoPreviousPage()).toBe(false)
+  })
+
+  it('keeps one paragraph per page until pagination is configured', async () => {
+    const adapter = new TextReflowAdapter(jest.fn().mockResolvedValue(content))
+
+    await adapter.open(manifest)
+
+    expect(adapter.getPageCount()).toBe(3)
+    expect(adapter.getVisibleParagraphs('SINGLE_PAGE')).toEqual([
+      {paragraphIndex: 0, text: 'First paragraph'},
+    ])
+  })
+
+  it('groups paragraphs into pages when pagination is configured', async () => {
+    const adapter = new TextReflowAdapter(jest.fn().mockResolvedValue(content))
+
+    await adapter.open(manifest)
+    // 'First paragraph'(15) + 'Second paragraph'(16) = 31 fits; adding
+    // 'Third paragraph'(15) would reach 46 > 40, so it starts a new page.
+    adapter.setPagination(40)
+
+    expect(adapter.getPageCount()).toBe(2)
+    expect(adapter.getCurrentPageIndex()).toBe(0)
+    expect(adapter.getVisibleParagraphs('SINGLE_PAGE')).toEqual([
+      {paragraphIndex: 0, text: 'First paragraph'},
+      {paragraphIndex: 1, text: 'Second paragraph'},
+    ])
+
+    await adapter.nextPage()
+    expect(adapter.getCurrentPageIndex()).toBe(1)
+    expect(adapter.getCurrentParagraphIndex()).toBe(2)
+    expect(adapter.canGoNextPage()).toBe(false)
+    expect(adapter.canGoPreviousPage()).toBe(true)
+    expect(adapter.getVisibleParagraphs('SINGLE_PAGE')).toEqual([
+      {paragraphIndex: 2, text: 'Third paragraph'},
+    ])
+
+    await adapter.previousPage()
+    expect(adapter.getCurrentPageIndex()).toBe(0)
+    expect(adapter.getCurrentParagraphIndex()).toBe(0)
+  })
+
+  it('preserves the current paragraph when pagination changes', async () => {
+    const adapter = new TextReflowAdapter(jest.fn().mockResolvedValue(content))
+
+    await adapter.open(manifest)
+    await adapter.next()
+    adapter.setPagination(40)
+
+    expect(adapter.getCurrentParagraphIndex()).toBe(1)
+    expect(adapter.getCurrentPageIndex()).toBe(0)
   })
 })

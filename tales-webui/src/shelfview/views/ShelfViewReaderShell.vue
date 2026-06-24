@@ -1363,7 +1363,7 @@
                     id="shelfview-text-content-width"
                     v-model.number="textContentWidth"
                     min="520"
-                    max="1180"
+                    max="2560"
                     step="20"
                     hide-details
                     data-testid="shelfview-reader-text-content-width"
@@ -1380,7 +1380,7 @@
                     id="shelfview-text-page-margin"
                     v-model.number="textPageMargin"
                     min="16"
-                    max="120"
+                    max="240"
                     step="4"
                     hide-details
                     data-testid="shelfview-reader-text-page-margin"
@@ -1676,6 +1676,7 @@ import {
   shelfViewTextFontFamily,
   shelfViewTextTheme,
 } from '@/shelfview/functions/text-reflow-view'
+import {shelfViewEstimateCharsPerPage} from '@/shelfview/functions/text-pagination'
 
 interface ShelfViewPageSource {
   pageIndex: number,
@@ -2061,13 +2062,21 @@ export default Vue.extend({
     },
     pagesCount(): number {
       if (this.fixedPageAdapter) return this.fixedPageAdapter.getPagesCount()
-      if (this.textAdapter) return this.textAdapter.getParagraphsCount()
+      if (this.textAdapter) {
+        return this.readerLayout === 'SINGLE_PAGE'
+          ? this.textAdapter.getPageCount()
+          : this.textAdapter.getParagraphsCount()
+      }
       if (this.mixedContentAdapter) return this.mixedContentAdapter.getCurrentContentCount()
       return this.manifest?.pageCount || 0
     },
     currentPageIndex(): number {
       if (this.currentLocator?.kind === 'PAGE') return this.currentLocator.page
-      if (this.currentLocator?.kind === 'TEXT') return this.currentLocator.paragraph
+      if (this.currentLocator?.kind === 'TEXT') {
+        return this.textAdapter && this.readerLayout === 'SINGLE_PAGE'
+          ? this.textAdapter.getCurrentPageIndex()
+          : this.currentLocator.paragraph
+      }
       if (this.currentLocator?.kind === 'MIXED') {
         return this.currentLocator.itemLocator.kind === 'PAGE'
           ? this.currentLocator.itemLocator.page
@@ -2113,12 +2122,20 @@ export default Vue.extend({
     },
     canGoPrevious(): boolean {
       if (this.mixedContentAdapter) return this.mixedContentAdapter.canGoPrevious()
-      if (this.textAdapter) return this.textAdapter.canGoPrevious()
+      if (this.textAdapter) {
+        return this.readerLayout === 'SINGLE_PAGE'
+          ? this.textAdapter.canGoPreviousPage()
+          : this.textAdapter.canGoPrevious()
+      }
       return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle)
     },
     canGoNext(): boolean {
       if (this.mixedContentAdapter) return this.mixedContentAdapter.canGoNext()
-      if (this.textAdapter) return this.textAdapter.canGoNext()
+      if (this.textAdapter) {
+        return this.readerLayout === 'SINGLE_PAGE'
+          ? this.textAdapter.canGoNextPage()
+          : this.textAdapter.canGoNext()
+      }
       return !!this.adapter && shelfViewCanGoNext(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle)
     },
     rtlAvailable(): boolean {
@@ -2655,6 +2672,7 @@ export default Vue.extend({
       this.adapter = adapter
       this.normalizeReaderLayout()
       await this.restoreSavedPosition(savedPosition)
+      this.recomputeTextPagination()
       this.syncAdapterState()
       this.$nextTick(() => {
         this.restoreCurrentTextScrollPosition()
@@ -2735,6 +2753,25 @@ export default Vue.extend({
       this.currentLocator = this.adapter.getCurrentLocator()
       this.pageJumpInput = this.currentPageNumber.toString()
     },
+    recomputeTextPagination() {
+      if (!this.textAdapter || this.readerLayout !== 'SINGLE_PAGE') return
+
+      const stage = this.$refs.readerStage as HTMLElement | undefined
+      if (!stage) return
+
+      const stageWidth = stage.clientWidth
+      const stageHeight = stage.clientHeight
+      if (stageWidth <= 0 || stageHeight <= 0) return
+
+      this.textAdapter.setPagination(shelfViewEstimateCharsPerPage({
+        columnWidth: Math.min(stageWidth, this.textContentWidth),
+        viewportHeight: stageHeight,
+        fontSize: this.textFontSize,
+        lineHeight: this.textLineHeight,
+        marginX: this.textPageMargin,
+        marginY: Math.max(18, Math.round(this.textPageMargin * 0.75)),
+      }))
+    },
     async previousPage() {
       if (!this.adapter) return
 
@@ -2748,8 +2785,14 @@ export default Vue.extend({
       }
 
       if (this.textAdapter) {
-        await this.textAdapter.previous()
-        this.syncAdapterState()
+        if (this.readerLayout === 'SINGLE_PAGE') {
+          await this.textAdapter.previousPage()
+          this.syncAdapterState()
+          this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+        } else {
+          await this.textAdapter.previous()
+          this.syncAdapterState()
+        }
         this.schedulePositionSave()
         return
       }
@@ -2774,8 +2817,14 @@ export default Vue.extend({
       }
 
       if (this.textAdapter) {
-        await this.textAdapter.next()
-        this.syncAdapterState()
+        if (this.readerLayout === 'SINGLE_PAGE') {
+          await this.textAdapter.nextPage()
+          this.syncAdapterState()
+          this.$nextTick(() => this.restoreCurrentTextScrollPosition())
+        } else {
+          await this.textAdapter.next()
+          this.syncAdapterState()
+        }
         this.schedulePositionSave()
         return
       }
@@ -2789,6 +2838,14 @@ export default Vue.extend({
       if (this.mixedContentAdapter) {
         await this.mixedContentAdapter.goToCurrentItemContentIndex(pageIndex)
         this.syncAdapterState()
+        this.schedulePositionSave()
+        return
+      }
+
+      if (this.textAdapter && this.readerLayout === 'SINGLE_PAGE') {
+        await this.textAdapter.goToPage(pageIndex)
+        this.syncAdapterState()
+        this.$nextTick(() => this.restoreCurrentTextScrollPosition())
         this.schedulePositionSave()
         return
       }
@@ -2908,6 +2965,7 @@ export default Vue.extend({
       if (!this.availableReaderLayouts.includes(layout)) return
 
       this.readerLayout = layout
+      this.recomputeTextPagination()
       this.syncAdapterState()
       this.$nextTick(() => this.restoreCurrentTextScrollPosition())
       this.schedulePreferenceSave()
@@ -2982,6 +3040,8 @@ export default Vue.extend({
     },
     onTextDisplaySettingChanged() {
       this.normalizeTextDisplaySettings()
+      this.recomputeTextPagination()
+      this.syncAdapterState()
       this.$nextTick(() => this.restoreCurrentTextScrollPosition())
       this.schedulePreferenceSave()
     },
@@ -4073,6 +4133,7 @@ export default Vue.extend({
       if (document.visibilityState === 'hidden') void this.flushReaderState()
     },
     onReaderViewportChanged() {
+      this.recomputeTextPagination()
       this.$nextTick(() => this.restoreCurrentVisibleContent())
     },
     onPageHide() {

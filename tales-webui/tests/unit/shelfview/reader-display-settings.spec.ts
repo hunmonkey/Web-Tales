@@ -63,4 +63,14 @@ describe('ShelfView reader display settings', () => {
       textBrightness: 0.8,
     })
   })
+
+  it('clamps text content width and page margin to the widened maximums', () => {
+    const normalized = shelfViewNormalizeTextDisplaySettings({
+      ...SHELFVIEW_TEXT_DISPLAY_DEFAULTS,
+      textContentWidth: 4000,
+      textPageMargin: 999,
+    })
+    expect(normalized.textContentWidth).toBe(2560)
+    expect(normalized.textPageMargin).toBe(240)
+  })
 })

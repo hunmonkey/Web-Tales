@@ -7,6 +7,10 @@ import {
   ShelfViewTextLocator,
 } from '@/shelfview/models/shelfview-locator'
 import {ShelfViewTextContent, ShelfViewTextParagraph} from '@/shelfview/models/shelfview-text'
+import {
+  shelfViewBuildTextPageStarts,
+  shelfViewPageIndexForParagraph,
+} from '@/shelfview/functions/text-pagination'
 
 export type ShelfViewTextContentLoader = (manifest: ShelfViewManifest) => Promise<ShelfViewTextContent>
 
@@ -15,6 +19,8 @@ export class TextReflowAdapter implements ReaderAdapter {
   private content: ShelfViewTextContent | undefined
   private currentParagraphIndex = 0
   private currentCharacterOffset = 0
+  private charsPerPage = 0
+  private pageStarts: number[] = []
 
   constructor(
     private readonly loadTextContent: ShelfViewTextContentLoader,
@@ -37,6 +43,7 @@ export class TextReflowAdapter implements ReaderAdapter {
     this.manifest = manifest
     this.content = content
     this.currentParagraphIndex = 0
+    this.rebuildPages()
   }
 
   async next(): Promise<void> {
@@ -110,6 +117,45 @@ export class TextReflowAdapter implements ReaderAdapter {
     return this.content?.paragraphs.length ?? 0
   }
 
+  setPagination(charsPerPage: number): void {
+    this.charsPerPage = Number.isFinite(charsPerPage) && charsPerPage > 0 ? Math.floor(charsPerPage) : 0
+    this.rebuildPages()
+  }
+
+  getPageCount(): number {
+    return this.pageStarts.length
+  }
+
+  getCurrentPageIndex(): number {
+    return shelfViewPageIndexForParagraph(this.pageStarts, this.currentParagraphIndex)
+  }
+
+  getPageStartParagraph(pageIndex: number): number {
+    if (this.pageStarts.length === 0) return 0
+    const clamped = Math.max(0, Math.min(pageIndex, this.pageStarts.length - 1))
+    return this.pageStarts[clamped]
+  }
+
+  async nextPage(): Promise<void> {
+    this.moveToParagraph(this.getPageStartParagraph(this.getCurrentPageIndex() + 1), 0)
+  }
+
+  async previousPage(): Promise<void> {
+    this.moveToParagraph(this.getPageStartParagraph(this.getCurrentPageIndex() - 1), 0)
+  }
+
+  canGoNextPage(): boolean {
+    return this.getCurrentPageIndex() < this.getPageCount() - 1
+  }
+
+  canGoPreviousPage(): boolean {
+    return this.getCurrentPageIndex() > 0
+  }
+
+  async goToPage(pageIndex: number): Promise<void> {
+    this.moveToParagraph(this.getPageStartParagraph(pageIndex), 0)
+  }
+
   getParagraphLength(paragraphIndex: number): number {
     return this.content?.paragraphs[paragraphIndex]?.length ?? 0
   }
@@ -118,10 +164,16 @@ export class TextReflowAdapter implements ReaderAdapter {
     const paragraphs = this.content?.paragraphs ?? []
     if (layout === 'CONTINUOUS_SCROLL') return toTextParagraphs(paragraphs)
 
-    const text = paragraphs[this.currentParagraphIndex]
-    return text === undefined
-      ? []
-      : [{paragraphIndex: this.currentParagraphIndex, text}]
+    const pageIndex = this.getCurrentPageIndex()
+    const start = this.pageStarts[pageIndex] ?? this.currentParagraphIndex
+    const end = this.pageStarts[pageIndex + 1] ?? paragraphs.length
+
+    const visible: ShelfViewTextParagraph[] = []
+    for (let index = start; index < end; index++) {
+      const text = paragraphs[index]
+      if (text !== undefined) visible.push({paragraphIndex: index, text})
+    }
+    return visible
   }
 
   canGoPrevious(): boolean {
@@ -137,6 +189,13 @@ export class TextReflowAdapter implements ReaderAdapter {
     this.content = undefined
     this.currentParagraphIndex = 0
     this.currentCharacterOffset = 0
+    this.charsPerPage = 0
+    this.pageStarts = []
+  }
+
+  private rebuildPages(): void {
+    const lengths = (this.content?.paragraphs ?? []).map(text => text.length)
+    this.pageStarts = shelfViewBuildTextPageStarts(lengths, this.charsPerPage)
   }
 
   private moveToParagraph(
