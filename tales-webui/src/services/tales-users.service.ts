@@ -149,6 +149,18 @@ export default class TalesUsersService {
     }
   }
 
+  async deleteMyAuthenticationActivity() {
+    try {
+      await this.http.delete(`${API_USERS}/me/authentication-activity`)
+    } catch (e) {
+      let msg = 'An error occurred while trying to delete authentication activity'
+      if (e.response.data.message) {
+        msg += `: ${e.response.data.message}`
+      }
+      throw new Error(msg)
+    }
+  }
+
   async getAuthenticationActivity(pageRequest?: PageRequest): Promise<Page<AuthenticationActivityDto>> {
     try {
       return (await this.http.get(`${API_USERS}/authentication-activity`, {

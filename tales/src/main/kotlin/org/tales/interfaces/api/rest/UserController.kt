@@ -240,6 +240,16 @@ class UserController(
     return authenticationActivityRepository.findAllByUser(principal.user, pageRequest).map { it.toDto() }
   }
 
+  @DeleteMapping("me/authentication-activity")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(summary = "Delete the authentication activity for the current user", tags = [TagNames.CURRENT_USER])
+  fun deleteAuthenticationActivityForCurrentUser(
+    @AuthenticationPrincipal principal: TalesPrincipal,
+  ) {
+    if (demo && !principal.user.isAdmin) throw ResponseStatusException(HttpStatus.FORBIDDEN)
+    authenticationActivityRepository.deleteByUser(principal.user)
+  }
+
   @GetMapping("authentication-activity")
   @PageableAsQueryParam
   @PreAuthorize("hasRole('ADMIN')")

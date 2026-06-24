@@ -14,6 +14,7 @@ import org.tales.domain.persistence.ReadListRepository
 import org.tales.domain.persistence.SeriesCollectionRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.persistence.SidecarRepository
+import org.tales.domain.persistence.TalesUserRepository
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.annotation.Profile
 import org.springframework.context.event.EventListener
@@ -40,6 +41,7 @@ class MetricsPublisherController(
   private val collectionRepository: SeriesCollectionRepository,
   private val readListRepository: ReadListRepository,
   private val sidecarRepository: SidecarRepository,
+  private val userRepository: TalesUserRepository,
   private val meterRegistry: MeterRegistry,
 ) {
   init {
@@ -51,6 +53,13 @@ class MetricsPublisherController(
     Counter
       .builder(METER_TASKS_FAILURE)
       .description("Count of failed tasks")
+      .register(meterRegistry)
+
+    // Evaluated lazily on each scrape, so it stays accurate without dedicated add/delete events
+    Gauge
+      .builder("tales.users", userRepository) { it.count().toDouble() }
+      .description("The number of users")
+      .baseUnit("count")
       .register(meterRegistry)
   }
 

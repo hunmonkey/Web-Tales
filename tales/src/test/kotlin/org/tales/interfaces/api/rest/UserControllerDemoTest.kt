@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 
@@ -36,6 +37,16 @@ class UserControllerDemoTest(
   fun `given demo profile is active when a user tries to retrieve own authentication activity then returns forbidden`() {
     mockMvc
       .get("/api/v2/users/me/authentication-activity")
+      .andExpect {
+        status { isForbidden() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given demo profile is active when a user tries to delete own authentication activity then returns forbidden`() {
+    mockMvc
+      .delete("/api/v2/users/me/authentication-activity")
       .andExpect {
         status { isForbidden() }
       }

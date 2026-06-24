@@ -107,10 +107,12 @@ export default Vue.extend({
   },
   computed: {
     userRoles(): any[] {
-      return Object.keys(UserRoles).map(x => ({
-        text: this.$t(`user_roles.${x}`),
-        value: x,
-      }))
+      return Object.keys(UserRoles)
+        .filter(x => x !== UserRoles.KOBO_SYNC && x !== UserRoles.KOREADER_SYNC)
+        .map(x => ({
+          text: this.$t(`user_roles.${x}`),
+          value: x,
+        }))
     },
   },
   methods: {

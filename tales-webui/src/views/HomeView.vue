@@ -1,5 +1,15 @@
 <template>
   <div class="fill-height">
+    <confirmation-dialog
+      v-model="logoutConfirmDialog"
+      :title="$t('dialog.logout.dialog_title')"
+      :body="$t('dialog.logout.body')"
+      :confirm-text="$t('dialog.logout.confirm')"
+      :button-confirm="$t('navigation.logout')"
+      button-confirm-color="error"
+      @confirm="logout"
+    />
+
     <v-app-bar
       app
     >
@@ -258,20 +268,12 @@
               <v-list-item-title>{{ $t('account_settings.details') }}</v-list-item-title>
             </v-list-item>
 
-            <v-list-item :to="{name: 'account-api-keys'}">
-              <v-list-item-title>{{ $t('users.api_keys') }}</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item :to="{name: 'account-settings-ui'}">
-              <v-list-item-title>{{ $t('common.ui') }}</v-list-item-title>
-            </v-list-item>
-
             <v-list-item :to="{name: 'account-activity'}">
               <v-list-item-title>{{ $t('users.authentication_activity') }}</v-list-item-title>
             </v-list-item>
           </v-list-group>
 
-          <v-list-item @click="logout">
+          <v-list-item @click="logoutConfirmDialog = true">
             <v-list-item-icon>
               <v-icon>mdi-power</v-icon>
             </v-list-item-icon>
@@ -326,6 +328,7 @@
 
 <script lang="ts">
 import LogoMark from '@/components/LogoMark.vue'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import ReusableDialogs from '@/components/ReusableDialogs.vue'
 import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
 import SearchBox from '@/components/SearchBox.vue'
@@ -343,6 +346,7 @@ export default Vue.extend({
   name: 'HomeView',
   components: {
     LogoMark,
+    ConfirmationDialog,
     ReorderLibraries,
     LibrariesActionsMenu,
     ToasterNotification,
@@ -364,6 +368,7 @@ export default Vue.extend({
       expandAccount: false,
       expandUnpinned: false,
       showReorder: false,
+      logoutConfirmDialog: false,
     }
   },
   async created() {

@@ -36,6 +36,7 @@
   },
   "authentication_activity": {
     "api_key": "API Key",
+    "clear_history": "Clear history",
     "datetime": "Date Time",
     "email": "Email",
     "error": "Error",
@@ -559,6 +560,12 @@
       "filter": "Filter by book number, title, or release date",
       "title": "Select Book"
     },
+    "clear_authentication_activity": {
+      "body": "This will permanently delete all of your authentication activity history. This cannot be undone.",
+      "button_confirm": "Clear history",
+      "confirm": "I understand, clear my authentication activity history",
+      "dialog_title": "Clear authentication activity"
+    },
     "delete_apikey": {
       "button_confirm": "Delete",
       "confirm_delete": "I understand, delete the API key \"{name}\"",
@@ -792,6 +799,11 @@
     "force_kobo_sync": {
       "dialog_title": "Force Kobo sync",
       "warning_html": "This will delete all sync history for this API key. Your Kobo will sync everything on the next sync."
+    },
+    "logout": {
+      "body": "Are you sure you want to log out of Tales?",
+      "confirm": "Yes, log me out",
+      "dialog_title": "Log Out"
     },
     "password_change": {
       "button_cancel": "Cancel",
