@@ -1,6 +1,6 @@
 <template>
   <div class="ma-3">
-    <v-container style="max-width: 550px">
+    <v-container class="d-flex flex-column justify-center" style="max-width: 550px; min-height: 100vh">
       <v-row align="center" justify="center" class="ma-3">
         <v-img src="../assets/logo.png"
                :max-width="logoWidth"

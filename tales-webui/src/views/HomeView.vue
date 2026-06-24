@@ -58,6 +58,16 @@
 
       <template v-if="!showReorder">
         <v-list nav shaped dense>
+          <!--   KEEP READING (이어보기)     -->
+          <v-list-item :to="{name:'dashboard'}">
+            <v-list-item-icon>
+              <v-icon>mdi-book-open-page-variant</v-icon>
+            </v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title>{{ $t('dashboard.keep_reading') }}</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+
           <!--   LIBRARIES     -->
           <v-list-item :to="{name:'libraries', params: {libraryId: LIBRARIES_ALL}}">
             <v-list-item-icon>

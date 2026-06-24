@@ -1,10 +1,8 @@
 <template>
-  <div class="pa-6">
-    <v-row align="center" justify="center">
-      <v-img src="../assets/logo.png"
-             :max-width="logoWidth"
-      />
-    </v-row>
+  <div class="pa-6 d-flex align-center justify-center" style="min-height: 100vh">
+    <v-img src="../assets/logo.png"
+           :max-width="logoWidth"
+    />
   </div>
 </template>
 
@@ -44,7 +42,11 @@ export default Vue.extend({
       await this.$store.dispatch('getLibraries')
       await this.$store.dispatch('getClientSettingsGlobal')
       await this.$store.dispatch('getClientSettingsUser')
-      this.$router.back()
+      const redirect = this.$route.query.redirect?.toString()
+      const target = (redirect && !redirect.startsWith('/startup') && !redirect.startsWith('/login'))
+        ? redirect
+        : {name: 'home'}
+      this.$router.replace(target).catch(() => {})
     } catch (e) {
       this.$router.push({name: 'login', query: {redirect: this.$route.query.redirect}})
     }
