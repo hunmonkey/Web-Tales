@@ -167,6 +167,11 @@ ADRs, dependency/license review, or broader product decisions.
 - [x] SV-978 Reader comfort follow-up: hidden page strip, show-only center tap
   and global keyboard paging
 
+## Reopened nested image archive support from `0624.txt`
+
+- [x] SV-980 One-level nested ZIP/CBZ image archive support for fixed-page ZIP
+  books
+
 ## Deferred after SV-930 closure
 
 - [ ] Owner-approved server/account-synced dictionary provider storage

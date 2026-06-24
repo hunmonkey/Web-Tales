@@ -15,6 +15,7 @@ import org.tales.domain.model.MediaType
 import org.tales.domain.model.makeBook
 import org.tales.infrastructure.configuration.TalesProperties
 import org.tales.infrastructure.mediacontainer.ContentDetector
+import org.tales.infrastructure.mediacontainer.divina.ZIP_NESTED_ENTRY_SEPARATOR
 import org.tales.infrastructure.mediacontainer.epub.EpubExtractor
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Nested
@@ -27,9 +28,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.ClassPathResource
 import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.LocalDateTime
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
 import kotlin.io.path.extension
 import kotlin.io.path.inputStream
@@ -143,6 +147,53 @@ class BookAnalyzerTest(
 
       assertThat(media.mediaType).isEqualTo("application/zip")
       assertThat(media.status).isEqualTo(Media.Status.ERROR)
+    }
+
+    @Test
+    fun `given zip with nested image archives when analyzing then media status is READY with pages`(
+      @TempDir directory: Path,
+    ) {
+      val firstPage = pngBytes(10, 12)
+      val secondPage = pngBytes(11, 13)
+      val thirdPage = pngBytes(12, 14)
+      val archive = directory.resolve("nested-cbz.zip")
+      writeZip(
+        archive,
+        "ch02.cbz" to zipBytes("images/001.png" to thirdPage),
+        "ch01.cbz" to zipBytes("images/002.png" to secondPage, "images/001.png" to firstPage),
+      )
+      val book = Book("book", archive.toUri().toURL(), LocalDateTime.now())
+
+      val media = bookAnalyzer.analyze(book, true)
+
+      assertThat(media.mediaType).isEqualTo("application/zip")
+      assertThat(media.status).isEqualTo(Media.Status.READY)
+      assertThat(media.pageCount).isEqualTo(3)
+      assertThat(media.pages.map { it.fileName })
+        .containsExactly(
+          "ch01.cbz${ZIP_NESTED_ENTRY_SEPARATOR}images/001.png",
+          "ch01.cbz${ZIP_NESTED_ENTRY_SEPARATOR}images/002.png",
+          "ch02.cbz${ZIP_NESTED_ENTRY_SEPARATOR}images/001.png",
+        )
+      assertThat(media.pages.map { it.dimension }).containsExactly(Dimension(10, 12), Dimension(11, 13), Dimension(12, 14))
+      assertThat(media.files).isEmpty()
+      assertThat(bookAnalyzer.getPageContent(BookWithMedia(book, media), 2)).isEqualTo(secondPage)
+    }
+
+    @Test
+    fun `given zip with nested non image archive when analyzing then media status is ERROR with no pages`(
+      @TempDir directory: Path,
+    ) {
+      val archive = directory.resolve("nested-text.zip")
+      writeZip(archive, "ch01.zip" to zipBytes("chapter.txt" to "hello".toByteArray()))
+      val book = Book("book", archive.toUri().toURL(), LocalDateTime.now())
+
+      val media = bookAnalyzer.analyze(book, false)
+
+      assertThat(media.mediaType).isEqualTo("application/zip")
+      assertThat(media.status).isEqualTo(Media.Status.ERROR)
+      assertThat(media.comment).isEqualTo("ERR_1006")
+      assertThat(media.pages).isEmpty()
     }
 
     @Test
@@ -427,4 +478,39 @@ class BookAnalyzerTest(
     val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
     ImageIO.write(image, format, path.toFile())
   }
+
+  private fun writeZip(
+    path: Path,
+    vararg entries: Pair<String, ByteArray>,
+  ) {
+    ZipOutputStream(Files.newOutputStream(path)).use { zip ->
+      entries.forEach { (name, bytes) ->
+        zip.putNextEntry(ZipEntry(name))
+        zip.write(bytes)
+        zip.closeEntry()
+      }
+    }
+  }
+
+  private fun zipBytes(vararg entries: Pair<String, ByteArray>): ByteArray =
+    ByteArrayOutputStream().use { output ->
+      ZipOutputStream(output).use { zip ->
+        entries.forEach { (name, bytes) ->
+          zip.putNextEntry(ZipEntry(name))
+          zip.write(bytes)
+          zip.closeEntry()
+        }
+      }
+      output.toByteArray()
+    }
+
+  private fun pngBytes(
+    width: Int,
+    height: Int,
+  ): ByteArray =
+    ByteArrayOutputStream().use { output ->
+      val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+      ImageIO.write(image, "png", output)
+      output.toByteArray()
+    }
 }
