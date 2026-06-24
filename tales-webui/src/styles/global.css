@@ -13,3 +13,30 @@ html {
 .link-underline:hover {
     text-decoration: underline;
 }
+
+/* Themed scrollbar for the navigation drawer (between the side menu and the main content) */
+.v-navigation-drawer__content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.26) transparent;
+}
+
+.v-navigation-drawer__content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.v-navigation-drawer__content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.v-navigation-drawer__content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.26);
+    border-radius: 4px;
+}
+
+.theme--dark .v-navigation-drawer__content {
+    scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+
+.theme--dark .v-navigation-drawer__content::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.26);
+}

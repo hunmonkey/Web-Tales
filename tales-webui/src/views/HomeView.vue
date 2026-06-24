@@ -20,8 +20,8 @@
 
     <v-navigation-drawer app v-model="drawerVisible" :right="$vuetify.rtl">
       <v-list-item @click="$router.push({name: 'home'})" inactive class="pb-2">
-        <v-list-item-avatar>
-          <v-img src="../assets/logo.png"/>
+        <v-list-item-avatar tile>
+          <v-img src="../assets/logo.png" contain/>
         </v-list-item-avatar>
 
         <v-list-item-content>
@@ -58,15 +58,6 @@
 
       <template v-if="!showReorder">
         <v-list nav shaped dense>
-          <v-list-item :to="{name: 'dashboard'}">
-            <v-list-item-icon>
-              <v-icon>mdi-home</v-icon>
-            </v-list-item-icon>
-            <v-list-item-content>
-              <v-list-item-title>{{ $t('navigation.home') }}</v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-
           <!--   LIBRARIES     -->
           <v-list-item :to="{name:'libraries', params: {libraryId: LIBRARIES_ALL}}">
             <v-list-item-icon>
@@ -208,15 +199,6 @@
             </v-list-group>
           </v-list-group>
 
-          <v-list-item :to="{name: 'history'}" v-if="isAdmin">
-            <v-list-item-icon>
-              <v-icon>mdi-clock-time-four-outline</v-icon>
-            </v-list-item-icon>
-            <v-list-item-content>
-              <v-list-item-title>{{ $t('history.title') }}</v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-
           <!--   SETTINGS     -->
           <v-list-group v-if="isAdmin"
                         no-action
@@ -250,28 +232,6 @@
 
             <v-list-item :to="{name: 'metrics'}">
               <v-list-item-title>{{ $t('metrics.title') }}</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item :to="{name: 'announcements'}">
-              <v-badge
-                dot
-                inline
-                :value="$store.getters.getUnreadAnnouncementsCount()"
-                color="info"
-              >
-                <v-list-item-title>{{ $t('announcements.tab_title') }}</v-list-item-title>
-              </v-badge>
-            </v-list-item>
-
-            <v-list-item :to="{name: 'updates'}">
-              <v-badge
-                dot
-                inline
-                :value="$store.getters.isLatestVersion() == 0"
-                color="warning"
-              >
-                <v-list-item-title>{{ $t('server.updates') }}</v-list-item-title>
-              </v-badge>
             </v-list-item>
           </v-list-group>
 
@@ -344,22 +304,6 @@
 
         <v-spacer/>
       </template>
-
-      <template v-slot:append>
-        <div v-if="isAdmin && !$_.isEmpty($store.state.actuatorInfo)"
-             class="pa-2 pb-6 text-caption"
-        >
-          <v-badge
-            dot
-            :value="$store.getters.isLatestVersion() == 0"
-            color="warning"
-          >
-            <router-link :to="{name: 'updates'}" class="link-none">
-              v{{ $store.state.actuatorInfo.build.version }}-{{ $store.state.actuatorInfo.git.branch }}
-            </router-link>
-          </v-badge>
-        </div>
-      </template>
     </v-navigation-drawer>
 
     <v-main class="fill-height">
@@ -398,7 +342,9 @@ export default Vue.extend({
     return {
       LIBRARIES_ALL,
       drawerVisible: this.$vuetify.breakpoint.lgAndUp,
-      locales: this.$i18n.availableLocales.map((x: any) => ({text: this.$i18n.t('common.locale_name', x), value: x})),
+      locales: ['ko', 'en', 'ja', 'zh-Hans']
+        .filter((x: string) => this.$i18n.availableLocales.includes(x))
+        .map((x: string) => ({text: this.$i18n.t('common.locale_name', x), value: x})),
       expandSettings: false,
       expandDuplicatePages: false,
       expandMediaManagement: false,
