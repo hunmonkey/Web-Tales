@@ -147,7 +147,8 @@ export default Vue.extend({
     userToEdit: {} as UserDto,
     modalChangePassword: false,
     userToChangePassword: {} as UserDto,
-    usersLastActivity: {} as any,
+    usersLastActivity: {} as { [userId: string]: Date },
+    latestActivitiesLoadId: 0,
   }),
   computed: {
     users(): UserDto[] {
@@ -158,13 +159,11 @@ export default Vue.extend({
     },
   },
   watch: {
-    users(val) {
-      val.forEach((u: UserDto) => {
-        this.$talesUsers.getLatestAuthenticationActivityForUser(u.id)
-          .then(value => this.$set(this.usersLastActivity, `${u.id}`, value.dateTime))
-          .catch(e => {
-          })
-      })
+    users: {
+      immediate: true,
+      handler() {
+        this.loadLatestAuthenticationActivities()
+      },
     },
   },
   async mounted() {
@@ -186,6 +185,27 @@ export default Vue.extend({
     changeUserPassword(user: UserDto) {
       this.userToChangePassword = user
       this.modalChangePassword = true
+    },
+    async loadLatestAuthenticationActivities() {
+      if (this.users.length === 0) {
+        this.usersLastActivity = {}
+        return
+      }
+
+      const loadId = ++this.latestActivitiesLoadId
+
+      try {
+        const activities = await this.$talesUsers.getLatestAuthenticationActivitiesByUser()
+        if (loadId !== this.latestActivitiesLoadId) return
+
+        const next = {} as { [userId: string]: Date }
+        this.users.forEach((user: UserDto) => {
+          const activity = activities[user.id]
+          if (activity?.dateTime) next[user.id] = new Date(activity.dateTime)
+        })
+        this.usersLastActivity = next
+      } catch (e) {
+      }
     },
     async deleteUser() {
       try {

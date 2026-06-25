@@ -1,13 +1,5 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.domain.model.AuthenticationActivity
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.AuthenticationActivityRepository
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.infrastructure.jooq.toOrderBy
-import org.tales.jooq.main.Tables
-import org.tales.jooq.main.tables.records.AuthenticationActivityRecord
-import org.tales.language.toCurrentTimeZone
 import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
@@ -18,6 +10,14 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
+import org.tales.domain.model.AuthenticationActivity
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.AuthenticationActivityRepository
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.infrastructure.jooq.toOrderBy
+import org.tales.jooq.main.Tables
+import org.tales.jooq.main.tables.records.AuthenticationActivityRecord
+import org.tales.language.toCurrentTimeZone
 import java.time.LocalDateTime
 
 @Component
@@ -96,9 +96,30 @@ class AuthenticationActivityDao(
 
   override fun insert(activity: AuthenticationActivity) {
     dslRW
-      .insertInto(aa, aa.USER_ID, aa.EMAIL, aa.API_KEY_ID, aa.API_KEY_COMMENT, aa.IP, aa.USER_AGENT, aa.SUCCESS, aa.ERROR, aa.SOURCE)
-      .values(activity.userId, activity.email, activity.apiKeyId, activity.apiKeyComment, activity.ip, activity.userAgent, activity.success, activity.error, activity.source)
-      .execute()
+      .insertInto(
+        aa,
+        aa.USER_ID,
+        aa.EMAIL,
+        aa.API_KEY_ID,
+        aa.API_KEY_COMMENT,
+        aa.IP,
+        aa.USER_AGENT,
+        aa.SUCCESS,
+        aa.ERROR,
+        aa.SOURCE,
+        aa.DATE_TIME,
+      ).values(
+        activity.userId,
+        activity.email,
+        activity.apiKeyId,
+        activity.apiKeyComment,
+        activity.ip,
+        activity.userAgent,
+        activity.success,
+        activity.error,
+        activity.source,
+        activity.dateTime,
+      ).execute()
   }
 
   override fun deleteByUser(user: TalesUser) {

@@ -1,17 +1,6 @@
 package org.tales.interfaces.api.rest
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.AgeRestriction
-import org.tales.domain.model.AllowExclude
-import org.tales.domain.model.ContentRestrictions
-import org.tales.domain.model.TalesUser
-import org.tales.domain.model.UserRoles
-import org.tales.domain.model.makeLibrary
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.domain.service.TalesUserLifecycle
-import org.tales.domain.service.LibraryLifecycle
-import org.tales.interfaces.api.rest.dto.AllowExcludeDto
 import org.hamcrest.Matchers.allOf
 import org.hamcrest.Matchers.hasItem
 import org.hamcrest.text.MatchesPattern
@@ -32,6 +21,20 @@ import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
+import org.tales.domain.model.AgeRestriction
+import org.tales.domain.model.AllowExclude
+import org.tales.domain.model.AuthenticationActivity
+import org.tales.domain.model.ContentRestrictions
+import org.tales.domain.model.TalesUser
+import org.tales.domain.model.UserRoles
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.persistence.AuthenticationActivityRepository
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.LibraryLifecycle
+import org.tales.domain.service.TalesUserLifecycle
+import org.tales.interfaces.api.rest.dto.AllowExcludeDto
+import java.time.LocalDateTime
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)
@@ -41,6 +44,7 @@ class UserControllerTest(
   @Autowired private val libraryRepository: LibraryRepository,
   @Autowired private val libraryLifecycle: LibraryLifecycle,
   @Autowired private val userRepository: TalesUserRepository,
+  @Autowired private val authenticationActivityRepository: AuthenticationActivityRepository,
 ) {
   @Autowired
   private lateinit var userLifecycle: TalesUserLifecycle
@@ -555,6 +559,66 @@ class UserControllerTest(
         assertThat(this.restrictions.ageRestriction!!.age).isEqualTo(16)
         assertThat(this.restrictions.ageRestriction!!.restriction).isEqualTo(AllowExclude.EXCLUDE)
       }
+    }
+  }
+
+  @Nested
+  inner class AuthenticationActivity {
+    @Test
+    @WithMockCustomUser(roles = ["ADMIN"])
+    fun `given users when listing latest authentication activity then returns latest activity by user id`() {
+      val user1 = userLifecycle.createUser(TalesUser("activity1@example.org", "", id = "activity1"))
+      val user2 = userLifecycle.createUser(TalesUser("activity2@example.org", "", id = "activity2"))
+      userLifecycle.createUser(TalesUser("activity3@example.org", "", id = "activity3"))
+
+      authenticationActivityRepository.insert(
+        AuthenticationActivity(
+          userId = user1.id,
+          email = user1.email,
+          success = false,
+          error = "older",
+          dateTime = LocalDateTime.parse("2026-06-25T10:00:00"),
+          source = "older",
+        ),
+      )
+      authenticationActivityRepository.insert(
+        AuthenticationActivity(
+          userId = user1.id,
+          email = user1.email,
+          success = true,
+          dateTime = LocalDateTime.parse("2026-06-25T11:00:00"),
+          source = "latest",
+        ),
+      )
+      authenticationActivityRepository.insert(
+        AuthenticationActivity(
+          email = user2.email,
+          success = true,
+          dateTime = LocalDateTime.parse("2026-06-25T12:00:00"),
+          source = "email-only",
+        ),
+      )
+
+      mockMvc
+        .get("/api/v2/users/authentication-activity/latest-by-user")
+        .andExpect {
+          status { isOk() }
+          jsonPath("$.activity1.success") { value(true) }
+          jsonPath("$.activity1.source") { value("latest") }
+          jsonPath("$.activity2.success") { value(true) }
+          jsonPath("$.activity2.source") { value("email-only") }
+          jsonPath("$.activity3") { doesNotExist() }
+        }
+    }
+
+    @Test
+    @WithMockCustomUser
+    fun `given non admin user when listing latest authentication activity by user then returns forbidden`() {
+      mockMvc
+        .get("/api/v2/users/authentication-activity/latest-by-user")
+        .andExpect {
+          status { isForbidden() }
+        }
     }
   }
 

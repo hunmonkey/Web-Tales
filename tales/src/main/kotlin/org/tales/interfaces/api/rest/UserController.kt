@@ -3,29 +3,6 @@ package org.tales.interfaces.api.rest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import jakarta.validation.Valid
-import org.tales.domain.model.AgeRestriction
-import org.tales.domain.model.ContentRestrictions
-import org.tales.domain.model.DuplicateNameException
-import org.tales.domain.model.TalesUser
-import org.tales.domain.model.UserEmailAlreadyExistsException
-import org.tales.domain.model.UserRoles
-import org.tales.domain.persistence.AuthenticationActivityRepository
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.domain.service.TalesUserLifecycle
-import org.tales.infrastructure.jooq.UnpagedSorted
-import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.interfaces.api.rest.dto.AllowExcludeDto
-import org.tales.interfaces.api.rest.dto.ApiKeyDto
-import org.tales.interfaces.api.rest.dto.ApiKeyRequestDto
-import org.tales.interfaces.api.rest.dto.AuthenticationActivityDto
-import org.tales.interfaces.api.rest.dto.PasswordUpdateDto
-import org.tales.interfaces.api.rest.dto.UserCreationDto
-import org.tales.interfaces.api.rest.dto.UserDto
-import org.tales.interfaces.api.rest.dto.UserUpdateDto
-import org.tales.interfaces.api.rest.dto.redacted
-import org.tales.interfaces.api.rest.dto.toDto
 import org.springdoc.core.converters.models.PageableAsQueryParam
 import org.springframework.core.env.Environment
 import org.springframework.data.domain.Page
@@ -47,6 +24,29 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.AgeRestriction
+import org.tales.domain.model.ContentRestrictions
+import org.tales.domain.model.DuplicateNameException
+import org.tales.domain.model.TalesUser
+import org.tales.domain.model.UserEmailAlreadyExistsException
+import org.tales.domain.model.UserRoles
+import org.tales.domain.persistence.AuthenticationActivityRepository
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.TalesUserLifecycle
+import org.tales.infrastructure.jooq.UnpagedSorted
+import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.interfaces.api.rest.dto.AllowExcludeDto
+import org.tales.interfaces.api.rest.dto.ApiKeyDto
+import org.tales.interfaces.api.rest.dto.ApiKeyRequestDto
+import org.tales.interfaces.api.rest.dto.AuthenticationActivityDto
+import org.tales.interfaces.api.rest.dto.PasswordUpdateDto
+import org.tales.interfaces.api.rest.dto.UserCreationDto
+import org.tales.interfaces.api.rest.dto.UserDto
+import org.tales.interfaces.api.rest.dto.UserUpdateDto
+import org.tales.interfaces.api.rest.dto.redacted
+import org.tales.interfaces.api.rest.dto.toDto
 
 @RestController
 @RequestMapping("api/v2/users", produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -276,6 +276,16 @@ class UserController(
 
     return authenticationActivityRepository.findAll(pageRequest).map { it.toDto() }
   }
+
+  @GetMapping("authentication-activity/latest-by-user")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(summary = "Retrieve latest authentication activity by user", tags = [TagNames.USERS])
+  fun getLatestAuthenticationActivityByUser(): Map<String, AuthenticationActivityDto> =
+    userRepository
+      .findAll()
+      .mapNotNull { user ->
+        authenticationActivityRepository.findMostRecentByUser(user, null)?.toDto()?.let { user.id to it }
+      }.toMap()
 
   @GetMapping("{id}/authentication-activity/latest")
   @PreAuthorize("hasRole('ADMIN') or #principal.user.id == #id")

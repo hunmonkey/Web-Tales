@@ -192,6 +192,18 @@ export default class TalesUsersService {
     }
   }
 
+  async getLatestAuthenticationActivitiesByUser(): Promise<{ [userId: string]: AuthenticationActivityDto }> {
+    try {
+      return (await this.http.get(`${API_USERS}/authentication-activity/latest-by-user`)).data
+    } catch (e) {
+      let msg = 'An error occurred while trying to retrieve latest authentication activity by user'
+      if (e.response.data.message) {
+        msg += `: ${e.response.data.message}`
+      }
+      throw new Error(msg)
+    }
+  }
+
   async getApiKeys(): Promise<ApiKeyDto[]> {
     try {
       return (await this.http.get(`${API_USERS}/me/api-keys`)).data

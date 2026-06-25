@@ -172,6 +172,25 @@ ADRs, dependency/license review, or broader product decisions.
 - [x] SV-980 One-level nested ZIP/CBZ image archive support for fixed-page ZIP
   books
 
+## Reopened feature/UIUX investigation from 2026-06-25
+
+Docs-only investigation. Pick one ticket at a time if the owner chooses to
+implement any of these candidates.
+
+- [x] SV-990 Remove orphaned account API-key and per-user UI settings frontend
+  screens after owner confirmation
+- [x] SV-991 Batch or summarize user latest-authentication activity for the
+  Users screen instead of one request per listed user
+- [ ] SV-992 Metrics page polish: reduce per-library metric request fan-out,
+  add visible empty/error states and decide whether read-progress metrics belong
+  on the page
+- [ ] SV-993 Browser/device evidence pass for Canvas sharpen and future
+  image-quality modes
+- [ ] SV-994 EPUB bridge rollout planning and first implementation slice
+- [ ] SV-995 PDF text layer, search and document-link exploration with ADR
+- [ ] SV-996 Archive expansion triage for nested RAR/7Z and mixed top-level
+  TXT/PDF plus nested image chapters
+
 ## Deferred after SV-930 closure
 
 - [ ] Owner-approved server/account-synced dictionary provider storage
