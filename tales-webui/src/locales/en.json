@@ -181,6 +181,15 @@
     "continue_label": "Reading {count}",
     "continue_tooltip": "Show books in progress"
   },
+  "shelfview_local_reader": {
+    "title": "Local reader",
+    "open": "Open local file",
+    "previous": "Previous page",
+    "next": "Next page",
+    "clear": "Clear",
+    "empty": "Choose a ZIP or CBZ file from this device.",
+    "error_open": "Could not open the local file."
+  },
   "shelfview_reader": {
     "close": "Close reader",
     "previous_page": "Previous page",
@@ -282,6 +291,7 @@
     "page_gap": "Page gap",
     "cover_single": "Keep cover alone in double page",
     "background": "Background",
+    "image_processing": "Image processing",
     "brightness": "Brightness",
     "contrast": "Contrast",
     "paragraph": "Paragraph",
@@ -323,11 +333,17 @@
     "filter_image_enhance": "Image enhance",
     "filter_faded_scan": "Faded scan boost",
     "filter_canvas_sharpen": "Canvas sharpen prototype",
+    "filter_webgl_sharpen": "WebGL sharpen",
+    "filter_background_cleanup": "Background cleanup",
+    "filter_adaptive_mono": "Adaptive monochrome",
     "filter_eye_comfort": "Eye comfort",
     "filter_mono_comic": "Mono comic",
     "filter_low_light": "Low light",
     "filter_night_invert": "Night invert",
     "filter_oled_text": "OLED text",
+    "epub_bridge_title": "EPUB reader",
+    "epub_bridge_message": "Open this book with the EPUB reader.",
+    "epub_bridge_open": "Open EPUB reader",
     "empty_text": "No readable text is available for this book.",
     "empty_pages": "No readable pages are available for this book.",
     "try_again": "Try again",
@@ -1128,10 +1144,12 @@
     "unpin": "Unpin"
   },
   "metrics": {
+    "error_loading": "Unable to load metrics.",
     "library_books": "Books per library",
     "library_disk_space": "Library disk space",
     "library_series": "Series per library",
     "library_sidecars": "Sidecars per library",
+    "no_data": "No metrics to display.",
     "tasks_executed": "Tasks executed",
     "tasks_total_time": "Tasks total time",
     "title": "Metrics"

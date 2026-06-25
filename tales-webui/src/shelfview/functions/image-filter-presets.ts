@@ -1,8 +1,13 @@
+import {ShelfViewCanvasImageProcessingMode} from '@/shelfview/functions/canvas-image-processing'
+
 export type ShelfViewImageFilterPreset =
   | 'ORIGINAL'
   | 'IMAGE_ENHANCE'
   | 'FADED_SCAN'
   | 'CANVAS_SHARPEN'
+  | 'WEBGL_SHARPEN'
+  | 'BACKGROUND_CLEANUP'
+  | 'ADAPTIVE_MONO'
   | 'EYE_COMFORT'
   | 'MONO_COMIC'
   | 'LOW_LIGHT'
@@ -69,6 +74,45 @@ export const SHELFVIEW_IMAGE_FILTER_PRESETS: ShelfViewImageFilterPresetOption[] 
     id: 'CANVAS_SHARPEN',
     label: 'Canvas sharpen prototype',
     icon: 'mdi-vector-square',
+    values: {
+      brightness: 1,
+      contrast: 1,
+      saturate: 1,
+      grayscale: 0,
+      sepia: 0,
+      invert: 0,
+    },
+  },
+  {
+    id: 'WEBGL_SHARPEN',
+    label: 'WebGL sharpen',
+    icon: 'mdi-vector-polyline',
+    values: {
+      brightness: 1,
+      contrast: 1,
+      saturate: 1,
+      grayscale: 0,
+      sepia: 0,
+      invert: 0,
+    },
+  },
+  {
+    id: 'BACKGROUND_CLEANUP',
+    label: 'Background cleanup',
+    icon: 'mdi-eraser',
+    values: {
+      brightness: 1,
+      contrast: 1,
+      saturate: 1,
+      grayscale: 0,
+      sepia: 0,
+      invert: 0,
+    },
+  },
+  {
+    id: 'ADAPTIVE_MONO',
+    label: 'Adaptive monochrome',
+    icon: 'mdi-contrast-circle',
     values: {
       brightness: 1,
       contrast: 1,
@@ -170,7 +214,24 @@ export function shelfViewImageFilterPrimaryPreset(
 export function shelfViewImageFilterUsesCanvas(
   preset: ShelfViewImageFilterPreset,
 ): boolean {
-  return preset === 'CANVAS_SHARPEN'
+  return shelfViewImageFilterProcessingMode(preset) !== undefined
+}
+
+export function shelfViewImageFilterProcessingMode(
+  preset: ShelfViewImageFilterPreset,
+): ShelfViewCanvasImageProcessingMode | undefined {
+  switch (preset) {
+    case 'CANVAS_SHARPEN':
+      return 'SHARPEN'
+    case 'WEBGL_SHARPEN':
+      return 'WEBGL_SHARPEN'
+    case 'BACKGROUND_CLEANUP':
+      return 'BACKGROUND_CLEANUP'
+    case 'ADAPTIVE_MONO':
+      return 'ADAPTIVE_MONO'
+    default:
+      return undefined
+  }
 }
 
 export function shelfViewNextImageFilterPreset(

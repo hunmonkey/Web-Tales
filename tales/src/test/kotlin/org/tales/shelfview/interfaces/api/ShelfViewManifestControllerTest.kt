@@ -32,12 +32,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import java.awt.Color
+import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import javax.imageio.ImageIO
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)
@@ -215,6 +218,67 @@ class ShelfViewManifestControllerTest(
         status { isOk() }
         jsonPath("$.sourceFormat") { value("PDF") }
         jsonPath("$.kind") { value("FIXED_PAGE_SEQUENCE") }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given mixed zip with nested cbz image chapter when getting manifest then returns fixed page item`(
+    @TempDir dir: Path,
+  ) {
+    val textBytes = "Intro".toByteArray(StandardCharsets.UTF_8)
+    val firstPageBytes = pngBytes(color = Color.WHITE)
+    val secondPageBytes = pngBytes(color = Color.BLACK)
+    val chapterBytes =
+      zipBytes(
+        mapOf(
+          "images/002.png" to secondPageBytes,
+          "images/001.png" to firstPageBytes,
+        ),
+      )
+    val zip = dir.resolve("mixed-nested.zip")
+    writeZip(
+      zip,
+      mapOf(
+        "00-intro.txt" to textBytes,
+        "ch01.cbz" to chapterBytes,
+      ),
+    )
+    val book =
+      createBookWithMedia(
+        MediaType.ZIP.type,
+        "mixed-nested.zip",
+        file = zip,
+        files =
+          listOf(
+            MediaFile("00-intro.txt", "text/plain", fileSize = textBytes.size.toLong()),
+            MediaFile("ch01.cbz", "application/zip", fileSize = chapterBytes.size.toLong()),
+          ),
+      )
+    val textItemId = mixedItemId("00-intro.txt", textBytes.size.toLong())
+    val chapterItemId = mixedItemId("ch01.cbz", chapterBytes.size.toLong())
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/manifest")
+      .andExpect {
+        status { isOk() }
+        jsonPath("$.kind") { value("MIXED_CONTENT_SEQUENCE") }
+        jsonPath("$.pageCount") { value(3) }
+        jsonPath("$.items[0].itemId") { value(textItemId) }
+        jsonPath("$.items[0].kind") { value("TEXT_REFLOW") }
+        jsonPath("$.items[0].label") { value("00-intro.txt") }
+        jsonPath("$.items[1].itemId") { value(chapterItemId) }
+        jsonPath("$.items[1].kind") { value("FIXED_PAGE_SEQUENCE") }
+        jsonPath("$.items[1].label") { value("ch01.cbz") }
+        jsonPath("$.items[1].sourceFormat") { value("CBZ") }
+        jsonPath("$.items[1].pageCount") { value(2) }
+        jsonPath("$.items[1].pages.endpointTemplate") { value("/api/shelfview/v1/books/${book.id}/mixed/$chapterItemId/pages/{page}?zero_based=true") }
+        jsonPath("$.contents[1].label") { value("ch01.cbz") }
+        jsonPath("$.contents[1].locator.kind") { value("MIXED") }
+        jsonPath("$.contents[1].locator.itemId") { value(chapterItemId) }
+        jsonPath("$.contents[1].locator.itemIndex") { value(1) }
+        jsonPath("$.contents[1].locator.itemLocator.kind") { value("PAGE") }
+        jsonPath("$.contents[1].locator.itemLocator.page") { value(0) }
       }
   }
 
@@ -426,6 +490,18 @@ class ShelfViewManifestControllerTest(
     }
   }
 
+  private fun zipBytes(entries: Map<String, ByteArray>): ByteArray =
+    ByteArrayOutputStream().use { output ->
+      ZipOutputStream(output).use { zip ->
+        entries.forEach { (name, bytes) ->
+          zip.putNextEntry(ZipEntry(name))
+          zip.write(bytes)
+          zip.closeEntry()
+        }
+      }
+      output.toByteArray()
+    }
+
   private fun mixedItemId(
     normalizedEntryName: String,
     fileSize: Long,
@@ -444,6 +520,22 @@ class ShelfViewManifestControllerTest(
       }
       output.toByteArray()
     }
+
+  private fun pngBytes(color: Color): ByteArray {
+    val image = BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB)
+    val graphics = image.createGraphics()
+    try {
+      graphics.color = color
+      graphics.fillRect(0, 0, image.width, image.height)
+    } finally {
+      graphics.dispose()
+    }
+
+    return ByteArrayOutputStream().use { output ->
+      ImageIO.write(image, "PNG", output)
+      output.toByteArray()
+    }
+  }
 
   private fun writeOutlinedPdf(path: Path) {
     PDDocument().use { document ->

@@ -1,6 +1,6 @@
 import {BookFormat, MediaDto} from '@/types/tales-books'
 import {lowerCase} from 'lodash'
-import {isShelfViewReaderEnabled} from '@/shelfview/feature-flags'
+import {isShelfViewEpubBridgeEnabled, isShelfViewReaderEnabled} from '@/shelfview/feature-flags'
 
 const SHELFVIEW_READER_ROUTE = 'read-book-v2'
 
@@ -50,7 +50,8 @@ export function getLegacyBookReadRouteFromMedia(media: MediaDto): string {
 }
 
 export function getBookReadRouteFromMedia(media: MediaDto): string {
-  if (isShelfViewReaderEnabled() && lowerCase(media.mediaProfile) !== 'epub') {
+  const mediaProfile = lowerCase(media.mediaProfile)
+  if (isShelfViewReaderEnabled() && (mediaProfile !== 'epub' || isShelfViewEpubBridgeEnabled())) {
     return SHELFVIEW_READER_ROUTE
   }
 

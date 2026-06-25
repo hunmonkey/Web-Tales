@@ -1,4 +1,9 @@
 import {AxiosInstance} from 'axios'
+import {
+  ShelfViewDictionaryLookupResult,
+  ShelfViewDictionaryPack,
+  ShelfViewDictionaryProviderDto,
+} from '@/shelfview/functions/dictionary-lookup'
 import {ShelfViewApiError, toShelfViewApiError} from '@/shelfview/models/shelfview-errors'
 import {
   ShelfViewBookmarkDto,
@@ -143,6 +148,46 @@ export default class ShelfViewStateService {
     } catch (e) {
       if (e instanceof ShelfViewApiError) throw e
       throw toShelfViewApiError(e, 'An error occurred while trying to save ShelfView preference')
+    }
+  }
+
+  async getDictionaryProviders(): Promise<ShelfViewDictionaryProviderDto[]> {
+    try {
+      return (await this.http.get(`${API_SHELFVIEW}/dictionary/providers`)).data as ShelfViewDictionaryProviderDto[]
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to retrieve ShelfView dictionary providers')
+    }
+  }
+
+  async importDictionaryLocalPack(pack: ShelfViewDictionaryPack): Promise<ShelfViewDictionaryProviderDto> {
+    try {
+      return (await this.http.post(`${API_SHELFVIEW}/dictionary/providers/local-pack`, pack)).data as ShelfViewDictionaryProviderDto
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to import ShelfView dictionary pack')
+    }
+  }
+
+  async deleteDictionaryProvider(providerId: string): Promise<void> {
+    try {
+      await this.http.delete(`${API_SHELFVIEW}/dictionary/providers/${providerId}`)
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to delete ShelfView dictionary provider')
+    }
+  }
+
+  async lookupDictionary(query: string): Promise<ShelfViewDictionaryLookupResult[]> {
+    try {
+      const response = await this.http.get(`${API_SHELFVIEW}/dictionary/lookup`, {params: {query}})
+      return (response.data as ShelfViewDictionaryLookupResult[]).map(result => ({
+        ...result,
+        kind: 'LOCAL_PACK',
+      }))
+    } catch (e) {
+      if (e instanceof ShelfViewApiError) throw e
+      throw toShelfViewApiError(e, 'An error occurred while trying to lookup ShelfView dictionary')
     }
   }
 }

@@ -26,7 +26,7 @@ The UI uses adapters:
 - `FixedPageAdapter`
 - `TextReflowAdapter`
 - `MixedContentAdapter`
-- planned `EpubWebPubAdapter`
+- `EpubWebPubAdapter` bridge guard
 
 The UI must not scatter file-extension checks across components.
 
@@ -77,8 +77,13 @@ paragraph-derived contents.
   user-provided JSON pack in browser `localStorage`; this is not server-side
   storage, account sync, media write access or bundled dictionary content.
   SV-930 closes the current reading-aids phase at this browser-local dictionary
-  scope. Server/account-synced dictionary provider storage remains deferred
-  until the owner approves the storage, attribution and redistribution policy.
+  scope. [ADR-0015](ADR/ADR-0015-dictionary-provider-server-storage.md) plans
+  server/account-synced dictionary provider storage as dedicated user-scoped
+  provider and entry tables, not `SHELFVIEW_READER_PREFERENCE`; the
+  owner-approved implementation adds the `SHELFVIEW_DICTIONARY_PROVIDER` and
+  `SHELFVIEW_DICTIONARY_ENTRY` tables, authenticated provider import/list/delete
+  and lookup endpoints, frontend service methods, and reader integration that
+  keeps browser-local packs as a fallback.
 - Never edit existing Flyway migrations.
 
 ### ShelfView storage recovery
@@ -88,6 +93,30 @@ SV-300 uses a forward-only Flyway migration. If a restore is needed before the S
 ## Feature rollout
 
 A new reader route is introduced behind a feature flag. The existing reader remains available as fallback until compatibility and recovery have been validated.
+
+## Offline PWA
+
+The web UI registers `shelfview-service-worker.js` only in production builds.
+The service worker caches the app shell, manifest, icons and same-origin static
+JS/CSS/font/image assets so the installed app can reopen when the network is
+down. Requests under `/api/` are intentionally not cached, so book pages,
+reader state, account data and other authenticated responses stay network-first
+and server-controlled.
+
+## Browser-local file opening
+
+[ADR-0016](ADR/ADR-0016-browser-local-file-opening.md) adds `/read-local` as a
+separate browser-only route for user-selected ZIP/CBZ image archives. It uses
+`@zip.js/zip.js` in the browser, creates temporary `blob:` URLs for supported
+image entries, and revokes those URLs when the archive is cleared or the view is
+destroyed. This route does not upload files, does not save progress or bookmarks
+to the server, and does not change server-managed library ZIP handling.
+
+The local route supports `jpg`, `jpeg`, `png`, `webp` and `gif` entries only.
+It skips unsafe paths, encrypted entries and non-image entries, enforces entry,
+image-count, per-image and total-image byte limits, and does not extract nested
+archives in this slice. The server `/read-v2/:bookId` route remains the source
+of truth for library books.
 
 ## Bookshelf experience
 
@@ -128,9 +157,15 @@ browser-local, dependency-free and fixed-page only. The reader draws the current
 page image into a bounded `<canvas>`, applies a simple sharpen kernel, and falls
 back to the normal `<img>` path if Canvas loading or pixel access fails. It is
 disabled for continuous scroll so the app does not process many pages at once.
-Further WebGL sharpening, background cleanup, adaptive monochrome, caching or AI
-upscaling remain deferred until the remaining ADR-0007 gates are intentionally
-met.
+
+The later owner-approved image-quality slice adds three advanced display modes
+without changing source media: `WEBGL_SHARPEN`, `BACKGROUND_CLEANUP` and
+`ADAPTIVE_MONO`. `WEBGL_SHARPEN` tries a browser-local WebGL sharpen pass first
+and falls back to the existing Canvas sharpen path if WebGL is unavailable.
+Background cleanup and adaptive monochrome use bounded Canvas pixel transforms.
+These modes are exposed in the fixed-page settings panel rather than the quick
+filter menu, remain disabled for continuous scroll, and add no dependency,
+derived-image cache, AI upscaler or server-side media write path.
 
 ## Reader recovery UX
 
@@ -159,12 +194,24 @@ Planned ZIP expansion is tracked as SV-450 through SV-453. In addition to the cu
 - ADR-0003 chooses a single-Book mixed content model: the ZIP remains one Tales book, and the ShelfView manifest exposes ordered internal items behind opaque item ids.
 - Mixed ZIP support adds a `MIXED_CONTENT_SEQUENCE` manifest shape and a `MixedContentAdapter` that coordinates text and fixed-page item adapters.
 - GIF animation is preserved by default when the original GIF passes validation; internal PDF entries reuse the existing PDF page-image path through a bounded derived cache instead of PDF.js.
+- SV-997 allows mixed ZIP manifests and page endpoints to treat one-level
+  nested ZIP/CBZ image chapters as fixed-page items when the nested archive
+  passes path, entry-count, byte, compression-ratio, MIME, dimension and pixel
+  limits. ADR-0012 plans nested RAR/CBR as a later temp-file-backed
+  implementation slice. ADR-0013 plans top-level 7Z/CB7 as a later dedicated
+  Divina extractor behind the existing comic-archive scan gate. ADR-0014
+  plans mixed folder books as a later explicit `.shelfview-mixed-book` model,
+  separate from existing `.shelfview-book` image directories.
 
 SV-451 adds the first mixed ZIP content endpoint:
 
 - `GET /api/shelfview/v1/books/{bookId}/mixed/{itemId}/text` returns the same plain-text paragraph contract as the root TXT endpoint for a ZIP-internal TXT item.
 - `itemId` is an opaque, stable id derived from the book content fingerprint and normalized entry metadata; raw archive paths are not used as API ids.
-- The ZIP text inspector rejects unsafe entry paths, duplicate normalized entry names, nested archive entries, excessive entry count and over-limit TXT entries before returning content.
+- The ZIP text inspector rejects unsafe entry paths, duplicate normalized entry
+  names, unsupported nested archive entries, excessive entry count and
+  over-limit TXT entries before returning content. Supported nested ZIP/CBZ
+  image chapters are handled by the fixed-page mixed item path, not the text
+  endpoint.
 - ZIP-internal TXT reuses the same UTF-8 BOM, strict UTF-8, strict EUC-KR, manual encoding, byte limit and line-length rules as standalone TXT.
 
 SV-452 adds the first mixed ZIP fixed-page endpoint:
@@ -173,7 +220,11 @@ SV-452 adds the first mixed ZIP fixed-page endpoint:
 - ZIP-internal JPG/JPEG/PNG/WebP/GIF entries are served only after extension allow-listing, MIME sniffing and image dimension/pixel limits pass.
 - GIF page delivery preserves the original GIF bytes when validation passes.
 - ZIP-internal PDF entries are copied one bounded entry at a time into a temporary derived cache, checked as `application/pdf`, checked against the configured page-count limit, then rendered through the existing PDF page-image extractor.
-- The endpoint keeps the archive source read-only, rejects unsafe entry paths and nested archives through the same mixed ZIP inspector, and does not expose raw server paths or raw archive paths as API identifiers.
+- The endpoint keeps the archive source read-only, rejects unsafe entry paths
+  and unsupported nested archives through the same mixed ZIP inspector, and
+  does not expose raw server paths or raw archive paths as API identifiers.
+  One-level nested ZIP/CBZ image chapters are served as fixed-page mixed items
+  after their inner image entries pass the same image limits.
 
 SV-453 adds mixed ZIP manifest and reader routing:
 
@@ -191,6 +242,12 @@ SV-453 adds mixed ZIP manifest and reader routing:
 ## Image directories
 
 MVP requires a `.shelfview-book` marker in the leaf folder. Automatic guessing is out of scope.
+
+Mixed folder books are separate planning scope in
+[ADR-0014](ADR/ADR-0014-mixed-folder-book-model.md). They should use an
+explicit `.shelfview-mixed-book` marker and produce `MIXED_CONTENT_SEQUENCE`
+manifests only in a later implementation slice. Existing `.shelfview-book`
+image-directory behavior remains image-only.
 
 SV-500 adds the first image-directory gate:
 
@@ -229,13 +286,17 @@ SV-503 adds image-directory change lifecycle handling:
 
 ## PDF
 
-MVP renders through the existing page delivery path. PDF.js is a later, ADR-backed phase for text layer, search, links and direct PDF rendering.
+MVP renders through the existing page delivery path. [ADR-0011](ADR/ADR-0011-pdf-text-layer-search-links.md) keeps this fixed-page image reader as the default and plans PDF.js as an opt-in text-layer/search/link overlay, not an immediate PDF renderer replacement.
 
 PDF fixed-page manifests can populate Manifest-level `contents` from the PDF
 document outline. Outline targets are converted server-side into zero-based
 ShelfView PAGE locators; raw PDF destinations and file paths are not returned
 to the browser. If outline parsing fails, the PDF still opens without
 structured contents.
+
+Future PDF text-layer work must use an explicit dependency review, bounded
+visible-page extraction, cancellable workers, internal-link `PAGE` locators and
+the existing image reader as fallback.
 
 ## EPUB
 
@@ -252,8 +313,14 @@ The first integration path is a WebPub bridge, not a renderer rewrite.
   stored EPUB TOC entries. Each contents entry contains a bounded EPUB locator
   with `href`, optional title and content fingerprint; raw server file paths are
   not returned.
-- A future `EpubWebPubAdapter` should keep Readium/WebPub details out of the
-  generic ShelfView reader shell.
+- `EpubWebPubAdapter` is the first frontend bridge guard: it validates the
+  existing WebPub manifest and positions endpoints, then lets the ShelfView
+  reader shell hand off to the existing EPUB reader. It does not render EPUB
+  content or write ShelfView EPUB positions.
+- `VUE_APP_SHELFVIEW_EPUB_BRIDGE` lets book-card and sibling routing send EPUB
+  books through `/read-v2/:bookId` only when the normal ShelfView reader flag is
+  also enabled. Without that EPUB bridge flag, EPUB stays on the existing reader
+  routes.
 - Existing `read-epub` and legacy fixed-page EPUB routes remain fallback paths
   until the ShelfView EPUB bridge has targeted tests and browser validation.
 - No PDF.js, new EPUB parser, browser-side EPUB extraction or new rendering

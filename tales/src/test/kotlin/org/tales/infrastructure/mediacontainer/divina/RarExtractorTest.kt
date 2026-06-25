@@ -21,7 +21,7 @@ class RarExtractorTest {
 
     Assertions.assertThat(entries).hasSize(3)
     with(entries.first()) {
-      Assertions.assertThat(name).isEqualTo("komga-1.png")
+      Assertions.assertThat(name).isEqualTo("tales-1.png")
       Assertions.assertThat(mediaType).isEqualTo("image/png")
       Assertions.assertThat(dimension).isEqualTo(Dimension(48, 48))
       Assertions.assertThat(fileSize).isEqualTo(3108)
@@ -36,7 +36,7 @@ class RarExtractorTest {
 
     Assertions.assertThat(entries).hasSize(3)
     with(entries.first()) {
-      Assertions.assertThat(name).isEqualTo("komga-1.png")
+      Assertions.assertThat(name).isEqualTo("tales-1.png")
       Assertions.assertThat(mediaType).isEqualTo("image/png")
       Assertions.assertThat(dimension).isNull()
       Assertions.assertThat(fileSize).isEqualTo(3108)

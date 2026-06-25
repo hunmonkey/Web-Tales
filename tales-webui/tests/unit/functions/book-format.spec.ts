@@ -23,13 +23,16 @@ const epubMedia: MediaDto = {
 
 describe('book read routes', () => {
   const originalFlag = process.env.VUE_APP_SHELFVIEW_READER
+  const originalEpubBridgeFlag = process.env.VUE_APP_SHELFVIEW_EPUB_BRIDGE
 
   afterEach(() => {
     process.env.VUE_APP_SHELFVIEW_READER = originalFlag
+    process.env.VUE_APP_SHELFVIEW_EPUB_BRIDGE = originalEpubBridgeFlag
   })
 
   it('keeps the existing fixed-page reader by default', () => {
     delete process.env.VUE_APP_SHELFVIEW_READER
+    delete process.env.VUE_APP_SHELFVIEW_EPUB_BRIDGE
 
     expect(getBookReadRouteFromMedia(divinaMedia)).toBe('read-book')
   })
@@ -42,8 +45,16 @@ describe('book read routes', () => {
 
   it('keeps EPUB on the existing EPUB reader even when the flag is enabled', () => {
     process.env.VUE_APP_SHELFVIEW_READER = 'true'
+    delete process.env.VUE_APP_SHELFVIEW_EPUB_BRIDGE
 
     expect(getBookReadRouteFromMedia(epubMedia)).toBe('read-epub')
+  })
+
+  it('routes EPUB to the ShelfView bridge only when the EPUB bridge flag is enabled', () => {
+    process.env.VUE_APP_SHELFVIEW_READER = 'true'
+    process.env.VUE_APP_SHELFVIEW_EPUB_BRIDGE = 'true'
+
+    expect(getBookReadRouteFromMedia(epubMedia)).toBe('read-book-v2')
   })
 
   it('exposes the existing reader route for fallback links', () => {

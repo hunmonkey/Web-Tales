@@ -6,6 +6,7 @@ import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipFile
+import org.apache.commons.compress.utils.SeekableInMemoryByteChannel
 import org.apache.commons.io.FilenameUtils
 import org.apache.pdfbox.Loader
 import org.tales.domain.model.Dimension
@@ -56,6 +57,9 @@ class ShelfViewArchiveProperties {
 
   @Positive
   var maxPdfPages: Int = 1_000
+
+  @Positive
+  var maxNestedArchiveBytes: Long = 100L * 1024 * 1024
 }
 
 data class ShelfViewZipTextEntryContent(
@@ -224,6 +228,7 @@ class ShelfViewZipMixedContentProvider(
       val normalizedName = selectedName ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_ZIP_PAGE_ENTRY_NOT_FOUND")
 
       when {
+        isSupportedNestedImageArchive(normalizedName) -> readNestedImagePage(zip, entry, itemId, normalizedName, pageNumber)
         isPdfEntry(normalizedName) -> readPdfPage(zip, entry, bookContentFingerprint, itemId, normalizedName, pageNumber)
         isImageEntry(normalizedName) -> readImagePage(zip, entry, itemId, normalizedName, pageNumber)
         else -> throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_ZIP_PAGE_ENTRY_NOT_FOUND")
@@ -264,6 +269,16 @@ class ShelfViewZipMixedContentProvider(
           pageCount = validatedPdfPageCount(zip, entry, bookContentFingerprint, itemId),
         )
 
+      isSupportedNestedImageArchive(normalizedName) ->
+        ShelfViewZipMixedManifestItem(
+          itemId = itemId,
+          normalizedEntryName = normalizedName,
+          label = displayLabel(normalizedName),
+          kind = ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE,
+          sourceFormat = sourceFormatForNestedImageArchive(normalizedName),
+          pageCount = validatedNestedImagePageCount(zip, entry),
+        )
+
       isImageEntry(normalizedName) ->
         ShelfViewZipMixedManifestItem(
           itemId = itemId,
@@ -279,6 +294,25 @@ class ShelfViewZipMixedContentProvider(
   }
 
   private fun normalizeEntryName(name: String): String {
+    val normalized = normalizeArchiveEntryPath(name)
+    if (isUnsupportedNestedArchive(normalized)) {
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_NESTED_ARCHIVE")
+    }
+    return normalized
+  }
+
+  private fun normalizeNestedImageEntryName(name: String): String {
+    val normalized = normalizeArchiveEntryPath(name)
+    if (isNestedArchive(normalized)) {
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_NESTED_ARCHIVE")
+    }
+    if (!isImageEntry(normalized)) {
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_NESTED_IMAGE_CHAPTER_UNSUPPORTED_ENTRY")
+    }
+    return normalized
+  }
+
+  private fun normalizeArchiveEntryPath(name: String): String {
     val normalized = name.replace('\\', '/')
     if (normalized.isBlank()) invalidEntry()
     if (normalized.startsWith('/')) invalidEntry()
@@ -288,10 +322,6 @@ class ShelfViewZipMixedContentProvider(
     val parts = normalized.split('/')
     if (parts.any { it.isBlank() || it == "." || it == ".." }) invalidEntry()
 
-    if (isNestedArchive(normalized)) {
-      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_NESTED_ARCHIVE")
-    }
-
     return parts.joinToString("/")
   }
 
@@ -299,13 +329,18 @@ class ShelfViewZipMixedContentProvider(
 
   private fun isTextEntry(normalizedName: String): Boolean = FilenameUtils.getExtension(normalizedName).equals("txt", ignoreCase = true)
 
-  private fun isFixedPageEntry(normalizedName: String): Boolean = isImageEntry(normalizedName) || isPdfEntry(normalizedName)
+  private fun isFixedPageEntry(normalizedName: String): Boolean = isImageEntry(normalizedName) || isPdfEntry(normalizedName) || isSupportedNestedImageArchive(normalizedName)
 
   private fun isImageEntry(normalizedName: String): Boolean = IMAGE_EXTENSIONS.contains(FilenameUtils.getExtension(normalizedName).lowercase())
 
   private fun isPdfEntry(normalizedName: String): Boolean = FilenameUtils.getExtension(normalizedName).equals("pdf", ignoreCase = true)
 
   private fun isNestedArchive(normalizedName: String): Boolean = NESTED_ARCHIVE_EXTENSIONS.contains(FilenameUtils.getExtension(normalizedName).lowercase())
+
+  private fun isSupportedNestedImageArchive(normalizedName: String): Boolean =
+    SUPPORTED_NESTED_IMAGE_ARCHIVE_EXTENSIONS.contains(FilenameUtils.getExtension(normalizedName).lowercase())
+
+  private fun isUnsupportedNestedArchive(normalizedName: String): Boolean = isNestedArchive(normalizedName) && !isSupportedNestedImageArchive(normalizedName)
 
   private fun ensureEntrySizeWithinLimit(
     entry: ZipArchiveEntry,
@@ -346,6 +381,112 @@ class ShelfViewZipMixedContentProvider(
       bytes = bytes,
       mediaType = mediaType,
     )
+  }
+
+  private fun validatedNestedImagePageCount(
+    zip: ZipFile,
+    entry: ZipArchiveEntry,
+  ): Int =
+    withNestedImageArchive(zip, entry) { nestedZip ->
+      val nestedEntries = listNestedImageEntries(nestedZip)
+      nestedEntries.forEach { (innerEntry, normalizedName) ->
+        readNestedImageEntry(nestedZip, innerEntry, normalizedName)
+      }
+      nestedEntries.size
+    }
+
+  private fun readNestedImagePage(
+    zip: ZipFile,
+    entry: ZipArchiveEntry,
+    itemId: String,
+    normalizedName: String,
+    pageNumber: Int,
+  ): ShelfViewZipPageContent =
+    withNestedImageArchive(zip, entry) { nestedZip ->
+      val nestedEntries = listNestedImageEntries(nestedZip)
+      if (pageNumber > nestedEntries.size) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PAGE_NUMBER_INVALID")
+      }
+
+      val (innerEntry, innerName) = nestedEntries[pageNumber - 1]
+      val page = readNestedImageEntry(nestedZip, innerEntry, innerName)
+
+      ShelfViewZipPageContent(
+        itemId = itemId,
+        normalizedEntryName = normalizedName,
+        pageNumber = pageNumber,
+        bytes = page.bytes,
+        mediaType = page.mediaType,
+      )
+    }
+
+  private fun <T> withNestedImageArchive(
+    zip: ZipFile,
+    entry: ZipArchiveEntry,
+    block: (ZipFile) -> T,
+  ): T {
+    ensureEntryCanBeRead(zip, entry)
+    ensureEntrySizeWithinLimit(entry, archiveProperties.maxNestedArchiveBytes, "SHELFVIEW_NESTED_ARCHIVE_TOO_LARGE")
+    ensureEntryCompressionRatioWithinLimit(entry)
+    val nestedBytes = zip.readEntryBytes(entry, archiveProperties.maxNestedArchiveBytes, "SHELFVIEW_NESTED_ARCHIVE_TOO_LARGE")
+
+    return try {
+      ZipFile.builder().setSeekableByteChannel(SeekableInMemoryByteChannel(nestedBytes)).use { nestedZip ->
+        block(nestedZip)
+      }
+    } catch (ex: ResponseStatusException) {
+      throw ex
+    } catch (ex: Exception) {
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_NESTED_ARCHIVE_UNREADABLE", ex)
+    }
+  }
+
+  private fun listNestedImageEntries(nestedZip: ZipFile): List<Pair<ZipArchiveEntry, String>> {
+    val normalizedNames = mutableSetOf<String>()
+    val entries =
+      nestedZip.entries
+        .toList()
+        .filter { !it.isDirectory }
+        .onEachIndexed { index, _ ->
+          if (index + 1 > archiveProperties.maxEntries) {
+            throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_ARCHIVE_TOO_MANY_ENTRIES")
+          }
+        }.map { entry ->
+          val normalizedName = normalizeNestedImageEntryName(entry.name)
+          if (!normalizedNames.add(normalizedName)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_DUPLICATE_ENTRY")
+          }
+          entry to normalizedName
+        }.sortedWith(compareBy(natSortComparator) { (_, normalizedName) -> normalizedName })
+
+    if (entries.isEmpty()) {
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_NESTED_IMAGE_CHAPTER_EMPTY")
+    }
+
+    return entries
+  }
+
+  private fun readNestedImageEntry(
+    nestedZip: ZipFile,
+    entry: ZipArchiveEntry,
+    normalizedName: String,
+  ): NestedImagePage {
+    ensureEntryCanBeRead(nestedZip, entry)
+    ensureEntrySizeWithinLimit(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE")
+    ensureEntryCompressionRatioWithinLimit(entry)
+
+    val bytes = nestedZip.readEntryBytes(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE")
+    val mediaType = contentDetector.detectMediaType(bytes.inputStream())
+    if (!allowedImageMediaTypes(normalizedName).contains(mediaType)) {
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_IMAGE_MIME_MISMATCH")
+    }
+
+    val dimension =
+      imageAnalyzer.getDimension(bytes.inputStream())
+        ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_IMAGE_UNREADABLE")
+    validateImageDimension(dimension)
+
+    return NestedImagePage(bytes = bytes, mediaType = mediaType)
   }
 
   private fun validatedPdfPageCount(
@@ -459,6 +600,13 @@ class ShelfViewZipMixedContentProvider(
       else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_IMAGE_MIME_MISMATCH")
     }
 
+  private fun sourceFormatForNestedImageArchive(normalizedName: String): ShelfViewSourceFormat =
+    when (FilenameUtils.getExtension(normalizedName).lowercase()) {
+      "zip" -> ShelfViewSourceFormat.ZIP
+      "cbz" -> ShelfViewSourceFormat.CBZ
+      else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_NESTED_ARCHIVE")
+    }
+
   private fun ZipFile.readEntryBytes(
     entry: ZipArchiveEntry,
     maxBytes: Long,
@@ -519,15 +667,39 @@ class ShelfViewZipMixedContentProvider(
     }
   }
 
+  private fun ensureEntryCanBeRead(
+    zip: ZipFile,
+    entry: ZipArchiveEntry,
+  ) {
+    if (!zip.canReadEntryData(entry) || entry.generalPurposeBit.usesEncryption()) {
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_UNREADABLE_ENTRY")
+    }
+  }
+
+  private fun ensureEntryCompressionRatioWithinLimit(entry: ZipArchiveEntry) {
+    val size = entry.knownSizeOrNull() ?: return
+    val compressedSize = entry.compressedSize.takeIf { it != ArchiveEntry.SIZE_UNKNOWN && it > 0 } ?: return
+    if (size.toDouble() / compressedSize.toDouble() > MAX_COMPRESSION_RATIO) {
+      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_ARCHIVE_COMPRESSION_RATIO_TOO_HIGH")
+    }
+  }
+
   private fun ZipArchiveEntry.knownSizeOrNull(): Long? = size.takeIf { it != ArchiveEntry.SIZE_UNKNOWN }
 
   private fun invalidEntry(): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_INVALID_ENTRY_PATH")
 
+  private data class NestedImagePage(
+    val bytes: ByteArray,
+    val mediaType: String,
+  )
+
   private companion object {
     val WINDOWS_DRIVE_PATH = Regex("^[A-Za-z]:[/\\\\].*")
     val NESTED_ARCHIVE_EXTENSIONS = setOf("zip", "cbz", "cbr", "rar", "7z")
+    val SUPPORTED_NESTED_IMAGE_ARCHIVE_EXTENSIONS = setOf("zip", "cbz")
     val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif")
     const val PDF_MEDIA_TYPE = "application/pdf"
+    const val MAX_COMPRESSION_RATIO = 100.0
   }
 }
 

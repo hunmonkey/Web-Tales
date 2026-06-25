@@ -92,6 +92,12 @@ SV-951 may add one `CANVAS_SHARPEN` mode with these limits:
 7. Leave browser/device performance evidence as follow-up work before expanding
    the mode or enabling heavier WebGL/background-cleanup processing.
 
+On 2026-06-25, after the Canvas evidence pass, the owner approved the next
+browser-local expansion. The implemented follow-up may add `WEBGL_SHARPEN`,
+`BACKGROUND_CLEANUP` and `ADAPTIVE_MONO` with the same source-media read-only
+boundary, fixed-page-only scope, normal image fallback, bounded Canvas work and
+no new dependency, AI upscaler or derived-image cache.
+
 ## Consequences
 
 Positive:

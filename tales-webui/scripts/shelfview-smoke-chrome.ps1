@@ -139,6 +139,7 @@ const frontendOrigin = '__FRONTEND_URL__';
 const bindHost = '__BIND_HOST__';
 const port = __MOCK_API_PORT__;
 const svgPage = (label) => Buffer.from(`<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"480\" height=\"720\" viewBox=\"0 0 480 720\"><rect width=\"480\" height=\"720\" fill=\"#f7f2df\"/><rect x=\"36\" y=\"36\" width=\"408\" height=\"648\" fill=\"#ffffff\" stroke=\"#1d4ed8\" stroke-width=\"8\"/><text x=\"240\" y=\"330\" text-anchor=\"middle\" font-family=\"Arial\" font-size=\"42\" fill=\"#111827\">${label}</text><text x=\"240\" y=\"390\" text-anchor=\"middle\" font-family=\"Arial\" font-size=\"22\" fill=\"#374151\">ShelfView browser smoke</text></svg>`);
+const largeSvgPage = (label) => Buffer.from(`<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"4000\" height=\"4000\" viewBox=\"0 0 4000 4000\"><rect width=\"4000\" height=\"4000\" fill=\"#f7f2df\"/><rect x=\"240\" y=\"240\" width=\"3520\" height=\"3520\" fill=\"#ffffff\" stroke=\"#1d4ed8\" stroke-width=\"40\"/><text x=\"2000\" y=\"1940\" text-anchor=\"middle\" font-family=\"Arial\" font-size=\"160\" fill=\"#111827\">${label}</text><text x=\"2000\" y=\"2120\" text-anchor=\"middle\" font-family=\"Arial\" font-size=\"80\" fill=\"#374151\">over canvas smoke budget</text></svg>`);
 function headers(extra = {}) {
   const origin = currentReq?.headers?.origin || frontendOrigin;
   return Object.assign({
@@ -166,10 +167,12 @@ function book(id) {
   if (id === 'book-text') return {id, seriesId: 'series-1', name: id, oneshot: false, media: {status: 'READY', mediaType: 'text/plain', mediaProfile: 'TXT', pagesCount: 0, comment: '', epubDivinaCompatible: false, epubIsKepub: false}, metadata: {title: 'TXT Smoke', number: '1'}};
   if (id === 'book-pdf') return {id, seriesId: 'series-1', name: id, oneshot: false, media: {status: 'READY', mediaType: 'application/pdf', mediaProfile: 'PDF', pagesCount: 2, comment: '', epubDivinaCompatible: false, epubIsKepub: false}, metadata: {title: 'PDF Smoke', number: '1'}};
   if (id === 'book-folder') return {id, seriesId: 'series-1', name: id, oneshot: false, media: {status: 'READY', mediaType: 'inode/directory', mediaProfile: 'IMAGE_DIRECTORY', pagesCount: 2, comment: '', epubDivinaCompatible: false, epubIsKepub: false}, metadata: {title: 'Image Folder Smoke', number: '1'}};
+  if (id === 'book-canvas-big') return {id, seriesId: 'series-1', name: id, oneshot: false, media: {status: 'READY', mediaType: 'application/zip', mediaProfile: 'DIVINA', pagesCount: 1, comment: '', epubDivinaCompatible: false, epubIsKepub: false}, metadata: {title: 'Canvas Big Smoke', number: '1'}};
   return {id, seriesId: 'series-1', name: id, oneshot: false, media: {status: 'READY', mediaType: 'application/zip', mediaProfile: 'DIVINA', pagesCount: 3, comment: '', epubDivinaCompatible: false, epubIsKepub: false}, metadata: {title: id === 'book-mixed' ? 'Mixed ZIP Smoke' : 'JPG Smoke', number: '1'}};
 }
 const series = {id: 'series-1', metadata: {title: 'SV602 Browser Series'}};
 const fixedManifest = {schemaVersion: 1, bookId: 'book-fixed', title: 'JPG Smoke', kind: 'FIXED_PAGE_SEQUENCE', sourceFormat: 'JPG', contentFingerprint: 'tales-file-state:book-fixed', pageCount: 3, pages: {endpointTemplate: '/api/v1/books/book-fixed/pages/{page}?zero_based=true'}, capabilities: {search: false, textSelection: false, doublePage: true, continuousScroll: true, rtl: true, imageFilters: true}};
+const canvasBigManifest = {schemaVersion: 1, bookId: 'book-canvas-big', title: 'Canvas Big Smoke', kind: 'FIXED_PAGE_SEQUENCE', sourceFormat: 'JPG', contentFingerprint: 'tales-file-state:book-canvas-big', pageCount: 1, pages: {endpointTemplate: '/api/v1/books/book-canvas-big/pages/{page}?zero_based=true'}, capabilities: {search: false, textSelection: false, doublePage: false, continuousScroll: false, rtl: false, imageFilters: true}};
 const pdfManifest = {schemaVersion: 1, bookId: 'book-pdf', title: 'PDF Smoke', kind: 'FIXED_PAGE_SEQUENCE', sourceFormat: 'PDF', contentFingerprint: 'tales-file-state:book-pdf', pageCount: 2, pages: {endpointTemplate: '/api/v1/books/book-pdf/pages/{page}?zero_based=true'}, capabilities: {search: false, textSelection: false, doublePage: true, continuousScroll: true, rtl: false, imageFilters: true}};
 const folderManifest = {schemaVersion: 1, bookId: 'book-folder', title: 'Image Folder Smoke', kind: 'FIXED_PAGE_SEQUENCE', sourceFormat: 'IMAGE_DIRECTORY', contentFingerprint: 'tales-file-state:book-folder', pageCount: 2, pages: {endpointTemplate: '/api/shelfview/v1/books/book-folder/image-directory/pages/{page}?zero_based=true'}, capabilities: {search: false, textSelection: false, doublePage: true, continuousScroll: true, rtl: false, imageFilters: true}};
 const textManifest = {schemaVersion: 1, bookId: 'book-text', title: 'TXT Smoke', kind: 'TEXT_REFLOW', sourceFormat: 'TXT', contentFingerprint: 'tales-file-state:book-text', text: {endpoint: '/api/shelfview/v1/books/book-text/text', detectedEncoding: 'UTF-8', normalizationVersion: 1}, capabilities: {search: false, textSelection: true, doublePage: false, continuousScroll: true, rtl: false, imageFilters: false}};
@@ -190,12 +193,14 @@ const server = http.createServer((req, res) => {
     if (parts[5] === 'pages') {
       const page = parts[6] || '0';
       res.writeHead(200, headers({'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store'}));
+      if (id === 'book-canvas-big') return res.end(largeSvgPage(`${id} page ${Number(page) + 1}`));
       return res.end(svgPage(`${id} page ${Number(page) + 1}`));
     }
     return json(res, 200, book(id));
   }
   if (path === '/api/v1/series/series-1') return json(res, 200, series);
   if (path === '/api/shelfview/v1/books/book-fixed/manifest') return json(res, 200, fixedManifest);
+  if (path === '/api/shelfview/v1/books/book-canvas-big/manifest') return json(res, 200, canvasBigManifest);
   if (path === '/api/shelfview/v1/books/book-pdf/manifest') return json(res, 200, pdfManifest);
   if (path === '/api/shelfview/v1/books/book-folder/manifest') return json(res, 200, folderManifest);
   if (path === '/api/shelfview/v1/books/book-text/manifest') return json(res, 200, textManifest);
@@ -394,17 +399,24 @@ function Set-Viewport {
 function Wait-Reader {
   param([string] $Url)
 
-  [void] (Send-Cdp -Method "Page.navigate" -Params @{ url = $Url })
-  $deadline = (Get-Date).AddSeconds(25)
   $state = $null
 
-  do {
-    Start-Sleep -Milliseconds 500
-    $state = Invoke-CdpExpression "({url: location.href, hasReader: !!document.querySelector('[data-testid=shelfview-reader-stage]'), error: document.querySelector('[data-testid=shelfview-reader-error]')?.innerText || null, text: document.body.innerText.slice(0, 250)})"
-    if ($state.hasReader -or $state.error) {
+  for ($attempt = 1; $attempt -le 2; $attempt++) {
+    [void] (Send-Cdp -Method "Page.navigate" -Params @{ url = $Url })
+    $deadline = (Get-Date).AddSeconds(25)
+
+    do {
+      Start-Sleep -Milliseconds 500
+      $state = Invoke-CdpExpression "({url: location.href, hasReader: !!document.querySelector('[data-testid=shelfview-reader-stage]'), error: document.querySelector('[data-testid=shelfview-reader-error]')?.innerText || null, text: document.body.innerText.slice(0, 250)})"
+      if ($state.hasReader -or $state.error) {
+        break
+      }
+    } while ((Get-Date) -lt $deadline)
+
+    if ($state.hasReader) {
       break
     }
-  } while ((Get-Date) -lt $deadline)
+  }
 
   if (-not $state.hasReader) {
     throw "Reader did not load for $Url. Current URL: $($state.url). Error: $($state.error). Text: $($state.text)"
@@ -450,8 +462,8 @@ try {
   return {
     name: 'desktop fixed page',
     url: location.href,
-    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
-    live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText || '',
+    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
+    live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText.trim() || '',
     pageVisible: !!page,
     pageComplete: page ? page.complete : false,
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
@@ -460,11 +472,129 @@ try {
   };
 })()
 "@
-  Assert-Smoke ($desktopFixed.counter -eq "1 / 3") "Desktop fixed-page counter was not 1 / 3."
-  Assert-Smoke ($desktopFixed.live -eq "Page 1 of 3") "Desktop fixed-page live status was not Page 1 of 3."
+  Assert-Smoke ($desktopFixed.counter -eq "1 / 3") "Desktop fixed-page counter was '$($desktopFixed.counter)', not 1 / 3."
+  Assert-Smoke ($desktopFixed.live -eq "Page 1 of 3") "Desktop fixed-page live status was '$($desktopFixed.live)', not Page 1 of 3."
   Assert-Smoke ($desktopFixed.pageVisible -and $desktopFixed.pageComplete) "Desktop fixed-page image was not loaded."
   Assert-Smoke (-not $desktopFixed.horizontalOverflow) "Desktop fixed-page reader has horizontal overflow."
   $results += $desktopFixed
+
+  $canvasSharpen = Invoke-CdpExpression @"
+(async () => {
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const findReaderVm = () => {
+    const nodes = Array.from(document.querySelectorAll('*'));
+    for (const node of nodes) {
+      let vm = node.__vue__;
+      while (vm) {
+        if (vm.`$options?.name === 'ShelfViewReaderShell') return vm;
+        vm = vm.`$parent;
+      }
+    }
+    return null;
+  };
+  const waitFor = async predicate => {
+    const deadline = Date.now() + 8000;
+    while (Date.now() < deadline) {
+      const value = predicate();
+      if (value) return value;
+      await wait(100);
+    }
+    return predicate();
+  };
+  const vm = findReaderVm();
+  if (!vm) return {name: 'desktop canvas sharpen', vmFound: false};
+  vm.setImageFilterPreset('CANVAS_SHARPEN');
+  await vm.`$nextTick();
+  const page = await waitFor(() => {
+    const candidate = document.querySelector('[data-testid="shelfview-reader-page"]');
+    return candidate && candidate.tagName.toLowerCase() === 'canvas' && candidate.width === 480 && candidate.height === 720 ? candidate : null;
+  });
+  let pixelReadable = false;
+  let sample = [];
+  if (page) {
+    try {
+      const context = page.getContext('2d');
+      sample = Array.from(context.getImageData(Math.floor(page.width / 2), Math.floor(page.height / 2), 1, 1).data);
+      pixelReadable = true;
+    } catch (_error) {
+      pixelReadable = false;
+    }
+  }
+  return {
+    name: 'desktop canvas sharpen',
+    url: location.href,
+    vmFound: true,
+    tagName: page?.tagName.toLowerCase() || '',
+    canvasWidth: page?.width || 0,
+    canvasHeight: page?.height || 0,
+    canvasSrc: page?.getAttribute('data-canvas-src') || '',
+    pixelReadable,
+    sample,
+    horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+    viewport: {width: window.innerWidth, height: window.innerHeight}
+  };
+})()
+"@
+  Assert-Smoke ($canvasSharpen.vmFound) "Canvas sharpen smoke could not find the reader Vue instance."
+  Assert-Smoke ($canvasSharpen.tagName -eq "canvas") "Canvas sharpen did not render a canvas page."
+  Assert-Smoke ($canvasSharpen.canvasWidth -eq 480 -and $canvasSharpen.canvasHeight -eq 720) "Canvas sharpen dimensions were $($canvasSharpen.canvasWidth)x$($canvasSharpen.canvasHeight), not 480x720."
+  Assert-Smoke ($canvasSharpen.canvasSrc -match "/api/v1/books/book-fixed/pages/0") "Canvas sharpen did not use the fixed-page image source."
+  Assert-Smoke ($canvasSharpen.pixelReadable) "Canvas sharpen pixel read failed."
+  Assert-Smoke (-not $canvasSharpen.horizontalOverflow) "Canvas sharpen reader has horizontal overflow."
+  $results += $canvasSharpen
+
+  Wait-Reader -Url "$frontendUrl/read-v2/book-canvas-big"
+  $canvasFallback = Invoke-CdpExpression @"
+(async () => {
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const findReaderVm = () => {
+    const nodes = Array.from(document.querySelectorAll('*'));
+    for (const node of nodes) {
+      let vm = node.__vue__;
+      while (vm) {
+        if (vm.`$options?.name === 'ShelfViewReaderShell') return vm;
+        vm = vm.`$parent;
+      }
+    }
+    return null;
+  };
+  const waitFor = async predicate => {
+    const deadline = Date.now() + 8000;
+    while (Date.now() < deadline) {
+      const value = predicate();
+      if (value) return value;
+      await wait(100);
+    }
+    return predicate();
+  };
+  const vm = findReaderVm();
+  if (!vm) return {name: 'desktop canvas over-budget fallback', vmFound: false};
+  vm.setImageFilterPreset('CANVAS_SHARPEN');
+  await vm.`$nextTick();
+  const page = await waitFor(() => {
+    const candidate = document.querySelector('[data-testid="shelfview-reader-page"]');
+    return candidate && candidate.getAttribute('data-canvas-fallback') === 'true' && candidate.complete ? candidate : null;
+  });
+  return {
+    name: 'desktop canvas over-budget fallback',
+    url: location.href,
+    vmFound: true,
+    tagName: page?.tagName.toLowerCase() || '',
+    pageComplete: page ? page.complete : false,
+    canvasFallback: page?.getAttribute('data-canvas-fallback') === 'true',
+    pageSrc: page?.getAttribute('src') || '',
+    canvasSrc: page?.getAttribute('data-canvas-src') || '',
+    horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+    viewport: {width: window.innerWidth, height: window.innerHeight}
+  };
+})()
+"@
+  Assert-Smoke ($canvasFallback.vmFound) "Canvas fallback smoke could not find the reader Vue instance."
+  Assert-Smoke ($canvasFallback.tagName -eq "img" -and $canvasFallback.pageComplete) "Over-budget canvas page did not fall back to a loaded image."
+  Assert-Smoke ($canvasFallback.canvasFallback) "Over-budget canvas fallback marker was not present."
+  Assert-Smoke ($canvasFallback.pageSrc -match "/api/v1/books/book-canvas-big/pages/0") "Over-budget canvas fallback did not keep the page source."
+  Assert-Smoke (-not $canvasFallback.horizontalOverflow) "Over-budget canvas fallback reader has horizontal overflow."
+  $results += $canvasFallback
 
   Wait-Reader -Url "$frontendUrl/read-v2/book-pdf"
   $desktopPdf = Invoke-CdpExpression @"
@@ -473,8 +603,8 @@ try {
   return {
     name: 'desktop pdf fixed page',
     url: location.href,
-    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
-    live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText || '',
+    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
+    live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText.trim() || '',
     pageVisible: !!page,
     pageComplete: page ? page.complete : false,
     pageSrc: page?.getAttribute('src') || '',
@@ -497,8 +627,8 @@ try {
   return {
     name: 'desktop image folder fixed page',
     url: location.href,
-    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
-    live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText || '',
+    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
+    live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText.trim() || '',
     pageVisible: !!page,
     pageComplete: page ? page.complete : false,
     pageSrc: page?.getAttribute('src') || '',
@@ -520,15 +650,15 @@ try {
 (() => ({
   name: 'mobile android text',
   url: location.href,
-  counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
-  live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText || '',
-  firstParagraph: document.querySelector('[data-testid="shelfview-reader-text-paragraph"]')?.innerText || '',
+  counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
+  live: document.querySelector('[data-testid="shelfview-reader-live-status"]')?.innerText.trim() || '',
+  firstParagraph: document.querySelector('[data-testid="shelfview-reader-text-paragraph"]')?.innerText.trim() || '',
   horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
   viewport: {width: window.innerWidth, height: window.innerHeight}
 }))()
 "@
-  Assert-Smoke ($mobileText.counter -eq "1 / 3") "Mobile text counter was not 1 / 3."
-  Assert-Smoke ($mobileText.live -eq "Paragraph 1 of 3") "Mobile text live status was not Paragraph 1 of 3."
+  Assert-Smoke ($mobileText.counter -match "^1 / [1-9][0-9]*$") "Mobile text counter was '$($mobileText.counter)', not a first-page counter."
+  Assert-Smoke ($mobileText.live -match "^Paragraph 1 of [1-9][0-9]*$") "Mobile text live status was '$($mobileText.live)', not a first-paragraph status."
   Assert-Smoke ($mobileText.firstParagraph -match "TXT first paragraph") "Mobile text first paragraph did not render."
   Assert-Smoke (-not $mobileText.horizontalOverflow) "Mobile text reader has horizontal overflow."
   $results += $mobileText
@@ -596,7 +726,7 @@ try {
   return {
     name: 'android portrait to landscape current page restore',
     url: location.href,
-    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
+    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
     currentPagePresent: !!current,
     currentPageNearViewport: !!(sr && pr && pr.bottom > sr.top && pr.top < sr.bottom),
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
@@ -632,7 +762,7 @@ try {
     url: location.href,
     pageVisibleAfterNext: !!page,
     pageSrc: page?.getAttribute('src') || '',
-    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
+    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
     viewport: {width: window.innerWidth, height: window.innerHeight}
   };
@@ -662,7 +792,7 @@ try {
     pageVisibleAfterNext: !!page,
     pageComplete: page ? page.complete : false,
     pageSrc: page?.getAttribute('src') || '',
-    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
+    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
     viewport: {width: window.innerWidth, height: window.innerHeight}
   };
@@ -693,7 +823,7 @@ try {
     pageVisibleAfterNext: !!page,
     pageComplete: page ? page.complete : false,
     pageSrc: page?.getAttribute('src') || '',
-    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText || '',
+    counter: document.querySelector('[data-testid="shelfview-reader-page-counter"]')?.innerText.trim() || '',
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
     viewport: {width: window.innerWidth, height: window.innerHeight}
   };

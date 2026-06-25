@@ -36,6 +36,7 @@ import talesFonts from './plugins/tales-fonts.plugin'
 import shelfViewManifest from './shelfview/plugins/shelfview-manifest.plugin'
 import shelfViewState from './shelfview/plugins/shelfview-state.plugin'
 import shelfViewText from './shelfview/plugins/shelfview-text.plugin'
+import {registerShelfViewServiceWorker} from './shelfview/functions/offline-pwa'
 import vuetify from './plugins/vuetify'
 import logger from './plugins/logger.plugin'
 import './public-path'
@@ -100,6 +101,8 @@ new Vue({
   i18n,
   render: h => h(App),
 }).$mount('#app')
+
+registerShelfViewServiceWorker()
 
 declare module 'vue/types/vue' {
   interface Vue {

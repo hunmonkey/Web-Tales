@@ -80,11 +80,13 @@ closed as "not pursued for now" rather than treated as active development work.
 
 ## Deferred after closure
 
-- [ ] PDF.js text layer, search and document links
-- [ ] WebGL sharpening, background cleanup and adaptive monochrome
-- [ ] Browser-local file opening with zip.js
-- [ ] Offline PWA
-- [ ] EPUB reader unification
+- [x] PDF.js text layer, search and document links closed by owner-declined
+  reader/PDF recommendation items 7-8; ADR-0011 remains future planning only
+  until explicit owner approval
+- [x] WebGL sharpening, background cleanup and adaptive monochrome
+- [x] Browser-local file opening with zip.js
+- [x] Offline PWA
+- [x] EPUB reader unification
 
 ## Reopened Quick Wins from `0620.txt`
 
@@ -181,20 +183,30 @@ implement any of these candidates.
   screens after owner confirmation
 - [x] SV-991 Batch or summarize user latest-authentication activity for the
   Users screen instead of one request per listed user
-- [ ] SV-992 Metrics page polish: reduce per-library metric request fan-out,
+- [x] SV-992 Metrics page polish: reduce per-library metric request fan-out,
   add visible empty/error states and decide whether read-progress metrics belong
   on the page
-- [ ] SV-993 Browser/device evidence pass for Canvas sharpen and future
+- [x] SV-993 Browser/device evidence pass for Canvas sharpen and future
   image-quality modes
-- [ ] SV-994 EPUB bridge rollout planning and first implementation slice
-- [ ] SV-995 PDF text layer, search and document-link exploration with ADR
-- [ ] SV-996 Archive expansion triage for nested RAR/7Z and mixed top-level
+- [x] SV-994 EPUB bridge rollout planning and first implementation slice
+- [x] SV-995 PDF text layer, search and document-link exploration with ADR
+- [x] SV-996 Archive expansion triage for nested RAR/7Z and mixed top-level
   TXT/PDF plus nested image chapters
+
+## Deferred after SV-996 archive triage
+
+- [x] SV-997 Mixed ZIP one-level nested ZIP/CBZ image chapters
+- [x] SV-998 Nested RAR/CBR support spike and ADR
+- [x] SV-999 7Z top-level support spike and ADR
+- [x] SV-1000 Mixed folder-book model ADR for TXT/PDF plus image chapter
+  archives
 
 ## Deferred after SV-930 closure
 
-- [ ] Owner-approved server/account-synced dictionary provider storage
+- [x] SV-1001 Server/account-synced dictionary provider storage ADR
+- [x] Owner-approved server/account-synced dictionary provider storage
+  implementation
 
 ## Deferred after SV-950 closure
 
-- [ ] Browser/device performance evidence for Canvas sharpen and future WebGL image-quality modes
+- [x] Browser/device performance evidence for Canvas sharpen and future WebGL image-quality modes

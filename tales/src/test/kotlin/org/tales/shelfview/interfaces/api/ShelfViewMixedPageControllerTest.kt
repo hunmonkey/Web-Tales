@@ -144,6 +144,78 @@ class ShelfViewMixedPageControllerTest(
 
   @Test
   @WithMockCustomUser
+  fun `given mixed zip nested cbz image chapter when getting page then returns sorted image bytes`(
+    @TempDir dir: Path,
+  ) {
+    val firstPageBytes = pngBytes(color = Color.WHITE)
+    val secondPageBytes = pngBytes(color = Color.BLACK)
+    val chapterBytes =
+      zipBytes(
+        mapOf(
+          "images/002.png" to secondPageBytes,
+          "images/001.png" to firstPageBytes,
+        ),
+      )
+    val zip = dir.resolve("mixed-nested.zip")
+    writeZip(zip, mapOf("ch01.cbz" to chapterBytes))
+    val book = createBookWithMedia(zip)
+    val itemId = mixedItemId("ch01.cbz", chapterBytes.size.toLong())
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1")
+      .andExpect {
+        status { isOk() }
+        header { string(HttpHeaders.CONTENT_TYPE, "image/png") }
+        content { bytes(firstPageBytes) }
+      }
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/2")
+      .andExpect {
+        status { isOk() }
+        header { string(HttpHeaders.CONTENT_TYPE, "image/png") }
+        content { bytes(secondPageBytes) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given mixed zip nested cbz page number over chapter count when getting page then returns bad request`(
+    @TempDir dir: Path,
+  ) {
+    val chapterBytes = zipBytes(mapOf("images/001.png" to pngBytes()))
+    val zip = dir.resolve("mixed-nested.zip")
+    writeZip(zip, mapOf("ch01.cbz" to chapterBytes))
+    val book = createBookWithMedia(zip)
+    val itemId = mixedItemId("ch01.cbz", chapterBytes.size.toLong())
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/2")
+      .andExpect {
+        status { isBadRequest() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given mixed zip nested cbz with non image entry when getting page then returns bad request`(
+    @TempDir dir: Path,
+  ) {
+    val chapterBytes = zipBytes(mapOf("chapter.txt" to "not an image".toByteArray(StandardCharsets.UTF_8)))
+    val zip = dir.resolve("mixed-nested.zip")
+    writeZip(zip, mapOf("ch01.cbz" to chapterBytes))
+    val book = createBookWithMedia(zip)
+    val itemId = mixedItemId("ch01.cbz", chapterBytes.size.toLong())
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1")
+      .andExpect {
+        status { isBadRequest() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
   fun `given mixed zip image page number over one when getting page then returns bad request`(
     @TempDir dir: Path,
   ) {
@@ -337,6 +409,18 @@ class ShelfViewMixedPageControllerTest(
     }
   }
 
+  private fun zipBytes(entries: Map<String, ByteArray>): ByteArray =
+    ByteArrayOutputStream().use { output ->
+      ZipOutputStream(output).use { zip ->
+        entries.forEach { (name, bytes) ->
+          zip.putNextEntry(ZipEntry(name))
+          zip.write(bytes)
+          zip.closeEntry()
+        }
+      }
+      output.toByteArray()
+    }
+
   private fun mixedItemId(
     normalizedEntryName: String,
     fileSize: Long,
@@ -362,6 +446,26 @@ class ShelfViewMixedPageControllerTest(
 
     return ByteArrayOutputStream().use { output ->
       ImageIO.write(image, "JPEG", output)
+      output.toByteArray()
+    }
+  }
+
+  private fun pngBytes(
+    width: Int = 2,
+    height: Int = 2,
+    color: Color = Color.WHITE,
+  ): ByteArray {
+    val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+    val graphics = image.createGraphics()
+    try {
+      graphics.color = color
+      graphics.fillRect(0, 0, width, height)
+    } finally {
+      graphics.dispose()
+    }
+
+    return ByteArrayOutputStream().use { output ->
+      ImageIO.write(image, "PNG", output)
       output.toByteArray()
     }
   }

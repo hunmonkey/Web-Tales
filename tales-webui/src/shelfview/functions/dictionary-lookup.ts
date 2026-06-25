@@ -37,7 +37,8 @@ export interface ShelfViewDictionaryPack {
 export interface ShelfViewDictionaryLookupResult {
   key: string,
   kind: ShelfViewDictionaryProviderKind,
-  providerLabelKey: string,
+  providerLabelKey?: string,
+  providerLabel?: string,
   actionLabelKey?: string,
   term?: string,
   definition?: string,
@@ -45,6 +46,23 @@ export interface ShelfViewDictionaryLookupResult {
   sourceUrl?: string,
   licenseName?: string,
   url?: string,
+}
+
+export interface ShelfViewDictionaryProviderDto {
+  id: string,
+  kind: ShelfViewDictionaryProviderKind,
+  label: string,
+  enabled: boolean,
+  sourceName: string,
+  sourceUrl?: string,
+  retrievedAt?: string,
+  licenseName: string,
+  licenseUrl?: string,
+  attribution?: string,
+  redistributionNotes?: string,
+  entryCount: number,
+  createdAt: string,
+  updatedAt: string,
 }
 
 export function shelfViewNormalizeDictionaryQuery(text: string): string {
@@ -88,6 +106,7 @@ export function shelfViewWebDictionaryUrl(query: string): string {
 export function shelfViewDictionaryLookupResults(
   query: string,
   localEntries: ShelfViewDictionaryLocalEntry[] = [],
+  serverResults: ShelfViewDictionaryLookupResult[] = [],
 ): ShelfViewDictionaryLookupResult[] {
   const normalizedQuery = shelfViewNormalizeDictionaryQuery(query)
   if (!normalizedQuery) return []
@@ -107,6 +126,7 @@ export function shelfViewDictionaryLookupResults(
     }))
 
   return [
+    ...serverResults,
     ...localResults,
     {
       key: 'web-lookup',

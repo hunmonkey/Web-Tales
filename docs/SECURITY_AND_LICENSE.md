@@ -38,6 +38,14 @@ Before adding a package:
 6. Is it pinned and covered by tests?
 7. Is the reason documented in the PR and notices?
 
+## Reviewed product dependencies
+
+- `@zip.js/zip.js` `2.8.26`, BSD-3-Clause: approved for the browser-local
+  `/read-local` ZIP/CBZ image-opening route only. It is pinned, dynamically
+  imported by the local reader, called with `useWebWorkers: false`, adds no
+  native binary or network behavior, and no source code was copied into the
+  repository.
+
 ## Stop and escalate
 
 Create an ADR and request owner review for:

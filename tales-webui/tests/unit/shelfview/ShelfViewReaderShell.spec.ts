@@ -65,6 +65,22 @@ const nextBook = {
   },
 } as unknown as BookDto
 
+const epubBook = {
+  ...book,
+  name: 'EPUB Book',
+  media: {
+    ...book.media,
+    mediaType: 'application/epub+zip',
+    mediaProfile: 'EPUB',
+    pagesCount: 0,
+    epubDivinaCompatible: false,
+  },
+  metadata: {
+    ...book.metadata,
+    title: 'EPUB Book',
+  },
+} as unknown as BookDto
+
 const series = {
   id: 'series-1',
   metadata: {
@@ -111,6 +127,39 @@ const textManifest: ShelfViewManifest = {
     doublePage: false,
     continuousScroll: true,
     rtl: false,
+    imageFilters: false,
+  },
+}
+
+const epubManifest: ShelfViewManifest = {
+  schemaVersion: 1,
+  bookId: 'book-1',
+  title: 'EPUB Book',
+  kind: 'EPUB_WEBPUB',
+  sourceFormat: 'EPUB',
+  contentFingerprint: 'tales-file-state:book-1-epub',
+  epub: {
+    webpubManifestEndpoint: '/api/v1/books/book-1/manifest/epub',
+    positionsEndpoint: '/api/v1/books/book-1/positions',
+  },
+  contents: [
+    {
+      label: 'Chapter 1',
+      locator: {
+        schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+        kind: 'EPUB',
+        href: 'Text/chapter.xhtml',
+        title: 'Chapter 1',
+        contentFingerprint: 'tales-file-state:book-1-epub',
+      },
+    },
+  ],
+  capabilities: {
+    search: false,
+    textSelection: true,
+    doublePage: false,
+    continuousScroll: true,
+    rtl: true,
     imageFilters: false,
   },
 }
@@ -365,7 +414,7 @@ describe('ShelfViewReaderShell', () => {
   it('does not expose a legacy-reader fallback from ShelfView', async () => {
     const wrapper = mountShell({
       getManifest: jest.fn().mockResolvedValue(manifest),
-      routeQuery: {context: 'series', contextId: 'series-1', incognito: 'true'},
+      routeQuery: {context: 'SERIES', contextId: 'series-1', incognito: 'true'},
     })
 
     await flushPromises()
@@ -373,6 +422,83 @@ describe('ShelfViewReaderShell', () => {
 
     expect(wrapper.html()).not.toContain('mdi-book-open-page-variant')
     expect(wrapper.text()).not.toContain('browse_book.read_book')
+  })
+
+  it('opens an EPUB bridge manifest without loading ShelfView saved state', async () => {
+    const getManifest = jest.fn().mockResolvedValue(epubManifest)
+    const getPosition = jest.fn().mockResolvedValue(undefined)
+    const getBookmarks = jest.fn().mockResolvedValue([])
+    const getHighlights = jest.fn().mockResolvedValue([])
+    const getPreference = jest.fn().mockResolvedValue(undefined)
+    const wrapper = mountShell({
+      getManifest,
+      shelfViewState: {
+        getPosition,
+        getBookmarks,
+        getHighlights,
+        getPreference,
+      },
+      talesBooks: {
+        getBook: jest.fn().mockResolvedValue(epubBook),
+      },
+      routeQuery: {context: 'SERIES', contextId: 'series-1', incognito: 'true'},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(getManifest).toHaveBeenCalledWith('book-1')
+    expect(wrapper.find('[data-testid="shelfview-reader-epub-bridge"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-empty"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(false)
+    expect((wrapper.vm as any).adapter).toBeUndefined()
+    expect((wrapper.vm as any).contentsAvailable).toBe(false)
+    expect(getPosition).not.toHaveBeenCalled()
+    expect(getBookmarks).not.toHaveBeenCalled()
+    expect(getHighlights).not.toHaveBeenCalled()
+    expect(getPreference).not.toHaveBeenCalled()
+
+    await wrapper.find('[data-testid="shelfview-reader-epub-open"]').trigger('click')
+
+    expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
+      name: 'read-epub',
+      params: {bookId: 'book-1'},
+      query: {
+        context: 'SERIES',
+        contextId: 'series-1',
+        incognito: 'true',
+      },
+    })
+  })
+
+  it('keeps Divina-compatible EPUB fallback on the legacy fixed-page reader', async () => {
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(epubManifest),
+      talesBooks: {
+        getBook: jest.fn().mockResolvedValue({
+          ...epubBook,
+          media: {
+            ...epubBook.media,
+            epubDivinaCompatible: true,
+          },
+        }),
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-reader-epub-open"]').trigger('click')
+
+    expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
+      name: 'read-book',
+      params: {bookId: 'book-1'},
+      query: {
+        context: undefined,
+        contextId: undefined,
+        incognito: undefined,
+      },
+    })
   })
 
   it('loads a text manifest and renders escaped paragraphs', async () => {
@@ -1236,6 +1362,88 @@ describe('ShelfViewReaderShell', () => {
       expect(wrapper.find('[data-testid="shelfview-dictionary-definition"] b').exists()).toBe(false)
       expect(wrapper.find('[data-testid="shelfview-dictionary-source"]').text()).toBe('Test local pack')
       expect(results.at(1).attributes('data-provider-kind')).toBe('WEB_LOOKUP')
+    } finally {
+      if (hadGetSelection) {
+        Object.defineProperty(window, 'getSelection', {
+          configurable: true,
+          value: originalGetSelection,
+        })
+      } else {
+        delete (window as any).getSelection
+      }
+    }
+  })
+
+  it('renders account-synced dictionary results before local and web fallback', async () => {
+    const getManifest = jest.fn().mockResolvedValue(textManifest)
+    const getDictionaryProviders = jest.fn().mockResolvedValue([
+      {
+        id: 'provider-1',
+        kind: 'LOCAL_PACK',
+        label: 'Server pack',
+        enabled: true,
+        sourceName: 'Server pack',
+        licenseName: 'First-party test data',
+        entryCount: 1,
+        createdAt: 'now',
+        updatedAt: 'now',
+      },
+    ])
+    const lookupDictionary = jest.fn().mockResolvedValue([
+      {
+        key: 'server-entry-1',
+        kind: 'LOCAL_PACK',
+        providerLabel: 'Server pack',
+        term: '첫 번째',
+        definition: '서버에 저장된 뜻',
+        sourceName: 'Server pack',
+      },
+    ])
+    const deleteDictionaryProvider = jest.fn().mockResolvedValue(undefined)
+    const hadGetSelection = 'getSelection' in window
+    const originalGetSelection = window.getSelection
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: jest.fn(() => ({
+        toString: () => '첫 번째',
+      })),
+    })
+
+    try {
+      const wrapper = mountShell({
+        getManifest,
+        shelfViewState: {
+          getDictionaryProviders,
+          lookupDictionary,
+          deleteDictionaryProvider,
+        },
+      })
+
+      await flushPromises()
+      await Vue.nextTick()
+      await wrapper.setData({
+        dictionaryLocalEntries: [{
+          term: '첫 번째',
+          definition: '브라우저-local 뜻',
+          sourceName: 'Browser pack',
+        }],
+      })
+
+      await wrapper.find('[data-testid="shelfview-reader-dictionary-toggle"]').trigger('click')
+      await flushPromises()
+      await Vue.nextTick()
+
+      const results = wrapper.findAll('[data-testid="shelfview-dictionary-result"]')
+      expect(results).toHaveLength(3)
+      expect(lookupDictionary).toHaveBeenCalledWith('첫 번째')
+      expect(results.at(0).text()).toContain('Server pack')
+      expect(results.at(0).text()).toContain('서버에 저장된 뜻')
+      expect(results.at(1).text()).toContain('브라우저-local 뜻')
+
+      await wrapper.find('[data-testid="shelfview-dictionary-clear"]').trigger('click')
+      await flushPromises()
+
+      expect(deleteDictionaryProvider).toHaveBeenCalledWith('provider-1')
     } finally {
       if (hadGetSelection) {
         Object.defineProperty(window, 'getSelection', {
@@ -2655,6 +2863,27 @@ describe('ShelfViewReaderShell', () => {
     const page = wrapper.find('[data-testid="shelfview-reader-page"]')
     expect(page.element.tagName.toLowerCase()).toBe('canvas')
     expect(page.attributes('data-canvas-src')).toBe('http://api.test/api/v1/books/book-1/pages/0?zero_based=true')
+    expect(page.attributes('data-canvas-mode')).toBe('SHARPEN')
+  })
+
+  it('passes advanced image processing modes to the canvas page', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.setData({imageFilterPreset: 'WEBGL_SHARPEN'})
+    await Vue.nextTick()
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('data-canvas-mode')).toBe('WEBGL_SHARPEN')
+
+    await wrapper.setData({imageFilterPreset: 'BACKGROUND_CLEANUP'})
+    await Vue.nextTick()
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('data-canvas-mode')).toBe('BACKGROUND_CLEANUP')
+
+    await wrapper.setData({imageFilterPreset: 'ADAPTIVE_MONO'})
+    await Vue.nextTick()
+    expect(wrapper.find('[data-testid="shelfview-reader-page"]').attributes('data-canvas-mode')).toBe('ADAPTIVE_MONO')
   })
 
   it('keeps continuous scroll on the normal image path for canvas sharpen', async () => {
@@ -2904,6 +3133,10 @@ function mountShell({
       sources: [],
     }),
     savePreference: jest.fn().mockResolvedValue({}),
+    getDictionaryProviders: jest.fn().mockResolvedValue([]),
+    importDictionaryLocalPack: jest.fn().mockResolvedValue({}),
+    deleteDictionaryProvider: jest.fn().mockResolvedValue(undefined),
+    lookupDictionary: jest.fn().mockResolvedValue([]),
     ...shelfViewState,
   }
   const textService = {
@@ -2995,13 +3228,14 @@ function mountShell({
         `,
       },
       ShelfViewCanvasImagePage: {
-        props: ['src', 'alt', 'pageIndex', 'reloadNonce', 'pageClass', 'pageStyle'],
+        props: ['src', 'alt', 'pageIndex', 'reloadNonce', 'pageClass', 'pageStyle', 'mode'],
         template: `
           <canvas
             class="shelfview-reader-shell__page shelfview-page-content"
             :class="pageClass"
             :style="pageStyle"
             :data-canvas-src="src"
+            :data-canvas-mode="mode"
             :aria-label="alt"
             :data-page-index="pageIndex"
             :data-page-reload="reloadNonce"

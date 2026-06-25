@@ -128,6 +128,57 @@ describe('ShelfViewStateService', () => {
     })
   })
 
+  it('fetches, imports, deletes and looks up dictionary providers', async () => {
+    const provider = {
+      id: 'provider-1',
+      kind: 'LOCAL_PACK',
+      label: 'Test Dictionary',
+      enabled: true,
+      sourceName: 'Test Dictionary',
+      licenseName: 'First-party test data',
+      entryCount: 1,
+      createdAt: 'now',
+      updatedAt: 'now',
+    }
+    const lookup = {
+      key: 'server-entry-1',
+      kind: 'LOCAL_PACK',
+      providerId: 'provider-1',
+      providerLabel: 'Test Dictionary',
+      term: '첫 번째',
+      definition: '서버 뜻',
+    }
+    const pack = {
+      schemaVersion: 1 as const,
+      metadata: {
+        sourceName: 'Test Dictionary',
+        licenseName: 'First-party test data',
+      },
+      entries: [
+        {
+          term: '첫 번째',
+          definition: '서버 뜻',
+        },
+      ],
+    }
+    const get = jest.fn()
+      .mockResolvedValueOnce({data: [provider]})
+      .mockResolvedValueOnce({data: [lookup]})
+    const post = jest.fn().mockResolvedValue({data: provider})
+    const deleteFn = jest.fn().mockResolvedValue({})
+    const service = new ShelfViewStateService({get, post, delete: deleteFn} as unknown as AxiosInstance)
+
+    await expect(service.getDictionaryProviders()).resolves.toEqual([provider])
+    await expect(service.importDictionaryLocalPack(pack)).resolves.toEqual(provider)
+    await service.deleteDictionaryProvider('provider-1')
+    await expect(service.lookupDictionary('첫 번째')).resolves.toEqual([lookup])
+
+    expect(get).toHaveBeenNthCalledWith(1, '/api/shelfview/v1/dictionary/providers')
+    expect(post).toHaveBeenCalledWith('/api/shelfview/v1/dictionary/providers/local-pack', pack)
+    expect(deleteFn).toHaveBeenCalledWith('/api/shelfview/v1/dictionary/providers/provider-1')
+    expect(get).toHaveBeenNthCalledWith(2, '/api/shelfview/v1/dictionary/lookup', {params: {query: '첫 번째'}})
+  })
+
   it('maps state API failures to ShelfView errors', async () => {
     const get = jest.fn().mockRejectedValue({
       response: {

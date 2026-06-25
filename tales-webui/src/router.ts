@@ -292,6 +292,11 @@ const router = new Router({
       props: (route) => ({bookId: route.params.bookId}),
     },
     {
+      path: '/read-local',
+      name: 'read-local',
+      component: () => import(/* webpackChunkName: "read-local" */ './shelfview/views/ShelfViewLocalReader.vue'),
+    },
+    {
       path: '/book/:bookId/read-epub',
       name: 'read-epub',
       component: () => import(/* webpackChunkName: "read-epub" */ './views/EpubReader.vue'),
@@ -316,7 +321,7 @@ const router = new Router({
 
 router.beforeEach((to, from, next) => {
   // avoid document.title flickering when changing route
-  if (!['read-book', 'read-book-v2', 'read-epub', 'browse-book', 'browse-oneshot', 'browse-series', 'browse-libraries', 'browse-books',
+  if (!['read-book', 'read-book-v2', 'read-local', 'read-epub', 'browse-book', 'browse-oneshot', 'browse-series', 'browse-libraries', 'browse-books',
     'recommended-libraries', 'browse-collection', 'browse-collections', 'browse-readlist', 'browse-readlists'].includes(<string>to.name)
   ) {
     document.title = 'Tales'

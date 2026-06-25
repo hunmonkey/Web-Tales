@@ -29,7 +29,7 @@ class ZipExtractorTest {
 
     assertThat(entries).hasSize(1)
     with(entries.first()) {
-      assertThat(name).isEqualTo("komga.png")
+      assertThat(name).isEqualTo("tales.png")
       assertThat(mediaType).isEqualTo("image/png")
       assertThat(dimension).isEqualTo(Dimension(48, 48))
       assertThat(fileSize).isEqualTo(3108)
@@ -44,7 +44,7 @@ class ZipExtractorTest {
 
     assertThat(entries).hasSize(1)
     with(entries.first()) {
-      assertThat(name).isEqualTo("komga.png")
+      assertThat(name).isEqualTo("tales.png")
       assertThat(mediaType).isEqualTo("image/png")
       assertThat(dimension).isNull()
       assertThat(fileSize).isEqualTo(3108)

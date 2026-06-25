@@ -1,9 +1,10 @@
 import {AxiosInstance} from 'axios'
-import {MetricDto, Tag} from '@/types/tales-metrics'
+import {MetricDto, MetricsSummaryDto, Tag} from '@/types/tales-metrics'
 
 const qs = require('qs')
 
 const API_METRICS = '/actuator/metrics'
+const API_METRICS_SUMMARY = '/api/v2/metrics/summary'
 
 export default class TalesMetricsService {
   private http: AxiosInstance
@@ -28,6 +29,10 @@ export default class TalesMetricsService {
       }
       throw new Error(msg)
     }
+  }
+
+  async getSummary(): Promise<MetricsSummaryDto> {
+    return (await this.http.get(API_METRICS_SUMMARY)).data
   }
 
   private static tagQuery(tags: Tag[]): string[] {

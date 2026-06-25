@@ -5,6 +5,7 @@ import {
   ShelfViewImageFilterPreset,
   shelfViewImageFilterPrimaryPreset,
   shelfViewImageFilterPreset,
+  shelfViewImageFilterProcessingMode,
   shelfViewImageFilterStyle,
   shelfViewImageFilterUsesCanvas,
   shelfViewNextImageFilterPreset,
@@ -37,6 +38,18 @@ describe('ShelfView image filter presets', () => {
       '--sv-contrast': '1',
       '--sv-saturate': '1',
     })
+    expect(shelfViewImageFilterStyle('WEBGL_SHARPEN')).toMatchObject({
+      '--sv-brightness': '1',
+      '--sv-contrast': '1',
+    })
+    expect(shelfViewImageFilterStyle('BACKGROUND_CLEANUP')).toMatchObject({
+      '--sv-brightness': '1',
+      '--sv-contrast': '1',
+    })
+    expect(shelfViewImageFilterStyle('ADAPTIVE_MONO')).toMatchObject({
+      '--sv-brightness': '1',
+      '--sv-contrast': '1',
+    })
     expect(shelfViewImageFilterStyle('MONO_COMIC')).toMatchObject({
       '--sv-contrast': '1.18',
       '--sv-grayscale': '1',
@@ -61,6 +74,9 @@ describe('ShelfView image filter presets', () => {
     expect(SHELFVIEW_IMAGE_FILTER_PRIMARY).toEqual(['ORIGINAL', 'IMAGE_ENHANCE', 'MONO_COMIC', 'NIGHT_INVERT'])
     expect(SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS.map(option => option.id)).toEqual(SHELFVIEW_IMAGE_FILTER_PRIMARY)
     expect(SHELFVIEW_IMAGE_FILTER_PRIMARY).not.toContain('CANVAS_SHARPEN')
+    expect(SHELFVIEW_IMAGE_FILTER_PRIMARY).not.toContain('WEBGL_SHARPEN')
+    expect(SHELFVIEW_IMAGE_FILTER_PRIMARY).not.toContain('BACKGROUND_CLEANUP')
+    expect(SHELFVIEW_IMAGE_FILTER_PRIMARY).not.toContain('ADAPTIVE_MONO')
     expect(SHELFVIEW_IMAGE_FILTER_PRIMARY.length).toBeLessThanOrEqual(4)
   })
 
@@ -69,8 +85,15 @@ describe('ShelfView image filter presets', () => {
     expect(shelfViewImageFilterPrimaryPreset('CANVAS_SHARPEN')).toBe('ORIGINAL')
   })
 
-  it('marks only the canvas sharpen preset as canvas-backed', () => {
+  it('maps advanced image processing presets to canvas modes', () => {
     expect(shelfViewImageFilterUsesCanvas('CANVAS_SHARPEN')).toBe(true)
+    expect(shelfViewImageFilterUsesCanvas('WEBGL_SHARPEN')).toBe(true)
+    expect(shelfViewImageFilterUsesCanvas('BACKGROUND_CLEANUP')).toBe(true)
+    expect(shelfViewImageFilterUsesCanvas('ADAPTIVE_MONO')).toBe(true)
     expect(shelfViewImageFilterUsesCanvas('IMAGE_ENHANCE')).toBe(false)
+    expect(shelfViewImageFilterProcessingMode('CANVAS_SHARPEN')).toBe('SHARPEN')
+    expect(shelfViewImageFilterProcessingMode('WEBGL_SHARPEN')).toBe('WEBGL_SHARPEN')
+    expect(shelfViewImageFilterProcessingMode('BACKGROUND_CLEANUP')).toBe('BACKGROUND_CLEANUP')
+    expect(shelfViewImageFilterProcessingMode('ADAPTIVE_MONO')).toBe('ADAPTIVE_MONO')
   })
 })

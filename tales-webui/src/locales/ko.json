@@ -181,6 +181,15 @@
     "continue_label": "읽는 중 {count}",
     "continue_tooltip": "읽다 만 책만 보기"
   },
+  "shelfview_local_reader": {
+    "title": "로컬 리더",
+    "open": "로컬 파일 열기",
+    "previous": "이전 페이지",
+    "next": "다음 페이지",
+    "clear": "비우기",
+    "empty": "이 기기에서 ZIP 또는 CBZ 파일을 선택하세요.",
+    "error_open": "로컬 파일을 열 수 없습니다."
+  },
   "shelfview_reader": {
     "close": "닫기",
     "previous_page": "이전 페이지",
@@ -282,6 +291,7 @@
     "page_gap": "페이지 간격",
     "cover_single": "두 쪽 보기에서 표지는 단독으로 보기",
     "background": "배경",
+    "image_processing": "이미지 처리",
     "brightness": "밝기",
     "contrast": "대비",
     "paragraph": "문단 간격",
@@ -323,11 +333,17 @@
     "filter_image_enhance": "이미지 향상",
     "filter_faded_scan": "바랜 스캔 보정",
     "filter_canvas_sharpen": "캔버스 선명화 실험",
+    "filter_webgl_sharpen": "WebGL 선명화",
+    "filter_background_cleanup": "배경 정리",
+    "filter_adaptive_mono": "적응형 흑백",
     "filter_eye_comfort": "눈 편안함",
     "filter_mono_comic": "흑백 만화",
     "filter_low_light": "저조도",
     "filter_night_invert": "야간 반전",
     "filter_oled_text": "OLED 텍스트",
+    "epub_bridge_title": "EPUB 리더",
+    "epub_bridge_message": "이 책은 EPUB 리더로 여세요.",
+    "epub_bridge_open": "EPUB 리더 열기",
     "empty_text": "이 책에서 읽을 수 있는 텍스트가 없습니다.",
     "empty_pages": "이 책에서 읽을 수 있는 페이지가 없습니다.",
     "try_again": "다시 시도",
@@ -1127,10 +1143,12 @@
     "unpin": "고정 해제"
   },
   "metrics": {
+    "error_loading": "통계를 불러올 수 없습니다.",
     "library_books": "서재당 도서",
     "library_disk_space": "서재 디스크 공간",
     "library_series": "서재당 시리즈",
     "library_sidecars": "서재당 사이드카",
+    "no_data": "표시할 통계가 없습니다.",
     "tasks_executed": "실행된 작업",
     "tasks_total_time": "총 작업 시간",
     "title": "통계"

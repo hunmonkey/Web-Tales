@@ -9,6 +9,8 @@
     :aria-label="alt"
     :data-page-index="pageIndex"
     :data-page-reload="reloadNonce"
+    :data-canvas-src="src"
+    :data-canvas-mode="mode"
     data-testid="shelfview-reader-page"
     @dragstart.prevent
   />
@@ -22,6 +24,9 @@
     draggable="false"
     :data-page-index="pageIndex"
     :data-page-reload="reloadNonce"
+    :data-canvas-src="src"
+    :data-canvas-mode="mode"
+    data-canvas-fallback="true"
     data-testid="shelfview-reader-page"
     @error="$emit('error', $event)"
     @dragstart.prevent
@@ -33,7 +38,10 @@ import Vue from 'vue'
 import {
   SHELFVIEW_CANVAS_IMAGE_MAX_PIXELS,
   ShelfViewCanvasImageProcessingMode,
+  shelfViewAdaptiveMonochromeImageData,
+  shelfViewBackgroundCleanupImageData,
   shelfViewCanvasImageWithinPixelBudget,
+  shelfViewRenderWebglSharpen,
   shelfViewSharpenImageData,
 } from '@/shelfview/functions/canvas-image-processing'
 
@@ -107,15 +115,29 @@ export default Vue.extend({
           throw new Error('Canvas image is over the pixel budget')
         }
 
+        if (this.mode === 'WEBGL_SHARPEN' && shelfViewRenderWebglSharpen(canvas, image, width, height)) {
+          this.$emit('processed')
+          return
+        }
+
         canvas.width = width
         canvas.height = height
         const context = canvas.getContext('2d', {willReadFrequently: true})
         if (!context) throw new Error('Canvas 2D context is unavailable')
 
         context.drawImage(image, 0, 0)
-        if (this.mode === 'SHARPEN') {
-          const imageData = context.getImageData(0, 0, width, height)
-          context.putImageData(shelfViewSharpenImageData(imageData), 0, 0)
+        const imageData = context.getImageData(0, 0, width, height)
+        switch (this.mode) {
+          case 'WEBGL_SHARPEN':
+          case 'SHARPEN':
+            context.putImageData(shelfViewSharpenImageData(imageData), 0, 0)
+            break
+          case 'BACKGROUND_CLEANUP':
+            context.putImageData(shelfViewBackgroundCleanupImageData(imageData), 0, 0)
+            break
+          case 'ADAPTIVE_MONO':
+            context.putImageData(shelfViewAdaptiveMonochromeImageData(imageData), 0, 0)
+            break
         }
         this.$emit('processed')
       } catch (_error) {
@@ -129,6 +151,7 @@ export default Vue.extend({
         const image = new Image()
         image.onload = () => resolve(image)
         image.onerror = reject
+        image.crossOrigin = 'use-credentials'
         image.decoding = 'async'
         image.src = src
       })

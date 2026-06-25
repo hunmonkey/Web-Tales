@@ -593,6 +593,31 @@
       </section>
 
       <section
+        v-else-if="epubBridgeVisible"
+        class="shelfview-reader-shell__status"
+        data-testid="shelfview-reader-epub-bridge"
+      >
+        <v-icon
+          size="36"
+          color="grey lighten-1"
+        >
+          mdi-book-open-page-variant
+        </v-icon>
+        <h2>{{ $t('shelfview_reader.epub_bridge_title') }}</h2>
+        <p>{{ $t('shelfview_reader.epub_bridge_message') }}</p>
+        <div class="shelfview-reader-shell__status-actions">
+          <v-btn
+            color="primary"
+            data-testid="shelfview-reader-epub-open"
+            @click="openEpubFallbackReader"
+          >
+            <v-icon left>mdi-book-open-page-variant</v-icon>
+            {{ $t('shelfview_reader.epub_bridge_open') }}
+          </v-btn>
+        </div>
+      </section>
+
+      <section
         v-else-if="empty"
         class="shelfview-reader-shell__status"
         data-testid="shelfview-reader-empty"
@@ -623,6 +648,7 @@
             :reload-nonce="pageImageReloadNonce"
             :page-class="pageImageClass"
             :page-style="imageFilterStyle"
+            :mode="canvasImageProcessingMode"
             @error="onPageImageError"
           />
           <img
@@ -840,7 +866,7 @@
           @change="onDictionaryPackFileSelected"
         />
         <v-btn
-          v-if="dictionaryLocalEntries.length > 0"
+          v-if="dictionaryLocalEntries.length > 0 || dictionaryServerProviders.length > 0"
           small
           outlined
           data-testid="shelfview-dictionary-clear"
@@ -1056,6 +1082,19 @@
           hide-details
           :label="$t('shelfview_reader.background')"
           data-testid="shelfview-reader-fixed-background"
+          @change="onFixedPageDisplaySettingChanged"
+        />
+
+        <v-select
+          v-model="imageFilterPreset"
+          :items="allImageFilterPresetOptions"
+          item-text="text"
+          item-value="value"
+          dense
+          outlined
+          hide-details
+          :label="$t('shelfview_reader.image_processing')"
+          data-testid="shelfview-reader-fixed-image-processing"
           @change="onFixedPageDisplaySettingChanged"
         />
 
@@ -1550,7 +1589,7 @@ import {BookDto} from '@/types/tales-books'
 import {SeriesDto} from '@/types/tales-series'
 import {Context, ContextOrigin} from '@/types/context'
 import {getBookTitleCompact} from '@/functions/book-title'
-import {getBookReadRouteFromMedia} from '@/functions/book-format'
+import {getBookReadRouteFromMedia, getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
 import {
   ShelfViewManifest,
   ShelfViewManifestContentsItem,
@@ -1561,6 +1600,7 @@ import {ReaderAdapter} from '@/shelfview/adapters/reader-adapter'
 import {FixedPageAdapter} from '@/shelfview/adapters/fixed-page-adapter'
 import {TextReflowAdapter} from '@/shelfview/adapters/text-reflow-adapter'
 import {MixedContentAdapter} from '@/shelfview/adapters/mixed-content-adapter'
+import {EpubWebPubAdapter} from '@/shelfview/adapters/epub-webpub-adapter'
 import ShelfViewControlMenu from '@/shelfview/components/ShelfViewControlMenu.vue'
 import ShelfViewCanvasImagePage from '@/shelfview/components/ShelfViewCanvasImagePage.vue'
 import {ShelfViewControlMenuOption} from '@/shelfview/models/shelfview-control-menu'
@@ -1604,9 +1644,10 @@ import {
 } from '@/shelfview/functions/fixed-page-view'
 import {
   SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS,
+  SHELFVIEW_IMAGE_FILTER_PRESETS,
   ShelfViewImageFilterPreset,
-  shelfViewImageFilterPrimaryPreset,
   shelfViewImageFilterPreset,
+  shelfViewImageFilterProcessingMode,
   shelfViewImageFilterStyle,
   shelfViewImageFilterUsesCanvas,
 } from '@/shelfview/functions/image-filter-presets'
@@ -1629,6 +1670,7 @@ import {
   ShelfViewDictionaryPack,
   ShelfViewDictionaryLocalEntry,
   ShelfViewDictionaryLookupResult,
+  ShelfViewDictionaryProviderDto,
   shelfViewDictionaryLookupResults,
   shelfViewNormalizeDictionaryQuery,
   shelfViewParseDictionaryPack,
@@ -1753,6 +1795,7 @@ export default Vue.extend({
     series: undefined as unknown as SeriesDto,
     manifest: undefined as unknown as ShelfViewManifest,
     adapter: undefined as ReaderAdapter | undefined,
+    epubBridge: undefined as EpubWebPubAdapter | undefined,
     currentLocator: undefined as ShelfViewLocator | undefined,
     siblingNext: undefined as BookDto | undefined,
     context: {} as Context,
@@ -1818,6 +1861,9 @@ export default Vue.extend({
     dictionaryDrawerOpen: false,
     dictionaryQuery: '',
     dictionaryLocalEntries: [] as ShelfViewDictionaryLocalEntry[],
+    dictionaryServerProviders: [] as ShelfViewDictionaryProviderDto[],
+    dictionaryServerResults: [] as ShelfViewDictionaryLookupResult[],
+    dictionaryLookupRequestId: 0,
     editingBookmarkId: null as string | null,
     bookmarkNoteDraft: '',
     readerStateStatus: 'IDLE' as ShelfViewReaderStateStatus,
@@ -1892,6 +1938,9 @@ export default Vue.extend({
       } else {
         this.scheduleChromeAutoHide()
       }
+    },
+    dictionaryQuery() {
+      void this.refreshDictionaryServerLookup()
     },
   },
   computed: {
@@ -1980,14 +2029,15 @@ export default Vue.extend({
       return shelfViewWebDictionaryUrl(this.dictionaryQuery)
     },
     dictionaryLookupResults(): ShelfViewDictionaryLookupDisplayResult[] {
-      return shelfViewDictionaryLookupResults(this.dictionaryQuery, this.dictionaryLocalEntries)
+      return shelfViewDictionaryLookupResults(this.dictionaryQuery, this.dictionaryLocalEntries, this.dictionaryServerResults)
         .map(result => ({
           ...result,
-          providerLabel: this.$t(result.providerLabelKey) as string,
+          providerLabel: result.providerLabel ?? this.$t(result.providerLabelKey ?? 'shelfview_reader.dictionary_provider_local') as string,
           label: result.actionLabelKey ? this.$t(result.actionLabelKey) as string : result.term ?? '',
         }))
     },
     contentsAvailable(): boolean {
+      if (this.epubBridgeVisible) return false
       return this.manifestContentsItems.length > 0 || this.mixedContentsItems.length > 1 || this.textContentsItems.length > 1
     },
     manifestContentsItems(): ShelfViewManifestContentsItem[] {
@@ -2224,6 +2274,9 @@ export default Vue.extend({
         this.readerLayout !== 'CONTINUOUS_SCROLL' &&
         shelfViewImageFilterUsesCanvas(this.imageFilterPreset)
     },
+    canvasImageProcessingMode(): string {
+      return shelfViewImageFilterProcessingMode(this.imageFilterPreset) ?? 'SHARPEN'
+    },
     imageFilterStyle(): Record<string, string> {
       const style = this.imageFiltersAvailable ? shelfViewImageFilterStyle(this.imageFilterPreset) : shelfViewImageFilterStyle('ORIGINAL')
       style['--sv-brightness'] = roundNumber((Number(style['--sv-brightness']) || 1) * this.fixedPageBrightness, 4).toString()
@@ -2237,7 +2290,7 @@ export default Vue.extend({
       return this.$t(`shelfview_reader.filter_${this.visibleImageFilterPreset.toLowerCase()}`) as string
     },
     visibleImageFilterPreset(): ShelfViewImageFilterPreset {
-      return shelfViewImageFilterPrimaryPreset(this.imageFilterPreset)
+      return shelfViewImageFilterPreset(this.imageFilterPreset).id
     },
     textThemeIcon(): string {
       return shelfViewTextTheme(this.textTheme).icon
@@ -2362,6 +2415,12 @@ export default Vue.extend({
         active: option.id === this.visibleImageFilterPreset,
       }))
     },
+    allImageFilterPresetOptions(): ShelfViewReaderSelectOption[] {
+      return SHELFVIEW_IMAGE_FILTER_PRESETS.map(option => ({
+        text: this.$t(`shelfview_reader.filter_${option.id.toLowerCase()}`) as string,
+        value: option.id,
+      }))
+    },
     textThemeOptions(): ShelfViewControlMenuOption[] {
       return SHELFVIEW_TEXT_THEMES.map(value => ({
         value,
@@ -2406,8 +2465,11 @@ export default Vue.extend({
           return ''
       }
     },
+    epubBridgeVisible(): boolean {
+      return !!this.epubBridge && this.manifest?.kind === 'EPUB_WEBPUB' && !this.hasDisplayError
+    },
     empty(): boolean {
-      return !!this.manifest && !this.readerPagesVisible && !this.readerTextVisible
+      return !!this.manifest && !this.readerPagesVisible && !this.readerTextVisible && !this.epubBridgeVisible
     },
     emptyMessage(): string {
       if (this.manifest?.kind === 'TEXT_REFLOW') {
@@ -2496,7 +2558,11 @@ export default Vue.extend({
       this.dictionaryDrawerOpen = false
       this.dictionaryQuery = ''
       this.dictionaryLocalEntries = []
+      this.dictionaryServerProviders = []
+      this.dictionaryServerResults = []
+      this.dictionaryLookupRequestId += 1
       this.loadDictionaryPackFromBrowserStorage()
+      void this.loadDictionaryProviders()
       this.textSearchOpen = false
       this.textSearchQuery = ''
       this.textSearchMatchIndex = 0
@@ -2533,7 +2599,9 @@ export default Vue.extend({
         this.manifest = await this.$shelfViewManifest.getManifest(bookId)
         if (requestId !== this.setupRequestId) return
 
-        if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE' || this.manifest.kind === 'TEXT_REFLOW' || this.manifest.kind === 'MIXED_CONTENT_SEQUENCE') {
+        if (this.manifest.kind === 'EPUB_WEBPUB') {
+          await this.openEpubBridgeManifest(this.manifest)
+        } else if (this.manifest.kind === 'FIXED_PAGE_SEQUENCE' || this.manifest.kind === 'TEXT_REFLOW' || this.manifest.kind === 'MIXED_CONTENT_SEQUENCE') {
           const savedPosition = await this.loadShelfViewState(bookId, this.preferenceFormatsForManifest())
           if (requestId !== this.setupRequestId) return
 
@@ -2665,6 +2733,15 @@ export default Vue.extend({
         this.focusReaderStage()
       })
     },
+    async openEpubBridgeManifest(
+      manifest: ShelfViewManifest,
+    ) {
+      const epubBridge = new EpubWebPubAdapter()
+      await epubBridge.open(manifest)
+      this.epubBridge = epubBridge
+      this.currentLocator = undefined
+      this.$nextTick(() => this.focusReaderStage())
+    },
     async restoreSavedPosition(savedPosition?: ShelfViewPositionDto) {
       if (!this.adapter || !savedPosition) return
 
@@ -2712,7 +2789,9 @@ export default Vue.extend({
     destroyAdapter() {
       this.stopTextToSpeech()
       this.adapter?.destroy()
+      this.epubBridge?.destroy()
       this.adapter = undefined
+      this.epubBridge = undefined
       this.currentLocator = undefined
     },
     syncAdapterState() {
@@ -3038,7 +3117,7 @@ export default Vue.extend({
           this.pageFit = settings.pageFit
         }
         if (settings.imageFilterPreset && this.imageFiltersAvailable) {
-          this.imageFilterPreset = shelfViewImageFilterPrimaryPreset(settings.imageFilterPreset)
+          this.imageFilterPreset = shelfViewImageFilterPreset(settings.imageFilterPreset).id
         }
         if (isFiniteNumber(settings.fixedPageRotation)) {
           this.fixedPageRotation = normalizeFixedPageRotation(settings.fixedPageRotation)
@@ -3644,6 +3723,13 @@ export default Vue.extend({
         incognito: this.readerIncognito ? 'true' : undefined,
       }
     },
+    openEpubFallbackReader() {
+      this.$router.push({
+        name: this.book?.media ? getLegacyBookReadRouteFromMedia(this.book.media) : 'read-epub',
+        params: {bookId: this.bookId},
+        query: this.nextBookRouteQuery(),
+      })
+    },
     closeShortcutHelp() {
       this.showShortcutHelp = false
       this.$nextTick(() => this.focusReaderStage())
@@ -3731,6 +3817,13 @@ export default Vue.extend({
       const pack = shelfViewParseDictionaryPack(rawJson)
       this.applyDictionaryPack(pack)
       this.saveDictionaryPackToBrowserStorage(pack)
+      try {
+        await this.$shelfViewState.importDictionaryLocalPack(pack)
+        await this.loadDictionaryProviders()
+        await this.refreshDictionaryServerLookup()
+      } catch (e) {
+        // Browser-local import remains the fallback when account sync is unavailable.
+      }
       this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_dictionary_pack_loaded') as string)
     },
     applyDictionaryPack(pack: ShelfViewDictionaryPack) {
@@ -3764,11 +3857,49 @@ export default Vue.extend({
         storage.removeItem(DICTIONARY_PACK_STORAGE_KEY)
       }
     },
-    clearDictionaryPack() {
+    async clearDictionaryPack() {
       const storage = this.browserStorage()
       storage?.removeItem(DICTIONARY_PACK_STORAGE_KEY)
       this.dictionaryLocalEntries = []
+      const providers = [...this.dictionaryServerProviders]
+      this.dictionaryServerProviders = []
+      this.dictionaryServerResults = []
+      try {
+        await Promise.all(providers.map(provider => this.$shelfViewState.deleteDictionaryProvider(provider.id)))
+      } catch (e) {
+        this.dictionaryServerProviders = providers
+        await this.refreshDictionaryServerLookup()
+        this.setReaderStateStatus('ERROR', this.$t('shelfview_reader.status_dictionary_pack_failed') as string)
+        return
+      }
       this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_dictionary_pack_cleared') as string)
+    },
+    async loadDictionaryProviders() {
+      try {
+        this.dictionaryServerProviders = await this.$shelfViewState.getDictionaryProviders()
+      } catch (e) {
+        this.dictionaryServerProviders = []
+      }
+    },
+    async refreshDictionaryServerLookup() {
+      const requestId = this.dictionaryLookupRequestId + 1
+      this.dictionaryLookupRequestId = requestId
+      const query = this.normalizedDictionaryQuery(this.dictionaryQuery)
+      if (!query) {
+        this.dictionaryServerResults = []
+        return
+      }
+
+      try {
+        const results = await this.$shelfViewState.lookupDictionary(query)
+        if (requestId === this.dictionaryLookupRequestId) {
+          this.dictionaryServerResults = results
+        }
+      } catch (e) {
+        if (requestId === this.dictionaryLookupRequestId) {
+          this.dictionaryServerResults = []
+        }
+      }
     },
     browserStorage(): Storage | undefined {
       try {
