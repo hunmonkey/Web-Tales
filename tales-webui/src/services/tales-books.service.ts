@@ -252,6 +252,18 @@ export default class TalesBooksService {
     }
   }
 
+  async deleteDuplicateBooks(bookIds: string[]) {
+    try {
+      await this.http.post(`${API_BOOKS}/duplicates/delete`, {bookIds})
+    } catch (e) {
+      let msg = 'An error occurred while trying to delete duplicate book files'
+      if (e.response.data.message) {
+        msg += `: ${e.response.data.message}`
+      }
+      throw new Error(msg)
+    }
+  }
+
   async getThumbnails(bookId: string): Promise<BookThumbnailDto[]> {
     try {
       return (await this.http.get(`${API_BOOKS}/${bookId}/thumbnails`)).data

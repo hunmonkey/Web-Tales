@@ -929,13 +929,36 @@ class BookDtoDaoTest(
     }
 
     @Test
-    fun `given books with same hash but different size when searching then no results are returned`() {
+    fun `given books with same hash but different size when searching then results are returned`() {
       // given
       seriesLifecycle.addBooks(
         series,
         listOf(
           makeBook("Book 1", seriesId = series.id, libraryId = library.id).copy(fileHash = "hashed", fileSize = 10),
           makeBook("Book 2", seriesId = series.id, libraryId = library.id).copy(fileHash = "hashed", fileSize = 12),
+        ),
+      )
+
+      // when
+      val found = bookDtoDao.findAllDuplicates(user.id, Pageable.unpaged()).content
+
+      // then
+      assertThat(found).hasSize(2)
+      assertThat(found.map { it.name }).containsExactlyInAnyOrder("Book 1", "Book 2")
+    }
+
+    @Test
+    fun `given one active and one deleted book with same hash when searching then no results are returned`() {
+      // given
+      seriesLifecycle.addBooks(
+        series,
+        listOf(
+          makeBook("Book 1", seriesId = series.id, libraryId = library.id).copy(fileHash = "hashed", fileSize = 10),
+          makeBook("Book 2", seriesId = series.id, libraryId = library.id).copy(
+            fileHash = "hashed",
+            fileSize = 10,
+            deletedDate = LocalDateTime.now(),
+          ),
         ),
       )
 

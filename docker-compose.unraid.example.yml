@@ -12,13 +12,14 @@ services:
     volumes:
       - /mnt/user/appdata/Web-Tales/config:/config
       - /mnt/user/appdata/Web-Tales/cache:/cache
-      - /mnt/user/media/books:/data:ro
+      - /mnt/user/media/books:/data
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
 
 # Notes:
-# - Keep /data read-only.
+# - /data is read-write so admins can delete duplicate source files from Media > Duplicate Files.
+# - If you prefer to protect source media, change it back to /data:ro and do not use duplicate file deletion.
 # - Put appdata on a persistent local pool and back up /config.
 # - Pin a version tag for production rather than relying only on latest.
 # - Confirm UID/GID against your Unraid share permissions.

@@ -10,7 +10,7 @@ Extend Tales without replacing its proven library, identity, authorization, anal
 - New endpoints live under `/api/shelfview/v1`.
 - New backend code is isolated under a ShelfView namespace where practical.
 - New frontend reader code is isolated under a ShelfView module where practical.
-- `/data` is read-only; persistent state is in `/config`; derived data is in `/cache` or an existing Tales cache.
+- `/data` is normally treated as source media; it must be read-write only when admins intentionally enable source-file actions such as duplicate file deletion. Persistent state is in `/config`; derived data is in `/cache` or an existing Tales cache.
 
 ## Reader model
 

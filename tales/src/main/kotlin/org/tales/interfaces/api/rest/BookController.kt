@@ -94,8 +94,14 @@ import org.springframework.web.server.ResponseStatusException
 import java.nio.file.NoSuchFileException
 import java.time.LocalDate
 import java.time.ZoneOffset
+import kotlin.io.path.isWritable
+import kotlin.io.path.notExists
 
 private val logger = KotlinLogging.logger {}
+
+data class DuplicateBookDeleteRequest(
+  val bookIds: Set<String>,
+)
 
 @RestController
 @RequestMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -269,6 +275,43 @@ class BookController(
         )
 
     return bookDtoRepository.findAllDuplicates(principal.user.id, pageRequest)
+  }
+
+  @Operation(summary = "Delete duplicate book files", description = "Delete selected duplicate book files immediately.", tags = [OpenApiConfiguration.TagNames.BOOKS])
+  @PostMapping("api/v1/books/duplicates/delete")
+  @PreAuthorize("hasRole('ADMIN')")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  fun deleteDuplicateBookFiles(
+    @RequestBody request: DuplicateBookDeleteRequest,
+  ) {
+    if (request.bookIds.isEmpty())
+      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "No book IDs provided")
+
+    val books =
+      request.bookIds.map { bookId ->
+        bookRepository.findByIdOrNull(bookId) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found")
+      }
+
+    val duplicateHashes =
+      bookRepository
+        .findAll()
+        .asSequence()
+        .filter { it.deletedDate == null && it.fileHash.isNotBlank() }
+        .groupBy { it.fileHash }
+        .filterValues { it.size > 1 }
+        .keys
+
+    books.forEach { book ->
+      when {
+        book.deletedDate != null -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Book is already deleted")
+        book.fileHash.isBlank() -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Book has no file hash")
+        book.fileHash !in duplicateHashes -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Book is no longer a duplicate")
+        book.path.notExists() -> throw ResponseStatusException(HttpStatus.CONFLICT, "Book file does not exist")
+        !book.path.isWritable() -> throw ResponseStatusException(HttpStatus.CONFLICT, "Book file is not writable. Check the media volume permissions.")
+      }
+    }
+
+    books.forEach { bookLifecycle.deleteBookFiles(it) }
   }
 
   @Operation(summary = "Get book details", tags = [OpenApiConfiguration.TagNames.BOOKS])

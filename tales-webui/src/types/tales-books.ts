@@ -11,6 +11,8 @@ export interface BookDto {
   number: number,
   created: Date,
   lastModified: Date,
+  fileLastModified: Date,
+  fileHash: string,
   sizeBytes: number,
   size: string,
   media: MediaDto,

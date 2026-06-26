@@ -278,7 +278,8 @@ class BookDtoDao(
         .select(b.FILE_HASH, DSL.count(b.ID))
         .from(b)
         .where(b.FILE_HASH.ne(""))
-        .groupBy(b.FILE_HASH, b.FILE_SIZE)
+        .and(b.DELETED_DATE.isNull)
+        .groupBy(b.FILE_HASH)
         .having(DSL.count(b.ID).gt(1))
         .fetch()
         .associate { it.value1() to it.value2() }
@@ -290,6 +291,7 @@ class BookDtoDao(
       dslRO
         .selectBase(userId)
         .where(b.FILE_HASH.`in`(hashes.keys))
+        .and(b.DELETED_DATE.isNull)
         .orderBy(orderBy)
         .apply { if (pageable.isPaged) limit(pageable.pageSize).offset(pageable.offset) }
         .fetchAndMap(dslRO)

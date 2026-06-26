@@ -5,15 +5,17 @@ the image produced by SV-701: server port `25600`, a `/config` volume, non-root
 runtime (UID/GID `1000`), an `/actuator/health` health check, and
 `org.opencontainers.image.version` / `.revision` labels.
 
-> The original media library must be mounted **read-only**. Tales never writes
-> to source media.
+> The original media library can be mounted **read-write** when admins need to
+> delete duplicate source files from Media > Duplicate Files. Mount it
+> read-only only if you prefer to protect source media and will not use that
+> delete action.
 
 ## 1. Volumes and permissions
 
 | Container path | Purpose | Mode | Suggested Unraid host path |
 | --- | --- | --- | --- |
 | `/config` | App data: SQLite DB, thumbnails, settings | read-write | `/mnt/user/appdata/Web-Tales` |
-| `/data` (or your own) | Book library (CBZ/ZIP/PDF/TXT/image folders) | **read-only** | `/mnt/user/media/books` |
+| `/data` (or your own) | Book library (CBZ/ZIP/PDF/TXT/image folders) | **read-write for duplicate deletion** | `/mnt/user/media/books` |
 
 Permissions:
 
@@ -22,8 +24,12 @@ Permissions:
   (`99:100`), so either:
   1. `chown -R 1000:1000 /mnt/user/appdata/Web-Tales`, or
   2. set the share/dir permissions so `1000` can read/write.
-- Mount the media share **read-only** (`:ro`) in the Unraid template so source
-  files cannot be modified.
+- Mount the media share **read-write** when you want duplicate file deletion to
+  remove source files. The container user must have write permission on that
+  share.
+- Mount the media share **read-only** (`:ro`) only when source files must never
+  be modified. In that mode, duplicate file deletion will fail with a writable
+  volume error.
 
 ## 2. Container settings (Unraid template / docker run)
 
@@ -42,7 +48,7 @@ docker run -d \
   --name Web-Tales \
   -p 25600:25600 \
   -v /mnt/user/appdata/Web-Tales:/config \
-  -v /mnt/user/media/books:/data:ro \
+  -v /mnt/user/media/books:/data \
   --restart unless-stopped \
   <your-image>:<version-or-sha>
 ```

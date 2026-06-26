@@ -908,6 +908,14 @@
     "unknown_size": "Unknown size"
   },
   "duplicates": {
+    "confirm_delete": "Yes, delete \"{name}\" and its file",
+    "confirm_delete_multiple": "Yes, delete {count} duplicate files",
+    "delete_button": "Delete",
+    "delete_dialog_title": "Delete duplicate file",
+    "delete_dialog_title_multiple": "Delete duplicate files",
+    "delete_selected": "Delete selected ({count})",
+    "delete_warning_html": "The duplicate file <b>{name}</b> will be removed from this server. This <b>cannot</b> be undone. Continue?",
+    "delete_warning_multiple_html": "{count} duplicate files will be removed from this server. This <b>cannot</b> be undone. Continue?",
     "file_hash": "File hash",
     "size": "Size",
     "title": "Duplicate Files",

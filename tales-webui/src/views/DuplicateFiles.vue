@@ -1,13 +1,16 @@
 <template>
   <v-container fluid class="pa-6">
     <v-data-table
+      v-model="selectedBooks"
       :headers="headers"
       :items="books"
       :options.sync="options"
       :server-items-length="totalBooks"
       :loading="loading"
+      item-key="id"
       sort-by="fileHash"
       multi-sort
+      show-select
       show-group-by
       group-by="fileHash"
       class="elevation-1"
@@ -34,6 +37,7 @@
         <v-btn
           icon
           color="error"
+          :disabled="deleting"
           @click="promptDeleteBook(item)"
         >
           <v-icon>mdi-trash-can-outline</v-icon>
@@ -41,23 +45,50 @@
       </template>
 
       <template v-slot:footer.prepend>
-        <v-btn icon @click="loadBooks"><v-icon>mdi-refresh</v-icon></v-btn>
+        <v-btn icon :disabled="deleting" @click="loadBooks"><v-icon>mdi-refresh</v-icon></v-btn>
+        <v-btn
+          text
+          color="error"
+          :disabled="selectedBooks.length === 0 || deleting"
+          :loading="deleting"
+          @click="promptDeleteBooks(selectedBooks)"
+        >
+          <v-icon left>mdi-trash-can-outline</v-icon>
+          {{ $t('duplicates.delete_selected', {count: selectedBooks.length}) }}
+        </v-btn>
       </template>
     </v-data-table>
+
+    <confirmation-dialog
+      v-model="deleteDialog"
+      :title="deleteDialogTitle"
+      :body-html="deleteDialogBody"
+      :confirm-text="deleteDialogConfirmText"
+      :button-confirm="$t('duplicates.delete_button')"
+      button-confirm-color="error"
+      @confirm="deleteBooks"
+    />
   </v-container>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
 import {BookDto} from '@/types/tales-books'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
+import {ERROR, ErrorEvent} from '@/types/events'
 
 export default Vue.extend({
   name: 'DuplicateFiles',
+  components: {ConfirmationDialog},
   data: function () {
     return {
       books: [] as BookDto[],
+      selectedBooks: [] as BookDto[],
+      booksToDelete: [] as BookDto[],
       totalBooks: 0,
       loading: true,
+      deleting: false,
+      deleteDialog: false,
       options: {} as any,
     }
   },
@@ -78,6 +109,28 @@ export default Vue.extend({
         {text: '', value: 'deleted', groupable: false, sortable: false},
         {text: this.$i18n.t('menu.delete').toString(), value: 'id', groupable: false},
       ]
+    },
+    booksToDeleteSingle(): boolean {
+      return this.booksToDelete.length === 1
+    },
+    deleteDialogTitle(): string {
+      return this.$i18n
+        .t(this.booksToDeleteSingle ? 'duplicates.delete_dialog_title' : 'duplicates.delete_dialog_title_multiple')
+        .toString()
+    },
+    deleteDialogBody(): string {
+      if (this.booksToDeleteSingle) {
+        return this.$i18n.t('duplicates.delete_warning_html', {name: this.booksToDelete[0].name}).toString()
+      }
+
+      return this.$i18n.t('duplicates.delete_warning_multiple_html', {count: this.booksToDelete.length}).toString()
+    },
+    deleteDialogConfirmText(): string {
+      if (this.booksToDeleteSingle) {
+        return this.$i18n.t('duplicates.confirm_delete', {name: this.booksToDelete[0].name}).toString()
+      }
+
+      return this.$i18n.t('duplicates.confirm_delete_multiple', {count: this.booksToDelete.length}).toString()
     },
   },
   methods: {
@@ -103,7 +156,29 @@ export default Vue.extend({
       this.loading = false
     },
     promptDeleteBook(book: BookDto) {
-      this.$store.dispatch('dialogDeleteBook', book)
+      this.promptDeleteBooks([book])
+    },
+    promptDeleteBooks(books: BookDto[]) {
+      if (books.length === 0) return
+
+      this.booksToDelete = [...books]
+      this.deleteDialog = true
+    },
+    async deleteBooks() {
+      if (this.booksToDelete.length === 0) return
+
+      this.deleting = true
+
+      try {
+        await this.$talesBooks.deleteDuplicateBooks(this.booksToDelete.map(book => book.id))
+        this.selectedBooks = []
+        this.booksToDelete = []
+        await this.loadBooks()
+      } catch (e) {
+        this.$eventHub.$emit(ERROR, {message: e.message} as ErrorEvent)
+      } finally {
+        this.deleting = false
+      }
     },
   },
 })
