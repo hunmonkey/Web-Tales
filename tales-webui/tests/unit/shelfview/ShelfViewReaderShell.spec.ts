@@ -2807,6 +2807,32 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').classes()).toContain('shelfview-reader-shell__page--fit-width')
   })
 
+  it('saves selected page fit as the global fixed-page default', async () => {
+    const getManifest = jest.fn().mockResolvedValue(manifest)
+    const savePreference = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({getManifest, shelfViewState: {savePreference}})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await chooseControlOption(wrapper, 'shelfview-reader-fit-toggle', 'shelfview-reader-fit-option-HEIGHT')
+    await Vue.nextTick()
+    await (wrapper.vm as any).flushPreferenceSave()
+
+    expect(savePreference).toHaveBeenCalledWith(expect.objectContaining({
+      scopeType: 'BOOK',
+      scopeId: 'book-1',
+      format: 'FIXED_PAGE_SEQUENCE',
+      settings: expect.objectContaining({pageFit: 'HEIGHT'}),
+    }))
+    expect(savePreference).toHaveBeenCalledWith({
+      scopeType: 'GLOBAL',
+      scopeId: 'GLOBAL',
+      format: 'FIXED_PAGE_SEQUENCE',
+      settings: {pageFit: 'HEIGHT'},
+    })
+  })
+
   it('shows only primary image filter options in the simplified menu', async () => {
     const getManifest = jest.fn().mockResolvedValue(manifest)
     const wrapper = mountShell({getManifest})

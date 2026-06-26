@@ -1,8 +1,7 @@
 // vue.config.js
 module.exports = {
-  // with './' the dev server cannot load any arbitrary path
-  // with '/' the prod build generates some url(/fonts…) calls in the css chunks, which doesn't work with a servlet context path
-  publicPath: process.env.NODE_ENV === 'production' ? './' : '/',
+  // Root-relative assets keep history-mode routes like /read-v2/:bookId refreshable.
+  publicPath: '/',
 
   pluginOptions: {
     i18n: {

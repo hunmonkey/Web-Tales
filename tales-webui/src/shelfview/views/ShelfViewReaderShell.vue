@@ -1763,6 +1763,7 @@ type ShelfViewReaderStateStatus =
 
 const SHELFVIEW_FIXED_PAGE_FORMAT: ShelfViewPreferenceFormat = 'FIXED_PAGE_SEQUENCE'
 const SHELFVIEW_TEXT_FORMAT: ShelfViewPreferenceFormat = 'TEXT_REFLOW'
+const SHELFVIEW_GLOBAL_SCOPE_ID = 'GLOBAL'
 const POSITION_SAVE_DEBOUNCE_MS = 2000
 const PREFERENCE_SAVE_DEBOUNCE_MS = 600
 const SLIDESHOW_INTERVAL_MS = 5000
@@ -1870,6 +1871,7 @@ export default Vue.extend({
     readerStateMessage: '',
     positionSaveTimer: undefined as number | undefined,
     preferenceSaveTimer: undefined as number | undefined,
+    globalPageFitPending: false,
     touchStart: undefined as ShelfViewTouchPoint | undefined,
     readerPointerTapStart: undefined as ShelfViewPointerTapStart | undefined,
     fixedPagePanStart: undefined as ShelfViewPanStart | undefined,
@@ -3028,7 +3030,10 @@ export default Vue.extend({
       this.schedulePreferenceSave()
     },
     setPageFit(fit: ShelfViewFixedPageFit) {
+      if (!SHELFVIEW_FIXED_PAGE_FITS.includes(fit)) return
+
       this.pageFit = fit
+      this.globalPageFitPending = true
       this.schedulePreferenceSave()
     },
     setFixedPageRotation(rotation: number) {
@@ -3315,12 +3320,22 @@ export default Vue.extend({
 
       try {
         this.setReaderStateStatus('SAVING', this.$t('shelfview_reader.status_saving') as string)
+        const settings = this.currentPreferenceSettings(format)
         await this.$shelfViewState.savePreference({
           scopeType: 'BOOK',
           scopeId: this.bookId,
           format,
-          settings: this.currentPreferenceSettings(format),
+          settings,
         })
+        if (format === SHELFVIEW_FIXED_PAGE_FORMAT && this.globalPageFitPending && settings.pageFit) {
+          await this.$shelfViewState.savePreference({
+            scopeType: 'GLOBAL',
+            scopeId: SHELFVIEW_GLOBAL_SCOPE_ID,
+            format,
+            settings: {pageFit: settings.pageFit},
+          })
+          this.globalPageFitPending = false
+        }
         this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_saved') as string)
       } catch (e) {
         this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_save_failed') as string)
