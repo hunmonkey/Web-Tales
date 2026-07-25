@@ -4,7 +4,7 @@
       <v-card
         :width="width"
         @click="onClick"
-        :class="noLink ? 'no-link' : ''"
+        :class="['item-card-surface', noLink ? 'no-link' : '']"
         :ripple="false"
       >
         <!--      Thumbnail-->
@@ -89,10 +89,11 @@
               <v-btn
                 v-if="showFab"
                 fab
-                x-large
-                color="accent"
-                style="position: absolute; top: 50%; left: 50%; margin-left: -36px; margin-top: -36px"
+                large
+                color="primary"
+                class="item-card-surface__read"
                 :to="fabTo"
+                :aria-label="$t('browse_book.read_book')"
                 @click.native="$event.stopImmediatePropagation()"
               >
                 <v-icon>mdi-book-open-page-variant</v-icon>
@@ -142,7 +143,7 @@
           <v-progress-linear
             v-if="isInProgress"
             :value="readProgressPercentage"
-            color="orange"
+            color="secondary"
             height="6"
             style="position: absolute; bottom: 0"
           />
@@ -486,7 +487,7 @@ export default Vue.extend({
 
 .unread {
   border-left: 25px solid transparent;
-  border-right: 25px solid orange;
+  border-right: 25px solid var(--v-secondary-base);
   border-bottom: 25px solid transparent;
   height: 0;
   width: 0;
@@ -509,5 +510,12 @@ export default Vue.extend({
   left: 6px;
   z-index: 2;
   max-width: calc(100% - 12px);
+}
+
+.item-card-surface__read {
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 </style>

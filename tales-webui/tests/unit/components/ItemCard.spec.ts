@@ -101,6 +101,15 @@ describe('ItemCard', () => {
       query: {context: undefined, contextId: undefined},
     })
   })
+
+  it('exposes the ready-book shortcut as a primary labelled action', () => {
+    process.env.VUE_APP_SHELFVIEW_READER = 'true'
+    const wrapper = mountItemCard(readyBook(), jest.fn())
+    const readButton = wrapper.find('button[aria-label="browse_book.read_book"]')
+
+    expect(readButton.exists()).toBe(true)
+    expect(readButton.attributes('color')).toBe('primary')
+  })
 })
 
 function mountItemCard(
@@ -130,7 +139,7 @@ function mountItemCard(
       $vuetify: {rtl: false},
     },
     stubs: {
-      'v-hover': {template: '<div><slot :hover="false"></slot></div>'},
+      'v-hover': {template: '<div><slot :hover="true"></slot></div>'},
       'v-card': {template: '<div v-bind="$attrs" v-on="$listeners"><slot /></div>'},
       'v-img': {template: '<div><slot /></div>'},
       'v-tooltip': {template: '<div><slot name="activator" :on="{}" /><slot /></div>'},

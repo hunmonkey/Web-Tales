@@ -1,122 +1,113 @@
 <template>
-  <div class="ma-3">
-    <v-container class="d-flex flex-column justify-center" style="max-width: 550px; min-height: 100vh">
-      <v-row align="center" justify="center" class="ma-3">
-        <logo-mark :max-width="logoWidth"/>
-      </v-row>
+  <main class="auth-shell">
+    <section class="auth-shell__panel">
+      <logo-mark class="auth-shell__logo" :max-width="220"/>
 
-      <form novalidate @submit.prevent="performLogin">
-        <v-row justify="center" v-if="unclaimed">
-          <v-col
-            class="text-body-1 mt-2"
-          >
-            <v-alert type="info"
-                     icon="mdi-account-plus"
-                     prominent
-                     text
-                     v-html="$t('login.unclaimed_html')"
+      <v-card flat class="auth-card">
+        <form novalidate @submit.prevent="performLogin">
+          <v-alert
+            v-if="unclaimed"
+            class="mb-6"
+            type="info"
+            icon="mdi-account-plus"
+            prominent
+            text
+            v-html="$t('login.unclaimed_html')"
+          />
+
+          <div v-if="!hideLogin">
+            <v-text-field
+              v-model="form.login"
+              :label="$t('common.email')"
+              :error-messages="getErrors('login')"
+              :autocomplete="hideLogin ? '' : 'username'"
+              outlined
+              autofocus
+              @blur="$v.form.login.$touch()"
+            />
+
+            <v-text-field
+              v-model="form.password"
+              :label="$t('common.password')"
+              :error-messages="getErrors('password')"
+              type="password"
+              :autocomplete="hideLogin ? '' : 'current-password'"
+              outlined
+              @input="$v.form.password.$touch()"
+              @blur="$v.form.password.$touch()"
+            />
+
+            <v-checkbox
+              v-model="rememberMe"
+              :label="$t('common.remember-me')"
+              hide-details
+              class="mt-0 mb-6"
+            />
+
+            <v-btn
+              block
+              large
+              color="primary"
+              type="submit"
+              class="auth-card__primary-action"
+              :disabled="unclaimed"
             >
-            </v-alert>
-          </v-col>
-        </v-row>
+              {{ $t('login.login') }}
+            </v-btn>
 
-        <div v-if="!hideLogin">
-          <v-row>
-            <v-col>
-              <v-text-field v-model="form.login"
-                            :label="$t('common.email')"
-                            :error-messages="getErrors('login')"
-                            :autocomplete="hideLogin ? '' : 'username'"
-                            autofocus
-                            @blur="$v.form.login.$touch()"
-              />
-            </v-col>
-          </v-row>
+            <v-btn
+              v-if="unclaimed"
+              block
+              large
+              color="primary"
+              class="auth-card__primary-action mt-3"
+              @click="claim"
+            >
+              {{ $t('login.create_user_account') }}
+            </v-btn>
 
-          <v-row>
-            <v-col>
-              <v-text-field v-model="form.password"
-                            :label="$t('common.password')"
-                            :error-messages="getErrors('password')"
-                            type="password"
-                            :autocomplete="hideLogin ? '' : 'current-password'"
-                            @input="$v.form.password.$touch()"
-                            @blur="$v.form.password.$touch()"
-              />
-            </v-col>
-          </v-row>
+            <v-divider v-if="oauth2Providers.length" class="my-6"/>
+          </div>
 
-          <v-row>
-            <v-col>
-              <v-checkbox v-model="rememberMe"
-                          :label="$t('common.remember-me')"
-                          hide-details
-                          class="mt-0"
-              />
-            </v-col>
-          </v-row>
-
-          <v-row>
-            <v-col cols="auto">
-              <v-btn color="primary"
-                     type="submit"
-                     :disabled="unclaimed"
-              >{{ $t('login.login') }}
-              </v-btn>
-            </v-col>
-            <v-col cols="auto">
-              <v-btn v-if="unclaimed"
-                     color="primary"
-                     @click="claim"
-              >{{ $t('login.create_user_account') }}
-              </v-btn>
-            </v-col>
-          </v-row>
-
-          <v-divider class="my-4 mt-2"/>
-
-        </div>
-
-        <v-row justify="center">
-          <v-col
+          <v-btn
             v-for="provider in oauth2Providers"
             :key="provider.registrationId"
-            cols="auto"
+            block
+            large
+            class="mb-3"
+            :disabled="unclaimed"
+            :class="$_.get(socialButtons[provider.registrationId.toLowerCase()], 'text') ? `${socialButtons[provider.registrationId.toLowerCase()].text}--text` : undefined"
+            :color="$_.get(socialButtons[provider.registrationId.toLowerCase()], 'color')"
+            @click="oauth2Login(provider)"
           >
-            <v-btn
-              :disabled="unclaimed"
-              @click="oauth2Login(provider)"
-              min-width="250"
-              :class="$_.get(socialButtons[provider.registrationId.toLowerCase()], 'text') ? `${socialButtons[provider.registrationId.toLowerCase()].text}--text` : undefined"
-              :color="$_.get(socialButtons[provider.registrationId.toLowerCase()], 'color')"
-            >
-              <v-icon left>mdi-{{ provider.registrationId }}</v-icon>
-              Sign in with {{ provider.name }}
-            </v-btn>
-          </v-col>
-        </v-row>
+            <v-icon left>mdi-{{ provider.registrationId }}</v-icon>
+            Sign in with {{ provider.name }}
+          </v-btn>
 
-        <v-row justify="center">
-          <v-col cols="6">
-            <v-select v-model="locale"
-                      :items="locales"
-                      :label="$t('home.translation')"
-                      prepend-icon="mdi-translate"
-            >
-            </v-select>
-          </v-col>
+          <v-row dense class="auth-card__preferences">
+            <v-col cols="6">
+              <v-select
+                v-model="locale"
+                :items="locales"
+                :label="$t('home.translation')"
+                prepend-icon="mdi-translate"
+                hide-details
+              />
+            </v-col>
 
-          <v-col cols="6">
-            <v-select v-model="theme"
-                      :items="themes"
-                      :label="$t('home.theme')"
-                      :prepend-icon="themeIcon"
-            >
-            </v-select>
-          </v-col>
-        </v-row>
-      </form>
-    </v-container>
+            <v-col cols="6">
+              <v-select
+                v-model="theme"
+                :items="themes"
+                :label="$t('home.theme')"
+                :prepend-icon="themeIcon"
+                hide-details
+              />
+            </v-col>
+          </v-row>
+        </form>
+      </v-card>
+    </section>
 
     <v-snackbar
       v-model="snackbar"
@@ -130,7 +121,7 @@
       >{{ $t('common.close') }}
       </v-btn>
     </v-snackbar>
-  </div>
+  </main>
 </template>
 
 <script lang="ts">
@@ -182,22 +173,6 @@ export default Vue.extend({
         && !this.$route.query.error
         && !this.$route.query.logout
     },
-    logoWidth(): number {
-      let l = 100
-      switch (this.$vuetify.breakpoint.name) {
-        case 'xs':
-          l = 100
-        case 'sm':
-        case 'md':
-          l = 200
-        case 'lg':
-        case 'xl':
-        default:
-          l = 300
-      }
-      return l
-    },
-
     locale: {
       get: function (): string {
         return this.$i18n.locale

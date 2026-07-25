@@ -1,16 +1,17 @@
 <template>
-  <div class="pa-6">
-    <v-row align="center" justify="center">
-      <logo-mark :max-width="400"/>
-    </v-row>
-    <v-row align="center" justify="center">
-      <div class="text-center">
+  <main class="welcome-shell">
+    <section class="welcome-shell__panel text-center">
+      <logo-mark class="welcome-shell__logo" :max-width="240"/>
+      <v-card flat class="welcome-shell__card">
         <h1 class="text-h5 mt-4">{{ $t('welcome.welcome_message') }}</h1>
-        <p class="text-body-1">{{ $t('welcome.no_libraries_yet') }}</p>
-        <v-btn color="primary" @click="addLibrary" v-if="isAdmin">{{ $t('welcome.add_library') }}</v-btn>
-      </div>
-    </v-row>
-  </div>
+        <p class="text-body-1 text--secondary mt-3 mb-7">{{ $t('welcome.no_libraries_yet') }}</p>
+        <v-btn v-if="isAdmin" color="primary" large @click="addLibrary">
+          <v-icon left>mdi-bookshelf</v-icon>
+          {{ $t('welcome.add_library') }}
+        </v-btn>
+      </v-card>
+    </section>
+  </main>
 </template>
 
 <script lang="ts">

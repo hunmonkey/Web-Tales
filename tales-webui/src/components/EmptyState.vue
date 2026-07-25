@@ -1,17 +1,16 @@
 <template>
-  <div class="text-center">
-    <v-avatar color="contrast-1" :size="size">
-      <div>
-        <v-icon v-if="icon !== ''"
-                :color="iconColor"
-                :size="iconSize"
-        >{{ icon }}
-        </v-icon>
-        <h1 class="text-h5">{{ title }}</h1>
-        <p class="text-body-1">{{ subTitle }}</p>
-        <slot/>
-      </div>
-    </v-avatar>
+  <div class="tales-empty-state text-center" :style="rootStyle">
+    <div v-if="icon !== ''" class="tales-empty-state__icon">
+      <v-icon
+        :color="iconColor"
+        :size="iconSize"
+      >
+        {{ icon }}
+      </v-icon>
+    </div>
+    <h1 class="text-h5">{{ title }}</h1>
+    <p v-if="subTitle" class="text-body-1 text--secondary mt-2">{{ subTitle }}</p>
+    <slot/>
   </div>
 </template>
 
@@ -27,11 +26,17 @@ export default Vue.extend({
     iconColor: String,
     iconSize: {
       type: [Number, String],
-      default: 140,
+      default: 52,
     },
     size: {
       type: [Number, String],
       default: 400,
+    },
+  },
+  computed: {
+    rootStyle(): Record<string, string> {
+      const width = typeof this.size === 'number' ? `${this.size}px` : this.size
+      return {maxWidth: width}
     },
   },
 })

@@ -194,7 +194,7 @@
             <template v-if="$vuetify.breakpoint.smAndUp">
               <v-row class="align-center">
                 <v-col cols="auto">
-                  <v-btn color="accent"
+                  <v-btn color="primary"
                          small
                          :title="$t('browse_book.read_book')"
                          :to="{name: readRouteName, params: { bookId: bookId}, query: { context: context.origin, contextId: context.id}}"

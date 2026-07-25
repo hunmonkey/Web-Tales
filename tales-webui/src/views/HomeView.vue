@@ -1,5 +1,5 @@
 <template>
-  <div class="fill-height">
+  <div class="app-shell fill-height">
     <confirmation-dialog
       v-model="logoutConfirmDialog"
       :title="$t('dialog.logout.dialog_title')"
@@ -12,6 +12,9 @@
 
     <v-app-bar
       app
+      flat
+      color="transparent"
+      class="app-shell__topbar"
     >
       <v-badge
         dot
@@ -24,21 +27,26 @@
         <v-app-bar-nav-icon @click.stop="toggleDrawer"/>
       </v-badge>
 
-      <search-box class="flex-fill"/>
+      <logo-mark
+        v-if="$vuetify.breakpoint.smAndDown"
+        class="app-shell__topbar-brand"
+        :max-width="$vuetify.breakpoint.xs ? 38 : 110"
+        :symbol-only="$vuetify.breakpoint.xs"
+      />
+
+      <search-box class="app-shell__search flex-fill"/>
 
     </v-app-bar>
 
-    <v-navigation-drawer app v-model="drawerVisible" :right="$vuetify.rtl">
-      <v-list-item @click="$router.push({name: 'home'})" inactive class="pb-2">
-        <v-list-item-avatar tile>
-          <logo-mark/>
-        </v-list-item-avatar>
-
-        <v-list-item-content>
-          <v-list-item-title class="title">
-            Tales
-          </v-list-item-title>
-        </v-list-item-content>
+    <v-navigation-drawer
+      app
+      v-model="drawerVisible"
+      :right="$vuetify.rtl"
+      width="292"
+      class="app-shell__drawer"
+    >
+      <v-list-item @click="$router.push({name: 'home'})" inactive class="app-shell__brand">
+        <logo-mark :max-width="146"/>
 
         <v-tooltip left>
           <template v-slot:activator="{ on }">
@@ -67,7 +75,7 @@
       </v-slide-x-transition>
 
       <template v-if="!showReorder">
-        <v-list nav shaped dense>
+        <v-list nav dense class="app-shell__nav">
           <!--   KEEP READING (이어보기)     -->
           <v-list-item :to="{name:'dashboard'}">
             <v-list-item-icon>
@@ -285,7 +293,7 @@
 
         <v-divider/>
 
-        <v-list dense class="mt-2">
+        <v-list dense class="app-shell__preferences mt-2">
           <v-list-item>
             <v-list-item-icon>
               <v-icon>{{ themeIcon }}</v-icon>
@@ -318,7 +326,7 @@
       </template>
     </v-navigation-drawer>
 
-    <v-main class="fill-height">
+    <v-main class="app-shell__main fill-height">
       <reusable-dialogs/>
       <toaster-notification/>
       <router-view/>

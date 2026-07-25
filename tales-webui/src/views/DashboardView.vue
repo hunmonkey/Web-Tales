@@ -46,7 +46,14 @@
       @delete="deleteBooks"
     />
 
-    <v-container fluid>
+    <v-container fluid class="dashboard">
+      <header v-if="!individualLibrary" class="dashboard__heading">
+        <div>
+          <div class="dashboard__eyebrow">Tales</div>
+          <h1 class="dashboard__title">{{ $t('common.all_libraries') }}</h1>
+        </div>
+      </header>
+
       <empty-state v-if="allEmpty && !loading"
                    :title="$t('common.nothing_to_show')"
                    icon="mdi-help-circle"
@@ -58,12 +65,12 @@
         <horizontal-scroller
           v-bind:key="i"
           v-if="section.loader && section.loader.items.length !== 0"
-          class="mb-4"
+          class="dashboard-section mb-8"
           :tick="section.loader.tick"
           @scroll-changed="(percent) => scrollChanged(section.loader, percent)"
         >
           <template v-slot:prepend>
-            <div class="title">{{ $t(`dashboard.${section.value.toLowerCase()}`) }}</div>
+            <div class="dashboard-section__title">{{ $t(`dashboard.${section.value.toLowerCase()}`) }}</div>
           </template>
           <template v-slot:content>
             <item-browser v-if="section.type ===SectionType.BOOK"
@@ -90,14 +97,19 @@
 
       <v-fab-transition>
         <v-btn
-          fab
+          rounded
+          color="primary"
           bottom
           right
           fixed
-          :class="individualLibrary && $vuetify.breakpoint.smAndDown ? 'mb-12' : undefined"
+          :class="[
+            'dashboard__edit-view',
+            individualLibrary && $vuetify.breakpoint.smAndDown ? 'mb-12' : undefined
+          ]"
           @click="modalEditRecommended = true"
         >
-          <v-icon>mdi-pencil</v-icon>
+          <v-icon left>mdi-tune-variant</v-icon>
+          {{ $t('dialog.edit_recommended.dialog_title') }}
         </v-btn>
       </v-fab-transition>
 
@@ -301,7 +313,10 @@ export default Vue.extend({
       return this.$store.getters.meAdmin
     },
     fixedCardWidth(): number {
-      return this.$vuetify.breakpoint.xs ? 120 : 150
+      if (this.$vuetify.breakpoint.xs) return 128
+      if (this.$vuetify.breakpoint.sm) return 150
+      if (this.$vuetify.breakpoint.md) return 166
+      return 180
     },
     allEmpty(): boolean {
       return (this.loaderRecentlyAddedSeries == undefined || this.loaderRecentlyAddedSeries?.items.length === 0) &&

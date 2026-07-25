@@ -259,7 +259,7 @@ export default Vue.extend({
 <style scoped>
 .unread {
   border-left: 15px solid transparent;
-  border-right: 15px solid orange;
+  border-right: 15px solid var(--v-secondary-base);
   border-bottom: 15px solid transparent;
   height: 0;
   width: 0;

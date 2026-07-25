@@ -268,3 +268,13 @@ resource handling and Flyway integrity were clean; two problems were found.
   template for plain fixed-page books). SV-1010 lazy loading limits this to the
   visible strip, but a real mixed-item thumbnail endpoint would need a new API
   and an ADR.
+
+## Visual identity and main shell refresh from 2026-07-25
+
+Owner request: finish the existing uncommitted Tales visual identity and main
+application shell refresh as one scoped ticket.
+
+- [x] SV-1040 Refresh the Tales logo/install/tray assets, light and dark theme
+  palette, login/startup/welcome screens, navigation shell, dashboard, empty
+  state and book-card surfaces; refresh the offline cache key and cover the
+  shared brand assets and primary read action with tests

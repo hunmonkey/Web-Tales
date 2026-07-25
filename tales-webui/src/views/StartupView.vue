@@ -1,7 +1,14 @@
 <template>
-  <div class="pa-6 d-flex align-center justify-center" style="min-height: 100vh">
-    <logo-mark :max-width="logoWidth"/>
-  </div>
+  <main class="startup-shell">
+    <logo-mark :max-width="220"/>
+    <v-progress-linear
+      class="startup-shell__progress"
+      color="primary"
+      height="4"
+      indeterminate
+      rounded
+    />
+  </main>
 </template>
 
 <script lang="ts">
@@ -11,23 +18,6 @@ import Vue from 'vue'
 export default Vue.extend({
   name: 'StartupView',
   components: {LogoMark},
-  computed: {
-    logoWidth(): number {
-      let l = 100
-      switch (this.$vuetify.breakpoint.name) {
-        case 'xs':
-          l = 100
-        case 'sm':
-        case 'md':
-          l = 200
-        case 'lg':
-        case 'xl':
-        default:
-          l = 300
-      }
-      return l
-    },
-  },
   async mounted() {
     try {
       if (this.$route.query.xAuthToken) {

@@ -1,32 +1,38 @@
 <template>
-  <svg
-    class="app-logo"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 72 56"
-    fill="none"
+  <div
+    class="logo-mark"
+    :class="{'logo-mark--symbol-only': symbolOnly}"
     role="img"
     :aria-label="ariaLabel"
     :style="rootStyle"
   >
-    <path d="M61 3 L63 8 L68 10 L63 12 L61 17 L59 12 L54 10 L59 8 Z" fill="#e0623d"/>
-    <path d="M53 0.5 L54.3 3.7 L57.5 5 L54.3 6.3 L53 9.5 L51.7 6.3 L48.5 5 L51.7 3.7 Z" fill="#e0623d"/>
-    <path d="M67 16 L68.2 18.8 L71 20 L68.2 21.2 L67 24 L65.8 21.2 L63 20 L65.8 18.8 Z" fill="#e0623d"/>
-    <path
-      d="M54.2 20.1 L48.3 9.7 L38 3.8 L26 3.8 L15.7 9.7 L9.8 20.1 L9.8 31.9 L15.7 42.3 L26 48.2 L38 48.2 L48.3 42.3 L54.2 31.9 Z"
-      :fill="bodyColor"
-    />
-    <g stroke="#f6f3ee" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M32 20 C28 17.5 22 17.5 18 18.6 L18 31 C22 29.9 28 29.9 32 32.4 C36 29.9 42 29.9 46 31 L46 18.6 C42 17.5 36 17.5 32 20 Z"/>
-      <path d="M32 20 L32 32.4 M18 31 L18 35 C22 33.9 28 33.9 32 36.4 C36 33.9 42 33.9 46 35 L46 31"/>
-    </g>
-  </svg>
+    <svg
+      class="logo-mark__symbol"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 64 64"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        class="logo-mark__book"
+        d="M8 12C18 12 27 16 31 24C32.2 26.4 31.4 29.1 29 31.6C26.4 34.3 25 36.7 25 40V54C20 50.2 14.3 48.4 8 49V12Z"
+      />
+      <path
+        class="logo-mark__book"
+        d="M56 12C46 12 37 16 33 24C31.8 26.4 32.6 29.1 35 31.6C37.6 34.3 39 36.7 39 40V54C44 50.2 49.7 48.4 56 49V12Z"
+      />
+      <path
+        class="logo-mark__page-turn"
+        d="M29 37C33 39.2 35 42.2 35 46V54H29V37Z"
+      />
+    </svg>
+    <span v-if="!symbolOnly" class="logo-mark__wordmark" aria-hidden="true">Tales</span>
+  </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
 
-// Inline logo so the brick-coloured body can be lightened in dark mode, where
-// the original #9e3b22 sits too close to the near-black background.
 export default Vue.extend({
   name: 'LogoMark',
   props: {
@@ -38,16 +44,15 @@ export default Vue.extend({
       type: String,
       default: 'Tales',
     },
+    symbolOnly: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
-    bodyColor(): string {
-      return this.$vuetify.theme.dark ? '#c0512e' : '#9e3b22'
-    },
     rootStyle(): Record<string, string> {
       const style: Record<string, string> = {
         width: '100%',
-        height: 'auto',
-        display: 'block',
       }
       if (this.maxWidth !== undefined) {
         style.maxWidth = typeof this.maxWidth === 'number' ? `${this.maxWidth}px` : this.maxWidth
@@ -57,3 +62,51 @@ export default Vue.extend({
   },
 })
 </script>
+
+<style scoped>
+.logo-mark {
+  --tales-logo-ink: #132f4c;
+  --tales-logo-accent: #b76e4e;
+  align-items: center;
+  color: #132f4c;
+  display: inline-flex;
+  gap: 12px;
+}
+
+.theme--dark .logo-mark {
+  --tales-logo-ink: #f2ede4;
+  --tales-logo-accent: #d99a76;
+  color: #f2ede4;
+}
+
+.logo-mark__symbol {
+  display: block;
+  flex: 0 0 auto;
+  width: clamp(42px, 30%, 58px);
+}
+
+.logo-mark__book {
+  fill: var(--tales-logo-ink);
+}
+
+.logo-mark__page-turn {
+  fill: var(--tales-logo-accent);
+}
+
+.logo-mark__wordmark {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-size: clamp(26px, 20%, 34px);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.logo-mark--symbol-only {
+  display: block;
+}
+
+.logo-mark--symbol-only .logo-mark__symbol {
+  width: 100%;
+}
+</style>

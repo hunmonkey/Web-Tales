@@ -2,6 +2,42 @@ html {
     overflow-y: auto !important;
 }
 
+:root {
+    --tales-radius-sm: 10px;
+    --tales-radius-md: 16px;
+    --tales-radius-lg: 24px;
+}
+
+.theme--light.v-application {
+    --tales-app-background: #f3f6f8;
+    --tales-surface: #ffffff;
+    --tales-surface-soft: #eaf0f4;
+    --tales-text: #192c3e;
+    --tales-muted: #617084;
+    --tales-border: rgba(24, 59, 86, 0.14);
+    --tales-topbar: rgba(255, 255, 255, 0.88);
+    --tales-card-shadow: 0 12px 32px rgba(27, 55, 75, 0.09);
+    --tales-card-shadow-hover: 0 18px 42px rgba(27, 55, 75, 0.16);
+}
+
+.theme--dark.v-application {
+    --tales-app-background: #0b111a;
+    --tales-surface: #151e2b;
+    --tales-surface-soft: #1c2837;
+    --tales-text: #edf3f8;
+    --tales-muted: #99a7b7;
+    --tales-border: rgba(185, 209, 225, 0.16);
+    --tales-topbar: rgba(15, 23, 34, 0.9);
+    --tales-card-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+    --tales-card-shadow-hover: 0 20px 46px rgba(0, 0, 0, 0.4);
+}
+
+.v-application {
+    background: var(--tales-app-background) !important;
+    color: var(--tales-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Roboto, sans-serif !important;
+}
+
 .link-none {
     text-decoration: none;
 }
@@ -39,4 +75,290 @@ html {
 
 .theme--dark .v-navigation-drawer__content::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.26);
+}
+
+.app-shell {
+    background: var(--tales-app-background);
+}
+
+.app-shell__topbar.v-app-bar {
+    backdrop-filter: blur(18px);
+    background-color: var(--tales-topbar) !important;
+    border-bottom: 1px solid var(--tales-border) !important;
+    box-shadow: none !important;
+}
+
+.app-shell__topbar .v-toolbar__content {
+    gap: 12px;
+}
+
+.app-shell__topbar-brand {
+    flex: 0 0 auto;
+}
+
+.app-shell__search {
+    margin-inline: auto;
+    max-width: 720px;
+}
+
+.app-shell__search .v-input__slot {
+    background: var(--tales-surface-soft) !important;
+    border: 1px solid transparent;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.app-shell__search .v-input--is-focused .v-input__slot {
+    background: var(--tales-surface) !important;
+    border-color: var(--v-primary-base);
+}
+
+.app-shell__drawer.v-navigation-drawer {
+    background: var(--tales-surface);
+    border-inline-end: 1px solid var(--tales-border) !important;
+}
+
+.app-shell__brand {
+    min-height: 78px;
+    padding: 14px 20px !important;
+}
+
+.app-shell__nav {
+    padding: 10px 12px;
+}
+
+.app-shell__nav .v-list-item,
+.app-shell__nav .v-list-group__header {
+    border-radius: 12px;
+    margin-bottom: 3px;
+}
+
+.app-shell__nav .v-list-item--active {
+    background: var(--tales-surface-soft);
+    color: var(--v-primary-base);
+    font-weight: 700;
+}
+
+.app-shell__main {
+    background:
+        radial-gradient(circle at 82% 0, rgba(34, 87, 122, 0.11), transparent 30rem),
+        var(--tales-app-background);
+}
+
+.app-shell .v-btn,
+.auth-shell .v-btn,
+.welcome-shell .v-btn {
+    border-radius: var(--tales-radius-sm);
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.auth-shell,
+.startup-shell,
+.welcome-shell {
+    align-items: center;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(183, 110, 78, 0.16), transparent 24rem),
+        radial-gradient(circle at 86% 5%, rgba(34, 87, 122, 0.2), transparent 28rem),
+        var(--tales-app-background);
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100svh;
+    padding: 32px 20px;
+}
+
+.auth-shell__panel,
+.welcome-shell__panel {
+    max-width: 470px;
+    width: 100%;
+}
+
+.auth-shell__logo,
+.welcome-shell__logo {
+    margin: 0 auto 24px;
+}
+
+.auth-card,
+.welcome-shell__card {
+    background: var(--tales-surface) !important;
+    border: 1px solid var(--tales-border);
+    border-radius: var(--tales-radius-lg) !important;
+    box-shadow: var(--tales-card-shadow) !important;
+    padding: 30px;
+}
+
+.auth-card .v-text-field > .v-input__control > .v-input__slot {
+    border-radius: var(--tales-radius-sm);
+}
+
+.auth-card__primary-action {
+    min-height: 46px;
+}
+
+.auth-card__preferences {
+    background: var(--tales-surface-soft);
+    border-radius: var(--tales-radius-md);
+    margin-top: 12px;
+    padding: 2px 10px;
+}
+
+.startup-shell {
+    flex-direction: column;
+    gap: 24px;
+}
+
+.welcome-shell {
+    min-height: calc(100vh - 64px);
+    min-height: calc(100svh - 64px);
+}
+
+.startup-shell__progress {
+    border-radius: 999px;
+    max-width: 180px;
+}
+
+.dashboard {
+    margin: 0 auto;
+    max-width: 1680px;
+    padding: 24px clamp(16px, 3vw, 48px) 96px;
+}
+
+.dashboard__heading {
+    align-items: flex-end;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 28px;
+}
+
+.dashboard__eyebrow {
+    color: var(--v-secondary-base);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.dashboard__title {
+    color: var(--tales-text);
+    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+}
+
+.dashboard-section {
+    background: var(--tales-surface);
+    border: 1px solid var(--tales-border);
+    border-radius: var(--tales-radius-lg);
+    box-shadow: var(--tales-card-shadow);
+    padding: 20px 18px 12px;
+}
+
+.dashboard-section__title {
+    color: var(--tales-text);
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    padding: 2px 8px 12px;
+}
+
+.dashboard__edit-view {
+    backdrop-filter: blur(12px);
+    box-shadow: var(--tales-card-shadow);
+}
+
+.item-card-surface.v-card {
+    background: var(--tales-surface);
+    border: 1px solid var(--tales-border);
+    border-radius: var(--tales-radius-md);
+    box-shadow: 0 7px 20px rgba(20, 43, 61, 0.08);
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.item-card-surface.v-card:hover {
+    border-color: rgba(34, 87, 122, 0.32);
+    box-shadow: var(--tales-card-shadow-hover);
+    transform: translateY(-4px);
+}
+
+.item-card-surface .v-card__subtitle {
+    color: var(--tales-text);
+    font-weight: 700;
+    line-height: 1.35;
+    padding: 12px 12px 6px;
+}
+
+.item-card-surface .v-card__text {
+    color: var(--tales-muted);
+    padding-inline: 12px !important;
+}
+
+.tales-empty-state {
+    background: var(--tales-surface);
+    border: 1px dashed var(--tales-border);
+    border-radius: var(--tales-radius-lg);
+    box-shadow: var(--tales-card-shadow);
+    margin: 24px auto;
+    max-width: 560px;
+    padding: 48px 32px;
+}
+
+.tales-empty-state__icon {
+    align-items: center;
+    background: var(--tales-surface-soft);
+    border-radius: 18px;
+    display: inline-flex;
+    height: 72px;
+    justify-content: center;
+    margin-bottom: 20px;
+    width: 72px;
+}
+
+@media (max-width: 600px) {
+    .app-shell__topbar .v-toolbar__content {
+        gap: 6px;
+        padding-inline: 8px;
+    }
+
+    .auth-shell,
+    .startup-shell,
+    .welcome-shell {
+        padding: 20px 14px;
+    }
+
+    .auth-card,
+    .welcome-shell__card {
+        border-radius: 20px !important;
+        padding: 22px 18px;
+    }
+
+    .dashboard {
+        padding: 18px 12px 88px;
+    }
+
+    .dashboard__heading {
+        margin-bottom: 20px;
+    }
+
+    .dashboard-section {
+        border-radius: 18px;
+        padding: 16px 8px 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .item-card-surface.v-card,
+    .app-shell__search .v-input__slot {
+        transition: none;
+    }
+
+    .item-card-surface.v-card:hover {
+        transform: none;
+    }
 }

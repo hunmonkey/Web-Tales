@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tales-offline-v1'
+const CACHE_NAME = 'tales-offline-v2'
 const APP_SHELL = [
   './',
   'manifest.json',
