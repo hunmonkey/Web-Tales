@@ -1,6 +1,7 @@
 package org.tales.interfaces.api.rest
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.core.ParameterizedTypeReference
@@ -18,6 +19,8 @@ import org.tales.infrastructure.security.TalesPrincipal
 import org.tales.interfaces.api.rest.dto.GithubReleaseDto
 import org.tales.interfaces.api.rest.dto.ReleaseDto
 import java.util.concurrent.TimeUnit
+
+private val logger = KotlinLogging.logger {}
 
 private const val GITHUB_API = "https://api.github.com/repos/hunmonkey/Web-Tales/releases"
 
@@ -58,15 +61,20 @@ class ReleaseController(
       }
       ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
-  fun fetchGitHubReleases(): List<GithubReleaseDto> {
-    val response =
-      webClient
-        .get()
-        .uri {
-          it.queryParam("per_page", 20).build()
-        }.retrieve()
-        .toEntity(object : ParameterizedTypeReference<List<GithubReleaseDto>>() {})
-        .block()
-    return response?.body ?: emptyList()
-  }
+  fun fetchGitHubReleases(): List<GithubReleaseDto> =
+    try {
+      val response =
+        webClient
+          .get()
+          .uri {
+            it.queryParam("per_page", 20).build()
+          }.retrieve()
+          .toEntity(object : ParameterizedTypeReference<List<GithubReleaseDto>>() {})
+          .block()
+      response?.body ?: emptyList()
+    } catch (e: RuntimeException) {
+      // the repository may have no releases, be private, or GitHub may be unreachable: none of those are server errors
+      logger.warn { "Could not retrieve releases: ${e.message}" }
+      emptyList()
+    }
 }

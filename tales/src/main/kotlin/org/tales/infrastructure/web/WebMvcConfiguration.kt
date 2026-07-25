@@ -11,6 +11,29 @@ import java.util.concurrent.TimeUnit
 
 @Configuration
 class WebMvcConfiguration : WebMvcConfigurer {
+  companion object {
+    /**
+     * Files served from the root of `classpath:public/`.
+     * Any new file added to `tales-webui/public` must be listed here, otherwise it falls back to index.html.
+     */
+    val rootStaticResources =
+      listOf(
+        "/index.html",
+        "/favicon.ico",
+        "/favicon-16x16.png",
+        "/favicon-32x32.png",
+        "/mstile-144x144.png",
+        "/apple-touch-icon.png",
+        "/apple-touch-icon-180x180.png",
+        "/android-chrome-192x192.png",
+        "/android-chrome-512x512.png",
+        "/tales-icon.svg",
+        "/tales-icon-square.png",
+        "/manifest.json",
+        "/shelfview-service-worker.js",
+      )
+  }
+
   override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
     if (!registry.hasMappingForPattern("/webjars/**")) {
       registry
@@ -25,20 +48,8 @@ class WebMvcConfiguration : WebMvcConfigurer {
     }
 
     registry
-      .addResourceHandler(
-        "/index.html",
-        "/favicon.ico",
-        "/favicon-16x16.png",
-        "/favicon-32x32.png",
-        "/mstile-144x144.png",
-        "/apple-touch-icon.png",
-        "/apple-touch-icon-180x180.png",
-        "/android-chrome-192x192.png",
-        "/android-chrome-512x512.png",
-        "/tales-icon.svg",
-        "/tales-icon-square.png",
-        "/manifest.json",
-      ).addResourceLocations("classpath:public/")
+      .addResourceHandler(*rootStaticResources.toTypedArray())
+      .addResourceLocations("classpath:public/")
       .setCacheControl(CacheControl.noStore())
 
     listOf("css", "fonts", "img", "js")
