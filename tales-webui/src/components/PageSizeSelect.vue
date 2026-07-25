@@ -1,7 +1,7 @@
 <template>
   <v-menu offset-y>
     <template v-slot:activator="{on}">
-      <v-btn icon v-on="on">
+      <v-btn icon v-on="on" :aria-label="$t('common.items_per_page')">
         <v-icon>mdi-view-grid-plus</v-icon>
       </v-btn>
     </template>

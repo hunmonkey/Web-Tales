@@ -1,9 +1,9 @@
 package org.tales.domain.service
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import org.tales.domain.model.Author
 import org.tales.domain.model.BookMetadata
-import org.junit.jupiter.api.Test
 import java.time.LocalDate
 
 class MetadataAggregatorTest {

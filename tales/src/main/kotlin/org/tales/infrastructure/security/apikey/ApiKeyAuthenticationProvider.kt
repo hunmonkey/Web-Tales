@@ -1,13 +1,13 @@
 package org.tales.infrastructure.security.apikey
 
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.infrastructure.security.TalesPrincipal
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.authentication.dao.AbstractUserDetailsAuthenticationProvider
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Component
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.infrastructure.security.TalesPrincipal
 
 /**
  * A provider to lookup API keys in the repository.

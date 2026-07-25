@@ -39,13 +39,14 @@
           color="error"
           :disabled="deleting"
           @click="promptDeleteBook(item)"
+          :aria-label="$t('common.delete')"
         >
           <v-icon>mdi-trash-can-outline</v-icon>
         </v-btn>
       </template>
 
       <template v-slot:footer.prepend>
-        <v-btn icon :disabled="deleting" @click="loadBooks"><v-icon>mdi-refresh</v-icon></v-btn>
+        <v-btn icon :disabled="deleting" :aria-label="$t('common.refresh')" @click="loadBooks"><v-icon>mdi-refresh</v-icon></v-btn>
         <v-btn
           text
           color="error"

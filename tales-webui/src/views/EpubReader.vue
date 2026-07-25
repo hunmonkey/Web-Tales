@@ -10,6 +10,7 @@
         <v-btn
           icon
           @click="closeBook"
+          :aria-label="$t('bookreader.shortcuts.close')"
         >
           <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
@@ -17,7 +18,7 @@
         <v-btn
           :disabled="!hasToc && !hasLandmarks && !hasPageList"
           icon
-          @click="showToc = !showToc">
+          @click="showToc = !showToc" :aria-label="$t('epubreader.shortcuts.show_hide_toc')">
           <v-icon>mdi-table-of-contents</v-icon>
         </v-btn>
 
@@ -27,19 +28,20 @@
         <v-btn
           icon
           :disabled="!screenfull.isEnabled"
-          @click="screenfull.isFullscreen ? screenfull.exit() : enterFullscreen()">
+          @click="screenfull.isFullscreen ? screenfull.exit() : enterFullscreen()" :aria-label="$t('bookreader.shortcuts.fullscreen')">
           <v-icon>{{ fullscreenIcon }}</v-icon>
         </v-btn>
 
         <v-btn
           icon
-          @click="showHelp = !showHelp">
+          @click="showHelp = !showHelp" :aria-label="$t('common.help')">
           <v-icon>mdi-help-circle</v-icon>
         </v-btn>
 
         <v-btn
           icon
           @click="toggleSettings"
+          :aria-label="$t('bookreader.reader_settings')"
         >
           <v-icon>mdi-cog</v-icon>
         </v-btn>
@@ -56,7 +58,7 @@
         horizontal
         v-if="showToolbars"
       >
-        <v-btn icon @click="previousBook">
+        <v-btn icon @click="previousBook" :aria-label="$t('common.previous_book')">
           <v-icon>mdi-undo</v-icon>
         </v-btn>
 
@@ -66,6 +68,7 @@
           icon
           :disabled="!historyCanGoBack"
           @click="historyBack"
+          :aria-label="$t('common.history_back')"
         >
           <v-icon>mdi-chevron-left</v-icon>
         </v-btn>
@@ -78,13 +81,14 @@
           icon
           :disabled="!historyCanGoForward"
           @click="historyForward"
+          :aria-label="$t('common.history_forward')"
         >
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
 
         <v-spacer/>
 
-        <v-btn icon @click="nextBook">
+        <v-btn icon @click="nextBook" :aria-label="$t('common.next_book')">
           <v-icon>mdi-redo</v-icon>
         </v-btn>
       </v-toolbar>
@@ -182,7 +186,7 @@
     >
       <v-card>
         <v-toolbar dark color="primary">
-          <v-btn icon dark @click="showSettings = false">
+          <v-btn icon dark @click="showSettings = false" :aria-label="$t('common.close')">
             <v-icon>mdi-close</v-icon>
           </v-btn>
           <v-toolbar-title>{{ $t('bookreader.reader_settings') }}</v-toolbar-title>

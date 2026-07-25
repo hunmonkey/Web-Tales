@@ -1,9 +1,6 @@
 package org.tales.infrastructure.jooq.main
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.interfaces.api.rest.dto.ClientSettingDto
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -11,6 +8,9 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.interfaces.api.rest.dto.ClientSettingDto
 
 @SpringBootTest
 class ClientSettingsDtoDaoTest(

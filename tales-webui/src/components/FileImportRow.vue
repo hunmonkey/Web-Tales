@@ -48,7 +48,7 @@
 
     <!--  Book details  -->
     <td class="px-1">
-      <v-btn icon elevation="1" :disabled="!bookAnalyzed" @click="modalBookDetails = true">
+      <v-btn icon elevation="1" :disabled="!bookAnalyzed" @click="modalBookDetails = true" :aria-label="$t('common.details')">
         <v-icon v-if="bookToUpgrade">mdi-file-compare</v-icon>
         <v-icon v-else>mdi-book-information-variant</v-icon>
       </v-btn>
@@ -66,6 +66,7 @@
              elevation="1"
              @click="modalViewer = true"
              :disabled="!bookAnalyzed || bookAnalyzed.status !== MediaStatus.READY"
+             :aria-label="$t('common.preview_pages')"
       >
         <v-icon v-if="bookToUpgrade">mdi-compare</v-icon>
         <v-icon v-else>mdi-image</v-icon>
@@ -83,6 +84,7 @@
              elevation="1"
              @click="modalNameChooser = true"
              :disabled="!bookAnalyzed || bookAnalyzed.status !== MediaStatus.READY"
+             :aria-label="$t('common.choose_file_name')"
       >
         <v-icon>mdi-format-color-text</v-icon>
       </v-btn>

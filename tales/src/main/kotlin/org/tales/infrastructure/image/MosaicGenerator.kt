@@ -1,8 +1,8 @@
 package org.tales.infrastructure.image
 
-import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
+import org.tales.infrastructure.configuration.TalesSettingsProvider
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO

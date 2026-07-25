@@ -1,14 +1,14 @@
 package org.tales.application.tasks
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.infrastructure.configuration.TalesSettingsProvider
-import org.tales.infrastructure.configuration.SettingChangedEvent
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.task.ThreadPoolTaskExecutorBuilder
 import org.springframework.context.event.EventListener
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.stereotype.Service
+import org.tales.infrastructure.configuration.SettingChangedEvent
+import org.tales.infrastructure.configuration.TalesSettingsProvider
 
 private val logger = KotlinLogging.logger {}
 

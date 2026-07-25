@@ -3,18 +3,6 @@ package org.tales.shelfview.interfaces.api
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.Book
-import org.tales.domain.model.Media
-import org.tales.domain.model.makeBook
-import org.tales.domain.model.makeLibrary
-import org.tales.domain.model.makeSeries
-import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.domain.persistence.MediaRepository
-import org.tales.domain.persistence.SeriesRepository
-import org.tales.domain.service.LibraryLifecycle
-import org.tales.domain.service.SeriesLifecycle
-import org.tales.interfaces.api.rest.WithMockCustomUser
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -27,6 +15,18 @@ import org.springframework.http.HttpHeaders
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.tales.domain.model.Book
+import org.tales.domain.model.Media
+import org.tales.domain.model.makeBook
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.model.makeSeries
+import org.tales.domain.persistence.BookRepository
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.domain.persistence.SeriesRepository
+import org.tales.domain.service.LibraryLifecycle
+import org.tales.domain.service.SeriesLifecycle
+import org.tales.interfaces.api.rest.WithMockCustomUser
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -97,6 +97,37 @@ class ShelfViewMixedPageControllerTest(
         status { isOk() }
         header { string(HttpHeaders.CONTENT_TYPE, "image/jpeg") }
         content { bytes(imageBytes) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given mixed zip jpg item when getting page then returns cache headers and not modified on revalidation`(
+    @TempDir dir: Path,
+  ) {
+    val imageBytes = jpegBytes()
+    val zip = dir.resolve("mixed.zip")
+    writeZip(zip, mapOf("001.jpg" to imageBytes))
+    val book = createBookWithMedia(zip)
+    val itemId = mixedItemId("001.jpg", imageBytes.size.toLong())
+
+    val response =
+      mockMvc
+        .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1")
+        .andExpect {
+          status { isOk() }
+          header { exists(HttpHeaders.LAST_MODIFIED) }
+          header { string(HttpHeaders.CACHE_CONTROL, "max-age=0, must-revalidate, private") }
+        }.andReturn()
+
+    val lastModified = response.response.getHeader(HttpHeaders.LAST_MODIFIED)
+    assertThat(lastModified).isNotBlank
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1") {
+        header(HttpHeaders.IF_MODIFIED_SINCE, lastModified!!)
+      }.andExpect {
+        status { isNotModified() }
       }
   }
 

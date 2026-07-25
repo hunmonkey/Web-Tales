@@ -1,14 +1,5 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.domain.model.Author
-import org.tales.domain.persistence.ReferentialRepository
-import org.tales.infrastructure.datasource.SqliteUdfDataSource
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.infrastructure.jooq.udfStripAccents
-import org.tales.jooq.main.Tables
-import org.tales.jooq.main.tables.records.BookMetadataAggregationAuthorRecord
-import org.tales.jooq.main.tables.records.BookMetadataAuthorRecord
-import org.tales.language.stripAccents
 import org.jooq.DSLContext
 import org.jooq.impl.DSL.noCondition
 import org.jooq.impl.DSL.select
@@ -19,6 +10,15 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
+import org.tales.domain.model.Author
+import org.tales.domain.persistence.ReferentialRepository
+import org.tales.infrastructure.datasource.SqliteUdfDataSource
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.infrastructure.jooq.udfStripAccents
+import org.tales.jooq.main.Tables
+import org.tales.jooq.main.tables.records.BookMetadataAggregationAuthorRecord
+import org.tales.jooq.main.tables.records.BookMetadataAuthorRecord
+import org.tales.language.stripAccents
 import java.time.LocalDate
 
 @Component

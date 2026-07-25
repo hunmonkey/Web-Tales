@@ -87,7 +87,7 @@
               <v-list-item-title>{{ $t('navigation.libraries') }}</v-list-item-title>
             </v-list-item-content>
             <v-list-item-action v-if="isAdmin" class="ma-0">
-              <v-btn icon @click.stop.capture.prevent="addLibrary">
+              <v-btn icon @click.stop.capture.prevent="addLibrary" :aria-label="$t('welcome.add_library')">
                 <v-icon>mdi-plus</v-icon>
               </v-btn>
             </v-list-item-action>

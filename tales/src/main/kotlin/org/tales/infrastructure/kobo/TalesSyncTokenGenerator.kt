@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.stereotype.Component
 import org.tales.domain.model.TalesSyncToken
 import org.tales.infrastructure.kobo.KoboHeaders.X_KOBO_SYNCTOKEN
-import org.springframework.stereotype.Component
 import java.util.Base64
 
 private val logger = KotlinLogging.logger {}

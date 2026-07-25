@@ -1,10 +1,5 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.infrastructure.jooq.toOrderBy
-import org.tales.interfaces.api.persistence.HistoricalEventDtoRepository
-import org.tales.interfaces.api.rest.dto.HistoricalEventDto
-import org.tales.jooq.main.Tables
 import org.jooq.DSLContext
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Page
@@ -13,6 +8,11 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.infrastructure.jooq.toOrderBy
+import org.tales.interfaces.api.persistence.HistoricalEventDtoRepository
+import org.tales.interfaces.api.rest.dto.HistoricalEventDto
+import org.tales.jooq.main.Tables
 
 @Component
 class HistoricalEventDtoDao(

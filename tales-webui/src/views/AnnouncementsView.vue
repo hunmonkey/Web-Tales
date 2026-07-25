@@ -29,7 +29,7 @@
           <v-tooltip :left="!$vuetify.rtl" :right="$vuetify.rtl">
             <template v-slot:activator="{ on }">
               <v-btn icon elevation="5" color="success" v-on="on" :disabled="item._tales.read"
-                     @click="markRead(item.id)">
+                     @click="markRead(item.id)" :aria-label="$t('announcements.mark_read')">
                 <v-icon>mdi-check</v-icon>
               </v-btn>
             </template>

@@ -2,6 +2,9 @@ package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Book
 import org.tales.domain.model.BookPage
 import org.tales.domain.model.BookWithMedia
@@ -26,9 +29,6 @@ import org.tales.infrastructure.mediacontainer.divina.DivinaExtractor
 import org.tales.infrastructure.mediacontainer.epub.EpubExtractor
 import org.tales.infrastructure.mediacontainer.epub.epub
 import org.tales.infrastructure.mediacontainer.pdf.PdfExtractor
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.nio.file.AccessDeniedException
 import java.nio.file.Files

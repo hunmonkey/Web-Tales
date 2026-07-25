@@ -41,7 +41,32 @@ describe('FixedPageAdapter', () => {
       contentFingerprint: 'tales-file-state:book-1',
     })
     expect(adapter.getProgression()).toBe(1 / 3)
-    expect(preloads.map(x => x.url)).toEqual(['page-1'])
+    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2'])
+  })
+
+  it('prefetches a full double page spread ahead and stops at the last page', async () => {
+    const {adapter, preloads} = createAdapter()
+
+    await adapter.open({...manifest, pageCount: 6})
+    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2'])
+
+    await adapter.goTo({
+      schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+      kind: 'PAGE',
+      page: 2,
+      offset: 0,
+      contentFingerprint: manifest.contentFingerprint,
+    })
+    expect(preloads.slice(2).map(x => x.url)).toEqual(['page-3', 'page-4'])
+
+    await adapter.goTo({
+      schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+      kind: 'PAGE',
+      page: 5,
+      offset: 0,
+      contentFingerprint: manifest.contentFingerprint,
+    })
+    expect(preloads.slice(4).map(x => x.url)).toEqual([])
   })
 
   it('moves next, previous and clamps locator page boundaries', async () => {
@@ -87,12 +112,12 @@ describe('FixedPageAdapter', () => {
 
     await adapter.next()
     expect(firstPrefetch.cancel).toHaveBeenCalled()
-    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2'])
+    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2', 'page-2'])
 
-    const secondPrefetch = preloads[1]
+    const latestPrefetch = preloads[preloads.length - 1]
     adapter.destroy()
 
-    expect(secondPrefetch.cancel).toHaveBeenCalled()
+    expect(latestPrefetch.cancel).toHaveBeenCalled()
     expect(adapter.getProgression()).toBe(0)
     expect(adapter.getCurrentPageUrl()).toBeUndefined()
   })

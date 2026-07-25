@@ -2,15 +2,6 @@ package org.tales.shelfview.interfaces.api
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.shelfview.domain.ShelfViewDictionaryEntry
-import org.tales.shelfview.domain.ShelfViewDictionaryProvider
-import org.tales.shelfview.domain.ShelfViewDictionaryProviderKind
-import org.tales.shelfview.domain.persistence.ShelfViewDictionaryRepository
-import org.tales.shelfview.interfaces.api.dto.ShelfViewDictionaryLocalPackImportDto
-import org.tales.shelfview.interfaces.api.dto.ShelfViewDictionaryLookupResultDto
-import org.tales.shelfview.interfaces.api.dto.ShelfViewDictionaryProviderDto
-import org.tales.shelfview.interfaces.api.dto.toDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -24,6 +15,15 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.shelfview.domain.ShelfViewDictionaryEntry
+import org.tales.shelfview.domain.ShelfViewDictionaryProvider
+import org.tales.shelfview.domain.ShelfViewDictionaryProviderKind
+import org.tales.shelfview.domain.persistence.ShelfViewDictionaryRepository
+import org.tales.shelfview.interfaces.api.dto.ShelfViewDictionaryLocalPackImportDto
+import org.tales.shelfview.interfaces.api.dto.ShelfViewDictionaryLookupResultDto
+import org.tales.shelfview.interfaces.api.dto.ShelfViewDictionaryProviderDto
+import org.tales.shelfview.interfaces.api.dto.toDto
 import java.util.Locale
 
 @RestController

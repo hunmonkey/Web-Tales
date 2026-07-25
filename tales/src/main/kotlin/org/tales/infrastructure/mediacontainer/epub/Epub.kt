@@ -1,12 +1,12 @@
 package org.tales.infrastructure.mediacontainer.epub
 
 import org.apache.commons.compress.archivers.zip.ZipFile
-import org.tales.domain.model.MediaUnsupportedException
-import org.tales.infrastructure.util.getEntryInputStream
-import org.tales.infrastructure.util.use
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
+import org.tales.domain.model.MediaUnsupportedException
+import org.tales.infrastructure.util.getEntryInputStream
+import org.tales.infrastructure.util.use
 import java.nio.file.Path
 import java.nio.file.Paths
 

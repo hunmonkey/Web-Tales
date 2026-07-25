@@ -1,13 +1,13 @@
 package org.tales.benchmark.rest
 
+import org.openjdk.jmh.annotations.Level
+import org.openjdk.jmh.annotations.Setup
+import org.springframework.beans.factory.annotation.Autowired
 import org.tales.benchmark.AbstractBenchmark
 import org.tales.domain.persistence.TalesUserRepository
 import org.tales.infrastructure.security.TalesPrincipal
 import org.tales.interfaces.api.rest.BookController
 import org.tales.interfaces.api.rest.SeriesController
-import org.openjdk.jmh.annotations.Level
-import org.openjdk.jmh.annotations.Setup
-import org.springframework.beans.factory.annotation.Autowired
 
 internal const val DEFAULT_PAGE_SIZE = 20
 

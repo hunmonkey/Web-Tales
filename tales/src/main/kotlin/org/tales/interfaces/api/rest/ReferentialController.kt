@@ -3,12 +3,6 @@ package org.tales.interfaces.api.rest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.domain.persistence.ReferentialRepository
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.infrastructure.openapi.PageableWithoutSortAsQueryParam
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.interfaces.api.rest.dto.AuthorDto
-import org.tales.interfaces.api.rest.dto.toDto
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
@@ -18,6 +12,12 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.tales.domain.persistence.ReferentialRepository
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.infrastructure.openapi.PageableWithoutSortAsQueryParam
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.interfaces.api.rest.dto.AuthorDto
+import org.tales.interfaces.api.rest.dto.toDto
 
 @RestController
 @RequestMapping("api", produces = [MediaType.APPLICATION_JSON_VALUE])

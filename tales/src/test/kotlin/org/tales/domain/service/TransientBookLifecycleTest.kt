@@ -3,6 +3,12 @@ package org.tales.domain.service
 import com.ninjasquad.springmockk.SpykBean
 import io.mockk.every
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
 import org.tales.domain.model.BookMetadataPatch
 import org.tales.domain.model.Media
 import org.tales.domain.model.SeriesMetadataPatch
@@ -13,12 +19,6 @@ import org.tales.domain.model.makeSeries
 import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.infrastructure.metadata.comicrack.ComicInfoProvider
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 
 @SpringBootTest
 class TransientBookLifecycleTest(

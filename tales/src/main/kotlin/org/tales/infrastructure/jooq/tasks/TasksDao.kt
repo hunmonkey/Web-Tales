@@ -2,10 +2,6 @@ package org.tales.infrastructure.jooq.tasks
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.application.tasks.Task
-import org.tales.application.tasks.TasksRepository
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.jooq.tasks.Tables
 import org.jooq.DSLContext
 import org.jooq.Query
 import org.jooq.Record2
@@ -15,6 +11,10 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.DependsOn
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.tales.application.tasks.Task
+import org.tales.application.tasks.TasksRepository
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.jooq.tasks.Tables
 import java.time.LocalDateTime
 import java.time.ZoneId
 

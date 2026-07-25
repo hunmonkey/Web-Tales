@@ -7,6 +7,14 @@ import io.mockk.every
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
+import org.jooq.exception.DataAccessException
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
 import org.tales.domain.model.BookMetadata
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.Media
@@ -24,14 +32,6 @@ import org.tales.domain.persistence.SeriesMetadataRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.persistence.ThumbnailBookRepository
 import org.tales.domain.persistence.ThumbnailSeriesRepository
-import org.jooq.exception.DataAccessException
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import java.nio.file.Files
 import java.nio.file.Paths
 

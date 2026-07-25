@@ -1,9 +1,9 @@
 package org.tales.domain.persistence
 
-import org.tales.domain.model.AuthenticationActivity
-import org.tales.domain.model.TalesUser
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.tales.domain.model.AuthenticationActivity
+import org.tales.domain.model.TalesUser
 import java.time.LocalDateTime
 
 interface AuthenticationActivityRepository {

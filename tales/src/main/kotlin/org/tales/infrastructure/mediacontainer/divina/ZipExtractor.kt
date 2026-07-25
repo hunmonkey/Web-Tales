@@ -6,6 +6,7 @@ import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipFile
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel
+import org.springframework.stereotype.Service
 import org.tales.domain.model.EntryNotFoundException
 import org.tales.domain.model.MediaContainerEntry
 import org.tales.domain.model.MediaType
@@ -13,7 +14,6 @@ import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.tales.infrastructure.util.getZipEntryBytes
 import org.tales.infrastructure.util.use
-import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 

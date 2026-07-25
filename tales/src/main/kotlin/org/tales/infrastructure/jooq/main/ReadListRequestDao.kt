@@ -1,5 +1,12 @@
 package org.tales.infrastructure.jooq.main
 
+import org.jooq.DSLContext
+import org.jooq.impl.DSL.ltrim
+import org.jooq.impl.DSL.row
+import org.jooq.impl.DSL.value
+import org.jooq.impl.DSL.values
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.stereotype.Component
 import org.tales.domain.model.ReadListRequestBook
 import org.tales.domain.model.ReadListRequestBookMatchBook
 import org.tales.domain.model.ReadListRequestBookMatchSeries
@@ -8,13 +15,6 @@ import org.tales.domain.persistence.ReadListRequestRepository
 import org.tales.infrastructure.jooq.SplitDslDaoBase
 import org.tales.infrastructure.jooq.noCase
 import org.tales.jooq.main.Tables
-import org.jooq.DSLContext
-import org.jooq.impl.DSL.ltrim
-import org.jooq.impl.DSL.row
-import org.jooq.impl.DSL.value
-import org.jooq.impl.DSL.values
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.stereotype.Component
 import java.time.LocalDate
 
 @Component

@@ -1,10 +1,5 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.interfaces.api.persistence.ReadProgressDtoRepository
-import org.tales.interfaces.api.rest.dto.TachiyomiReadProgressDto
-import org.tales.interfaces.api.rest.dto.TachiyomiReadProgressV2Dto
-import org.tales.jooq.main.Tables
 import org.jooq.AggregateFunction
 import org.jooq.Condition
 import org.jooq.DSLContext
@@ -13,6 +8,11 @@ import org.jooq.impl.DSL
 import org.jooq.impl.DSL.rowNumber
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.interfaces.api.persistence.ReadProgressDtoRepository
+import org.tales.interfaces.api.rest.dto.TachiyomiReadProgressDto
+import org.tales.interfaces.api.rest.dto.TachiyomiReadProgressV2Dto
+import org.tales.jooq.main.Tables
 import java.math.BigDecimal
 
 @Component

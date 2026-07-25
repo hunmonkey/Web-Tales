@@ -1,10 +1,10 @@
 package org.tales.domain.persistence
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.tales.domain.model.SearchCondition
 import org.tales.domain.model.SearchContext
 import org.tales.domain.model.Series
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 import java.net.URL
 
 interface SeriesRepository {

@@ -1,10 +1,10 @@
 package org.tales.infrastructure.configuration
 
 import org.apache.commons.lang3.RandomStringUtils
-import org.tales.domain.model.ThumbnailSize
-import org.tales.infrastructure.jooq.main.ServerSettingsDao
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.tales.domain.model.ThumbnailSize
+import org.tales.infrastructure.jooq.main.ServerSettingsDao
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 

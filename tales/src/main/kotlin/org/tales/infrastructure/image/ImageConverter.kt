@@ -2,8 +2,8 @@ package org.tales.infrastructure.image
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.coobird.thumbnailator.Thumbnails
-import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.springframework.stereotype.Service
+import org.tales.infrastructure.mediacontainer.ContentDetector
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream

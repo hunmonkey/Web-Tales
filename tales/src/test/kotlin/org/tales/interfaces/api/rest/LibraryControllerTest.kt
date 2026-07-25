@@ -1,7 +1,5 @@
 package org.tales.interfaces.api.rest
 
-import org.tales.domain.model.makeLibrary
-import org.tales.domain.persistence.LibraryRepository
 import org.hamcrest.Matchers
 import org.hamcrest.Matchers.hasItems
 import org.junit.jupiter.api.AfterEach
@@ -19,6 +17,8 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.persistence.LibraryRepository
 import java.nio.file.Path
 
 @SpringBootTest

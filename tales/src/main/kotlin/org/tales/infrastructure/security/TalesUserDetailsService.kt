@@ -1,10 +1,10 @@
 package org.tales.infrastructure.security
 
-import org.tales.domain.persistence.TalesUserRepository
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Component
+import org.tales.domain.persistence.TalesUserRepository
 
 @Component
 class TalesUserDetailsService(

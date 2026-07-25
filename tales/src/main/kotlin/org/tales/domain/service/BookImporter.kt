@@ -1,6 +1,8 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
 import org.tales.application.tasks.TaskEmitter
 import org.tales.domain.model.Book
 import org.tales.domain.model.CodedException
@@ -24,8 +26,6 @@ import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.persistence.SidecarRepository
 import org.tales.domain.persistence.ThumbnailBookRepository
 import org.tales.language.toIndexedMap
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
 import java.io.FileNotFoundException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files

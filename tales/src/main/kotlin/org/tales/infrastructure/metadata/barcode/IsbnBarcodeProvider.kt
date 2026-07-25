@@ -8,6 +8,7 @@ import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.validator.routines.ISBNValidator
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookMetadataPatch
 import org.tales.domain.model.BookMetadataPatchCapability
 import org.tales.domain.model.BookWithMedia
@@ -16,7 +17,6 @@ import org.tales.domain.model.MediaProfile
 import org.tales.domain.model.MetadataPatchTarget
 import org.tales.domain.service.BookAnalyzer
 import org.tales.infrastructure.metadata.BookMetadataProvider
-import org.springframework.stereotype.Service
 import java.util.EnumSet
 import javax.imageio.ImageIO
 

@@ -1,5 +1,10 @@
 package org.tales.interfaces.api
 
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.http.MediaType
+import org.springframework.stereotype.Component
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import org.springframework.web.util.UriComponentsBuilder
 import org.tales.domain.model.BookPage
 import org.tales.domain.model.EpubTocEntry
 import org.tales.domain.model.Media
@@ -29,11 +34,6 @@ import org.tales.interfaces.api.dto.WPReadingProgressionDto
 import org.tales.interfaces.api.rest.dto.AuthorDto
 import org.tales.interfaces.api.rest.dto.BookDto
 import org.tales.language.toZonedDateTime
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.http.MediaType
-import org.springframework.stereotype.Component
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
-import org.springframework.web.util.UriComponentsBuilder
 import org.tales.domain.model.MediaType as TalesMediaType
 
 @Component

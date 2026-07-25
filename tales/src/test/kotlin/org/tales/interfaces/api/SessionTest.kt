@@ -1,9 +1,6 @@
 package org.tales.interfaces.api
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.service.TalesUserLifecycle
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -15,6 +12,9 @@ import org.springframework.http.HttpHeaders
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.TalesUserLifecycle
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)

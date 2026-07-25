@@ -3,16 +3,6 @@ package org.tales.shelfview.interfaces.api
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.domain.persistence.MediaRepository
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.interfaces.api.ContentRestrictionChecker
-import org.tales.interfaces.api.persistence.BookDtoRepository
-import org.tales.interfaces.api.rest.dto.BookDto
-import org.tales.shelfview.domain.ShelfViewHighlight
-import org.tales.shelfview.domain.persistence.ShelfViewHighlightRepository
-import org.tales.shelfview.interfaces.api.dto.ShelfViewHighlightDto
-import org.tales.shelfview.interfaces.api.dto.ShelfViewHighlightUpdateDto
-import org.tales.shelfview.interfaces.api.dto.toDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -26,6 +16,16 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.persistence.MediaRepository
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.interfaces.api.ContentRestrictionChecker
+import org.tales.interfaces.api.persistence.BookDtoRepository
+import org.tales.interfaces.api.rest.dto.BookDto
+import org.tales.shelfview.domain.ShelfViewHighlight
+import org.tales.shelfview.domain.persistence.ShelfViewHighlightRepository
+import org.tales.shelfview.interfaces.api.dto.ShelfViewHighlightDto
+import org.tales.shelfview.interfaces.api.dto.ShelfViewHighlightUpdateDto
+import org.tales.shelfview.interfaces.api.dto.toDto
 
 @RestController
 @RequestMapping("api/shelfview/v1", produces = [MediaType.APPLICATION_JSON_VALUE])

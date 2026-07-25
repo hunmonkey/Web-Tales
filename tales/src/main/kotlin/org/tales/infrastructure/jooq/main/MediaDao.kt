@@ -2,6 +2,12 @@ package org.tales.infrastructure.jooq.main
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jooq.DSLContext
+import org.jooq.impl.DSL
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import org.tales.domain.model.BookPage
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.Media
@@ -18,12 +24,6 @@ import org.tales.jooq.main.tables.records.MediaFileRecord
 import org.tales.jooq.main.tables.records.MediaPageRecord
 import org.tales.jooq.main.tables.records.MediaRecord
 import org.tales.language.toCurrentTimeZone
-import org.jooq.DSLContext
-import org.jooq.impl.DSL
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.time.ZoneId
 

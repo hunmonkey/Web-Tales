@@ -46,13 +46,13 @@
       </template>
 
       <template v-slot:item.properties="{ item }">
-        <v-btn icon small @click="showDetails(item)">
+        <v-btn icon small @click="showDetails(item)" :aria-label="$t('common.details')">
           <v-icon small>mdi-information</v-icon>
         </v-btn>
       </template>
 
       <template v-slot:footer.prepend>
-        <v-btn icon @click="loadData">
+        <v-btn icon @click="loadData" :aria-label="$t('common.refresh')">
           <v-icon>mdi-refresh</v-icon>
         </v-btn>
       </template>

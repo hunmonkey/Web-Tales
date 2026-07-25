@@ -1,23 +1,6 @@
 package org.tales.interfaces.api.kobo
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.TalesUser
-import org.tales.domain.model.Media
-import org.tales.domain.model.MediaType
-import org.tales.domain.model.UserRoles
-import org.tales.domain.model.makeBook
-import org.tales.domain.model.makeLibrary
-import org.tales.domain.model.makeSeries
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.domain.persistence.MediaRepository
-import org.tales.domain.persistence.SeriesRepository
-import org.tales.domain.service.TalesUserLifecycle
-import org.tales.domain.service.SeriesLifecycle
-import org.tales.infrastructure.configuration.TalesSettingsProvider
-import org.tales.infrastructure.kobo.KoboHeaders
-import org.tales.infrastructure.kobo.TalesSyncTokenGenerator
-import org.tales.infrastructure.web.WebServerEffectiveSettings
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -33,6 +16,23 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.tales.domain.model.Media
+import org.tales.domain.model.MediaType
+import org.tales.domain.model.TalesUser
+import org.tales.domain.model.UserRoles
+import org.tales.domain.model.makeBook
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.model.makeSeries
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.domain.persistence.SeriesRepository
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.SeriesLifecycle
+import org.tales.domain.service.TalesUserLifecycle
+import org.tales.infrastructure.configuration.TalesSettingsProvider
+import org.tales.infrastructure.kobo.KoboHeaders
+import org.tales.infrastructure.kobo.TalesSyncTokenGenerator
+import org.tales.infrastructure.web.WebServerEffectiveSettings
 import java.util.stream.Stream
 
 @SpringBootTest(properties = ["tales.kobo.sync-item-limit=1"])

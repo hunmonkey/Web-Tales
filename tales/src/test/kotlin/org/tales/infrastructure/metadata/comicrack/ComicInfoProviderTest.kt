@@ -5,6 +5,11 @@ import io.mockk.every
 import io.mockk.mockk
 import org.apache.commons.validator.routines.ISBNValidator
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import org.tales.domain.model.BookMetadataPatch
 import org.tales.domain.model.BookWithMedia
 import org.tales.domain.model.Media
@@ -16,11 +21,6 @@ import org.tales.domain.service.BookAnalyzer
 import org.tales.infrastructure.metadata.comicrack.dto.AgeRating
 import org.tales.infrastructure.metadata.comicrack.dto.ComicInfo
 import org.tales.infrastructure.metadata.comicrack.dto.Manga
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.Arguments
-import org.junit.jupiter.params.provider.MethodSource
 import java.net.URI
 import java.time.LocalDate
 import java.util.stream.Stream

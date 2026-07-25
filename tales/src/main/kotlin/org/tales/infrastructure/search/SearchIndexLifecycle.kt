@@ -3,6 +3,11 @@ package org.tales.infrastructure.search
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.lucene.document.Document
 import org.apache.lucene.index.Term
+import org.springframework.context.event.EventListener
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Component
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.model.ReadList
 import org.tales.domain.model.SeriesCollection
@@ -12,11 +17,6 @@ import org.tales.interfaces.api.persistence.BookDtoRepository
 import org.tales.interfaces.api.persistence.SeriesDtoRepository
 import org.tales.interfaces.api.rest.dto.BookDto
 import org.tales.interfaces.api.rest.dto.SeriesDto
-import org.springframework.context.event.EventListener
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Pageable
-import org.springframework.stereotype.Component
 import kotlin.math.ceil
 import kotlin.time.measureTime
 

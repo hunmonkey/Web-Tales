@@ -5,9 +5,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.PositiveOrZero
+import org.springframework.data.domain.Page
 import org.tales.interfaces.api.dto.WPLinkDto
 import org.tales.interfaces.api.dto.WPPublicationDto
-import org.springframework.data.domain.Page
 import java.time.ZonedDateTime
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)

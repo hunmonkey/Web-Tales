@@ -1,8 +1,5 @@
 package org.tales.interfaces.api.rest
 
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.infrastructure.jooq.main.ClientSettingsDtoDao
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -20,6 +17,9 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.infrastructure.jooq.main.ClientSettingsDtoDao
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)

@@ -7,6 +7,10 @@ import io.micrometer.core.instrument.MultiGauge
 import io.micrometer.core.instrument.MultiGauge.Row
 import io.micrometer.core.instrument.Tags
 import io.micrometer.core.instrument.Timer
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.annotation.Profile
+import org.springframework.context.event.EventListener
+import org.springframework.stereotype.Component
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.persistence.BookRepository
 import org.tales.domain.persistence.LibraryRepository
@@ -15,10 +19,6 @@ import org.tales.domain.persistence.SeriesCollectionRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.persistence.SidecarRepository
 import org.tales.domain.persistence.TalesUserRepository
-import org.springframework.boot.context.event.ApplicationReadyEvent
-import org.springframework.context.annotation.Profile
-import org.springframework.context.event.EventListener
-import org.springframework.stereotype.Component
 import java.util.concurrent.atomic.AtomicLong
 
 private const val LIBRARIES = "libraries"

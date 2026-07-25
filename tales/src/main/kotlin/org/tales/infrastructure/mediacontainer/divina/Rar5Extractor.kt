@@ -6,15 +6,15 @@ import com.github.gotson.nightcompress.ReadSupportFilter
 import com.github.gotson.nightcompress.ReadSupportFormat
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
-import org.tales.domain.model.MediaContainerEntry
-import org.tales.domain.model.MediaType
-import org.tales.infrastructure.image.ImageAnalyzer
-import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
 import org.springframework.beans.factory.support.BeanDefinitionBuilder
 import org.springframework.beans.factory.support.BeanDefinitionRegistry
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor
 import org.springframework.context.annotation.Configuration
+import org.tales.domain.model.MediaContainerEntry
+import org.tales.domain.model.MediaType
+import org.tales.infrastructure.image.ImageAnalyzer
+import org.tales.infrastructure.mediacontainer.ContentDetector
 import java.nio.file.Path
 
 private val logger = KotlinLogging.logger {}

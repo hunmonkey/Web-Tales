@@ -1,6 +1,9 @@
 package org.tales.infrastructure.jooq.main
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.jooq.DSLContext
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.stereotype.Component
 import org.tales.domain.model.MediaExtensionEpub
 import org.tales.infrastructure.jooq.SplitDslDaoBase
 import org.tales.infrastructure.jooq.deserializeMediaExtension
@@ -10,9 +13,6 @@ import org.tales.interfaces.api.kobo.dto.KoboSeriesDto
 import org.tales.interfaces.api.kobo.dto.PublisherDto
 import org.tales.interfaces.api.kobo.persistence.KoboDtoRepository
 import org.tales.jooq.main.Tables
-import org.jooq.DSLContext
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.stereotype.Component
 import java.time.ZoneId
 
 @Component

@@ -1,5 +1,10 @@
 package org.tales.infrastructure.jooq.main
 
+import org.jooq.DSLContext
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.ThumbnailBook
 import org.tales.domain.persistence.ThumbnailBookRepository
@@ -7,11 +12,6 @@ import org.tales.infrastructure.jooq.SplitDslDaoBase
 import org.tales.infrastructure.jooq.TempTable.Companion.withTempTable
 import org.tales.jooq.main.Tables
 import org.tales.jooq.main.tables.records.ThumbnailBookRecord
-import org.jooq.DSLContext
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.net.URL
 
 @Component

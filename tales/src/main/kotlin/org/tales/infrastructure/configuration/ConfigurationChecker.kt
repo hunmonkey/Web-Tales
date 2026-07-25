@@ -2,8 +2,8 @@ package org.tales.infrastructure.configuration
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.annotation.PostConstruct
-import org.tales.domain.model.ConfigurationException
 import org.springframework.stereotype.Component
+import org.tales.domain.model.ConfigurationException
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path

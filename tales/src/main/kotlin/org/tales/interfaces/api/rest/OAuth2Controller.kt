@@ -3,12 +3,12 @@ package org.tales.interfaces.api.rest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.infrastructure.openapi.OpenApiConfiguration
 import org.springframework.http.MediaType
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.tales.infrastructure.openapi.OpenApiConfiguration
 
 @RestController
 @RequestMapping("api/v1/oauth2", produces = [MediaType.APPLICATION_JSON_VALUE])

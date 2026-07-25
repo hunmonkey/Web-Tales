@@ -5,9 +5,6 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.apache.commons.io.FilenameUtils
-import org.tales.infrastructure.configuration.TalesProperties
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.language.contains
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
@@ -21,6 +18,9 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.infrastructure.configuration.TalesProperties
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.language.contains
 import kotlin.io.path.Path
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory

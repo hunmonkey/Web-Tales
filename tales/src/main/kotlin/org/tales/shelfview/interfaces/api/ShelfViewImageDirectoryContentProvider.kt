@@ -1,14 +1,14 @@
 package org.tales.shelfview.interfaces.api
 
 import org.apache.commons.io.FilenameUtils
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
+import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaProfile
 import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
-import org.springframework.http.HttpStatus
-import org.springframework.stereotype.Component
-import org.springframework.web.server.ResponseStatusException
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption

@@ -1,6 +1,10 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.model.DuplicateNameException
 import org.tales.domain.model.Series
@@ -9,10 +13,6 @@ import org.tales.domain.model.ThumbnailSeriesCollection
 import org.tales.domain.persistence.SeriesCollectionRepository
 import org.tales.domain.persistence.ThumbnailSeriesCollectionRepository
 import org.tales.infrastructure.image.MosaicGenerator
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionTemplate
 
 private val logger = KotlinLogging.logger {}
 

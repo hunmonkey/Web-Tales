@@ -3,22 +3,6 @@ package org.tales.interfaces.api.rest
 import com.ninjasquad.springmockk.MockkBean
 import com.ninjasquad.springmockk.SpykBean
 import io.mockk.every
-import org.tales.domain.model.BookPage
-import org.tales.domain.model.Media
-import org.tales.domain.model.TypedBytes
-import org.tales.domain.model.makeBook
-import org.tales.domain.model.makeLibrary
-import org.tales.domain.model.makeSeries
-import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.domain.persistence.MediaRepository
-import org.tales.domain.persistence.SeriesRepository
-import org.tales.domain.service.BookAnalyzer
-import org.tales.domain.service.BookLifecycle
-import org.tales.domain.service.TalesUserLifecycle
-import org.tales.domain.service.LibraryLifecycle
-import org.tales.domain.service.SeriesLifecycle
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -32,6 +16,22 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.tales.domain.model.BookPage
+import org.tales.domain.model.Media
+import org.tales.domain.model.TypedBytes
+import org.tales.domain.model.makeBook
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.model.makeSeries
+import org.tales.domain.persistence.BookRepository
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.domain.persistence.SeriesRepository
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.BookAnalyzer
+import org.tales.domain.service.BookLifecycle
+import org.tales.domain.service.LibraryLifecycle
+import org.tales.domain.service.SeriesLifecycle
+import org.tales.domain.service.TalesUserLifecycle
 import java.util.stream.Stream
 
 @SpringBootTest

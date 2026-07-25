@@ -6,12 +6,12 @@ import io.mockk.every
 import io.mockk.spyk
 import org.apache.commons.io.FilenameUtils
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import org.tales.domain.model.Book
 import org.tales.domain.model.Series
 import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.tales.infrastructure.mediacontainer.TikaConfiguration
-import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.LocalDateTime

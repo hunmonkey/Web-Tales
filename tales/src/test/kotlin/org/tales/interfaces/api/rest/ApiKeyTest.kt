@@ -1,8 +1,5 @@
 package org.tales.interfaces.api.rest
 
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.service.TalesUserLifecycle
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -11,6 +8,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.TalesUserLifecycle
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)

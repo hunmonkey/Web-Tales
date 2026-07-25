@@ -8,12 +8,6 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
-import org.tales.infrastructure.jooq.main.ClientSettingsDtoDao
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.interfaces.api.rest.dto.ClientSettingDto
-import org.tales.interfaces.api.rest.dto.ClientSettingGlobalUpdateDto
-import org.tales.interfaces.api.rest.dto.ClientSettingUserUpdateDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.access.prepost.PreAuthorize
@@ -26,6 +20,12 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.tales.infrastructure.jooq.main.ClientSettingsDtoDao
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.interfaces.api.rest.dto.ClientSettingDto
+import org.tales.interfaces.api.rest.dto.ClientSettingGlobalUpdateDto
+import org.tales.interfaces.api.rest.dto.ClientSettingUserUpdateDto
 import io.swagger.v3.oas.annotations.parameters.RequestBody as OASRequestBody
 
 private const val KEY_REGEX = """^[a-z](?:[a-z0-9_-]*[a-z0-9])*(?:\.[a-z0-9](?:[a-z0-9_-]*[a-z0-9])*)*$"""

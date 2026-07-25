@@ -1,5 +1,9 @@
 package org.tales.interfaces.api
 
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.http.MediaType
+import org.springframework.stereotype.Component
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.tales.domain.persistence.MediaRepository
 import org.tales.domain.service.BookAnalyzer
 import org.tales.infrastructure.image.ImageConverter
@@ -17,10 +21,6 @@ import org.tales.interfaces.api.opds.v2.dto.AuthenticationFlowDto
 import org.tales.interfaces.api.opds.v2.dto.AuthenticationType
 import org.tales.interfaces.api.opds.v2.dto.LabelsDto
 import org.tales.interfaces.api.rest.dto.BookDto
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.http.MediaType
-import org.springframework.stereotype.Component
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 @Component
 class OpdsGenerator(

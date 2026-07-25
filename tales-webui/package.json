@@ -12,7 +12,7 @@
     "@d-i-t-a/reader": "github:gotson/R2D2BC#fork",
     "@w0s/isbn-verify": "^3.1.2",
     "@zip.js/zip.js": "2.8.26",
-    "axios": "^1.15.0",
+    "axios": "^1.18.1",
     "chart.js": "^2.9.4",
     "core-js": "^3.8.3",
     "date-fns": "^2.30.0",

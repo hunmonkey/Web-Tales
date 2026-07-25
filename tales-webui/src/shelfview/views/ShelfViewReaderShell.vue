@@ -660,6 +660,8 @@
             :src="page.url"
             :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
             draggable="false"
+            :loading="pageImageLoading"
+            decoding="async"
             :data-page-index="page.pageIndex"
             :data-page-reload="pageImageReloadNonce"
             data-testid="shelfview-reader-page"
@@ -714,6 +716,9 @@
           :src="thumbnail.url"
           :alt="$t('shelfview_reader.page_n', {n: thumbnail.pageIndex + 1})"
           draggable="false"
+          loading="lazy"
+          decoding="async"
+          data-testid="shelfview-reader-thumbnail-image"
         />
       </button>
     </section>
@@ -2268,6 +2273,12 @@ export default Vue.extend({
         'shelfview-reader-shell__page--fit-original': this.pageFit === 'ORIGINAL',
       }
     },
+    // Continuous scroll renders every page at once, so let the browser defer the
+    // off-screen requests. Single and double page always sit in the viewport and
+    // must not wait for the lazy-loading check.
+    pageImageLoading(): string {
+      return this.readerLayout === 'CONTINUOUS_SCROLL' ? 'lazy' : 'eager'
+    },
     imageFiltersAvailable(): boolean {
       return !!this.manifest?.capabilities.imageFilters
     },
@@ -2540,7 +2551,9 @@ export default Vue.extend({
       if (this.error instanceof Error && this.error.message.toLowerCase().includes('different book version')) {
         return this.$t('shelfview_reader.error_book_changed_message') as string
       }
-      return this.error?.message || this.$t('shelfview_reader.error_generic_message') as string
+      // Raw server and browser messages are English developer text, so they must
+      // not reach the reader (Rule_UIUX 6-1).
+      return this.$t('shelfview_reader.error_generic_message') as string
     },
     textRecoveryAvailable(): boolean {
       return this.manifest?.kind === 'TEXT_REFLOW' || this.manifest?.kind === 'MIXED_CONTENT_SEQUENCE'
@@ -2827,6 +2840,7 @@ export default Vue.extend({
     async previousPage() {
       if (!this.adapter) return
 
+      this.pageImageFailed = false
       if (this.mixedContentAdapter) {
         await this.mixedContentAdapter.previous()
         this.normalizeReaderLayout()
@@ -2859,6 +2873,7 @@ export default Vue.extend({
         return
       }
 
+      this.pageImageFailed = false
       if (this.mixedContentAdapter) {
         await this.mixedContentAdapter.next()
         this.normalizeReaderLayout()
@@ -4854,7 +4869,8 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__page-jump:focus {
   border-color: #90caf9;
-  outline: none;
+  outline: 2px solid #90caf9;
+  outline-offset: 1px;
 }
 
 .shelfview-reader-shell__chrome-hint-text {
@@ -5284,10 +5300,16 @@ function isFiniteNumber(value: unknown): value is number {
   width: 100%;
 }
 
-.shelfview-reader-shell__contents-link:hover,
+.shelfview-reader-shell__contents-link:hover {
+  color: #90caf9;
+}
+
+/* The active contents row is already #90caf9, so colour alone cannot show
+   keyboard focus on the row the reader is currently on. */
 .shelfview-reader-shell__contents-link:focus-visible {
   color: #90caf9;
-  outline: none;
+  outline: 2px solid #90caf9;
+  outline-offset: 2px;
 }
 
 .shelfview-reader-shell__contents-link--active {
@@ -5381,10 +5403,14 @@ function isFiniteNumber(value: unknown): value is number {
   text-decoration: none;
 }
 
-.shelfview-reader-shell__dictionary-link:hover,
+.shelfview-reader-shell__dictionary-link:hover {
+  background: #2196f3;
+}
+
 .shelfview-reader-shell__dictionary-link:focus-visible {
   background: #2196f3;
-  outline: none;
+  outline: 2px solid #90caf9;
+  outline-offset: 2px;
 }
 
 .shelfview-reader-shell__text-settings {

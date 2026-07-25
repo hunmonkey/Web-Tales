@@ -4,6 +4,16 @@ import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import io.mockk.slot
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.Pageable
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.model.ReadList
 import org.tales.domain.model.SeriesCollection
@@ -21,16 +31,6 @@ import org.tales.domain.service.LibraryLifecycle
 import org.tales.domain.service.ReadListLifecycle
 import org.tales.domain.service.SeriesCollectionLifecycle
 import org.tales.domain.service.SeriesLifecycle
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.domain.Pageable
 
 @SpringBootTest
 class SearchIndexLifecycleTest(

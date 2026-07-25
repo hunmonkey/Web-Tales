@@ -24,6 +24,7 @@
         :title="$t('shelfview_local_reader.open').toString()"
         data-testid="shelfview-local-reader-open"
         @click="triggerFilePicker"
+        :aria-label="$t('shelfview_local_reader.open')"
       >
         <v-icon>mdi-folder-open-outline</v-icon>
       </v-btn>
@@ -40,6 +41,7 @@
         :title="$t('shelfview_local_reader.previous').toString()"
         data-testid="shelfview-local-reader-previous"
         @click="previousPage"
+        :aria-label="$t('shelfview_local_reader.previous')"
       >
         <v-icon>mdi-chevron-left</v-icon>
       </v-btn>
@@ -55,6 +57,7 @@
         :title="$t('shelfview_local_reader.next').toString()"
         data-testid="shelfview-local-reader-next"
         @click="nextPage"
+        :aria-label="$t('shelfview_local_reader.next')"
       >
         <v-icon>mdi-chevron-right</v-icon>
       </v-btn>
@@ -64,6 +67,7 @@
         :title="$t('shelfview_local_reader.clear').toString()"
         data-testid="shelfview-local-reader-clear"
         @click="clearArchive"
+        :aria-label="$t('shelfview_local_reader.clear')"
       >
         <v-icon>mdi-close</v-icon>
       </v-btn>
@@ -130,6 +134,7 @@
 import Vue from 'vue'
 import {
   ShelfViewLocalArchiveBook,
+  ShelfViewLocalArchiveError,
   ShelfViewLocalArchivePage,
   openShelfViewLocalArchiveFile,
 } from '@/shelfview/functions/local-archive'
@@ -187,12 +192,26 @@ export default Vue.extend({
         const stage = this.$refs.stage as HTMLElement | undefined
         stage?.focus()
       } catch (error) {
-        this.errorMessage = error instanceof Error
-          ? error.message
-          : this.$t('shelfview_local_reader.error_open').toString()
+        this.errorMessage = this.localArchiveErrorMessage(error)
       } finally {
         this.loading = false
       }
+    },
+    // Never surface the raw English archive message to the reader (Rule_UIUX 6-1).
+    localArchiveErrorMessage(error: unknown): string {
+      if (error instanceof ShelfViewLocalArchiveError) {
+        switch (error.code) {
+          case 'TOO_MANY_ENTRIES':
+            return this.$t('shelfview_local_reader.error_too_many_pages').toString()
+          case 'NO_SUPPORTED_PAGES':
+            return this.$t('shelfview_local_reader.error_no_pages').toString()
+          case 'OVER_SIZE_LIMIT':
+            return this.$t('shelfview_local_reader.error_too_large').toString()
+          case 'INVALID_IMAGE':
+            return this.$t('shelfview_local_reader.error_invalid_image').toString()
+        }
+      }
+      return this.$t('shelfview_local_reader.error_open').toString()
     },
     previousPage() {
       if (!this.canGoPrevious) return
@@ -253,6 +272,13 @@ export default Vue.extend({
   justify-content: center;
   padding: 16px;
   outline: none;
+}
+
+/* The stage is tabindex="0", so keyboard focus needs a visible ring. Mouse
+   clicks do not match :focus-visible, so reading stays undisturbed. */
+.shelfview-local-reader__stage:focus-visible {
+  outline: 2px solid #90caf9;
+  outline-offset: -2px;
 }
 
 .shelfview-local-reader__empty {

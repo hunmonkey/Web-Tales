@@ -6,12 +6,12 @@
     <div :style="'position: absolute; top: 0;' + ($vuetify.rtl ? 'left: 0' : 'right: 0')">
       <v-btn icon
              :disabled="!canScrollBackward"
-             @click="doScroll('backward')">
+             @click="doScroll('backward')" :aria-label="$t('common.scroll_left')">
         <rtl-icon icon="mdi-chevron-left" rtl="mdi-chevron-right"/>
       </v-btn>
       <v-btn icon
              :disabled="!canScrollForward"
-             @click="doScroll('forward')">
+             @click="doScroll('forward')" :aria-label="$t('common.scroll_right')">
         <rtl-icon icon="mdi-chevron-right" rtl="mdi-chevron-left"/>
       </v-btn>
     </div>

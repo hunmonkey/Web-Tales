@@ -1,5 +1,8 @@
 package org.tales.domain.service
 
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookMetadataPatchCapability
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaNotReadyException
@@ -17,9 +20,6 @@ import org.tales.domain.persistence.TransientBookRepository
 import org.tales.infrastructure.image.ImageType
 import org.tales.infrastructure.metadata.BookMetadataProvider
 import org.tales.infrastructure.metadata.SeriesMetadataFromBookProvider
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.data.domain.Pageable
-import org.springframework.stereotype.Service
 import java.nio.file.Paths
 
 @Service

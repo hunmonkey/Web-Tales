@@ -3,12 +3,12 @@ package org.tales.infrastructure.mediacontainer.divina
 import com.github.junrar.Archive
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
+import org.springframework.stereotype.Service
 import org.tales.domain.model.MediaContainerEntry
 import org.tales.domain.model.MediaType
 import org.tales.domain.model.MediaUnsupportedException
 import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
-import org.springframework.stereotype.Service
 import java.nio.file.Path
 
 private val logger = KotlinLogging.logger {}

@@ -3,10 +3,6 @@ package org.tales.infrastructure.kobo
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.infrastructure.configuration.TalesSettingsProvider
-import org.tales.infrastructure.kobo.KoboHeaders.X_KOBO_SYNCTOKEN
-import org.tales.infrastructure.web.getCurrentRequest
-import org.tales.language.contains
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings
 import org.springframework.http.HttpHeaders
@@ -19,6 +15,10 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.client.toEntity
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.util.DefaultUriBuilderFactory
+import org.tales.infrastructure.configuration.TalesSettingsProvider
+import org.tales.infrastructure.kobo.KoboHeaders.X_KOBO_SYNCTOKEN
+import org.tales.infrastructure.web.getCurrentRequest
+import org.tales.language.contains
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 

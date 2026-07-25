@@ -1,12 +1,12 @@
 package org.tales.infrastructure.jooq.main
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.Library
-import org.tales.infrastructure.jooq.offset
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.tales.domain.model.Library
+import org.tales.infrastructure.jooq.offset
 import java.net.URL
 import java.time.LocalDateTime
 

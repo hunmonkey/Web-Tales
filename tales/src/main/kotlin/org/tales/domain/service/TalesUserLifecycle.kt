@@ -1,24 +1,24 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.security.core.session.SessionRegistry
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.tales.domain.model.ApiKey
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.model.DuplicateNameException
 import org.tales.domain.model.TalesUser
 import org.tales.domain.model.UserEmailAlreadyExistsException
 import org.tales.domain.persistence.AuthenticationActivityRepository
-import org.tales.domain.persistence.TalesUserRepository
 import org.tales.domain.persistence.ReadProgressRepository
 import org.tales.domain.persistence.SyncPointRepository
+import org.tales.domain.persistence.TalesUserRepository
 import org.tales.infrastructure.jooq.main.ClientSettingsDtoDao
 import org.tales.infrastructure.security.TalesPrincipal
 import org.tales.infrastructure.security.TokenEncoder
 import org.tales.infrastructure.security.apikey.ApiKeyGenerator
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.security.core.session.SessionRegistry
-import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.stereotype.Service
-import org.springframework.transaction.support.TransactionTemplate
 
 private val logger = KotlinLogging.logger {}
 

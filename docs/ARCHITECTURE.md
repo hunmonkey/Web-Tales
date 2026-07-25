@@ -35,6 +35,16 @@ display label and a versioned ShelfView locator, so the reader can show
 format-provided tables of contents before falling back to mixed-item or TXT
 paragraph-derived contents.
 
+Page image loading rules:
+
+- `FixedPageAdapter` prefetches `SHELFVIEW_PREFETCH_PAGE_COUNT` pages ahead so a
+  double-page turn has both pages of the next spread ready (SV-1013).
+- Continuous scroll renders every page at once, so its page images use
+  `loading="lazy"`; single and double page always sit in the viewport and stay
+  eager. Thumbnail strip images are always lazy (SV-1010).
+- Mixed ZIP books have no thumbnail endpoint, so their thumbnail strip falls
+  back to full-size page images. Lazy loading bounds this to the visible strip.
+
 ## Location model
 
 - Fixed pages: page index + offset + fingerprint
@@ -174,6 +184,13 @@ derived-image cache, AI upscaler or server-side media write path.
 - Manifest/text load failures show a full reader retry path.
 - TXT decoding failures can retry with manual UTF-8, EUC-KR or automatic decoding.
 - The existing Tales reader remains available from the error state as a fallback route.
+- Error text shown to the reader is always translated. Raw server, browser and
+  archive messages are English developer text and are never rendered
+  (`Rule_UIUX` 6-1). Browser-local archive failures throw
+  `ShelfViewLocalArchiveError` with a code so the view can pick the right
+  translated explanation (SV-1021).
+- A page image failure is cleared when the reader moves to another page, in the
+  fixed-page, text and mixed-content paths alike (SV-1012).
 
 ## Reader responsive recovery
 
@@ -225,6 +242,10 @@ SV-452 adds the first mixed ZIP fixed-page endpoint:
   does not expose raw server paths or raw archive paths as API identifiers.
   One-level nested ZIP/CBZ image chapters are served as fixed-page mixed items
   after their inner image entries pass the same image limits.
+- SV-1011 makes the endpoint use the same `checkNotModified` / `setNotModified`
+  media-last-modified revalidation as the Tales page endpoints and the ShelfView
+  image-directory endpoint, so paging back and forth no longer re-reads the
+  archive on every request.
 
 SV-453 adds mixed ZIP manifest and reader routing:
 

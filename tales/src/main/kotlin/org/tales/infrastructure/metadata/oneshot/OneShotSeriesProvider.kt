@@ -1,5 +1,6 @@
 package org.tales.infrastructure.metadata.oneshot
 
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Library
 import org.tales.domain.model.MetadataPatchTarget
 import org.tales.domain.model.Series
@@ -8,7 +9,6 @@ import org.tales.domain.model.SeriesMetadataPatch
 import org.tales.domain.persistence.BookMetadataRepository
 import org.tales.domain.persistence.BookRepository
 import org.tales.infrastructure.metadata.SeriesMetadataProvider
-import org.springframework.stereotype.Service
 
 @Service
 class OneShotSeriesProvider(

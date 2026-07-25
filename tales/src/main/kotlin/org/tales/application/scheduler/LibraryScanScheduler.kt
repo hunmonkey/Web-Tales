@@ -1,6 +1,12 @@
 package org.tales.application.scheduler
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.scheduling.TaskScheduler
+import org.springframework.scheduling.config.FixedRateTask
+import org.springframework.scheduling.config.ScheduledTask
+import org.springframework.scheduling.config.ScheduledTaskHolder
+import org.springframework.scheduling.config.ScheduledTaskRegistrar
+import org.springframework.stereotype.Service
 import org.tales.application.tasks.TaskEmitter
 import org.tales.domain.model.Library
 import org.tales.domain.model.Library.ScanInterval.DAILY
@@ -9,12 +15,6 @@ import org.tales.domain.model.Library.ScanInterval.EVERY_12H
 import org.tales.domain.model.Library.ScanInterval.EVERY_6H
 import org.tales.domain.model.Library.ScanInterval.HOURLY
 import org.tales.domain.model.Library.ScanInterval.WEEKLY
-import org.springframework.scheduling.TaskScheduler
-import org.springframework.scheduling.config.FixedRateTask
-import org.springframework.scheduling.config.ScheduledTask
-import org.springframework.scheduling.config.ScheduledTaskHolder
-import org.springframework.scheduling.config.ScheduledTaskRegistrar
-import org.springframework.stereotype.Service
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 

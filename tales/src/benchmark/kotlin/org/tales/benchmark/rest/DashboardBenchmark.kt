@@ -4,13 +4,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.tales.domain.model.BookSearch
-import org.tales.domain.model.Media
-import org.tales.domain.model.ReadStatus
-import org.tales.domain.model.SearchCondition
-import org.tales.domain.model.SearchOperator
-import org.tales.domain.model.SeriesSearch
-import org.tales.interfaces.api.rest.dto.ReadProgressUpdateDto
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.Level
 import org.openjdk.jmh.annotations.OutputTimeUnit
@@ -18,6 +11,13 @@ import org.openjdk.jmh.annotations.Setup
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
+import org.tales.domain.model.BookSearch
+import org.tales.domain.model.Media
+import org.tales.domain.model.ReadStatus
+import org.tales.domain.model.SearchCondition
+import org.tales.domain.model.SearchOperator
+import org.tales.domain.model.SeriesSearch
+import org.tales.interfaces.api.rest.dto.ReadProgressUpdateDto
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit

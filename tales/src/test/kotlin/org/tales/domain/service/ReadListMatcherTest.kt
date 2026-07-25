@@ -5,6 +5,14 @@ import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
 import org.tales.application.tasks.TaskEmitter
 import org.tales.domain.model.Book
 import org.tales.domain.model.ReadList
@@ -19,14 +27,6 @@ import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.ReadListRepository
 import org.tales.domain.persistence.SeriesMetadataRepository
 import org.tales.domain.persistence.SeriesRepository
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 
 @SpringBootTest
 class ReadListMatcherTest(

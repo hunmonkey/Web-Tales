@@ -1,17 +1,17 @@
 package org.tales.domain.service
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Component
 import org.tales.domain.model.BookSearch
-import org.tales.domain.model.TalesUser
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaProfile
 import org.tales.domain.model.SearchCondition
 import org.tales.domain.model.SearchContext
 import org.tales.domain.model.SearchOperator
 import org.tales.domain.model.SyncPoint
+import org.tales.domain.model.TalesUser
 import org.tales.domain.persistence.SyncPointRepository
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
-import org.springframework.stereotype.Component
 
 @Component
 class SyncPointLifecycle(

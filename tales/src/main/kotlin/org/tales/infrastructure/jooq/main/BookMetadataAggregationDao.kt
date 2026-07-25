@@ -1,5 +1,10 @@
 package org.tales.infrastructure.jooq.main
 
+import org.jooq.DSLContext
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import org.tales.domain.model.Author
 import org.tales.domain.model.BookMetadataAggregation
 import org.tales.domain.persistence.BookMetadataAggregationRepository
@@ -9,11 +14,6 @@ import org.tales.jooq.main.Tables
 import org.tales.jooq.main.tables.records.BookMetadataAggregationAuthorRecord
 import org.tales.jooq.main.tables.records.BookMetadataAggregationRecord
 import org.tales.language.toCurrentTimeZone
-import org.jooq.DSLContext
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.time.ZoneId
 

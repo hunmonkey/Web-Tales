@@ -1,11 +1,11 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.domain.model.HistoricalEvent
-import org.tales.domain.persistence.HistoricalEventRepository
-import org.tales.jooq.main.Tables
 import org.jooq.DSLContext
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.tales.domain.model.HistoricalEvent
+import org.tales.domain.persistence.HistoricalEventRepository
+import org.tales.jooq.main.Tables
 
 @Component
 class HistoricalEventDao(

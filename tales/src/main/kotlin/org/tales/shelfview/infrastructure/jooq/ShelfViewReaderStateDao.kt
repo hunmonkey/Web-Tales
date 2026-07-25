@@ -1,5 +1,10 @@
 package org.tales.shelfview.infrastructure.jooq
 
+import org.jooq.DSLContext
+import org.jooq.Record
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import org.tales.infrastructure.jooq.SplitDslDaoBase
 import org.tales.jooq.main.Tables
 import org.tales.language.toCurrentTimeZone
@@ -12,11 +17,6 @@ import org.tales.shelfview.domain.persistence.ShelfViewBookmarkRepository
 import org.tales.shelfview.domain.persistence.ShelfViewHighlightRepository
 import org.tales.shelfview.domain.persistence.ShelfViewReaderPositionRepository
 import org.tales.shelfview.domain.persistence.ShelfViewReaderPreferenceRepository
-import org.jooq.DSLContext
-import org.jooq.Record
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.time.ZoneId
 

@@ -1,6 +1,10 @@
 package org.tales.infrastructure.metadata.epub
 
 import org.apache.commons.validator.routines.ISBNValidator
+import org.jsoup.Jsoup
+import org.jsoup.parser.Parser
+import org.jsoup.safety.Safelist
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Author
 import org.tales.domain.model.BCP47TagValidator
 import org.tales.domain.model.BookMetadataPatch
@@ -14,10 +18,6 @@ import org.tales.domain.model.SeriesMetadataPatch
 import org.tales.infrastructure.mediacontainer.epub.getPackageFileContent
 import org.tales.infrastructure.metadata.BookMetadataProvider
 import org.tales.infrastructure.metadata.SeriesMetadataFromBookProvider
-import org.jsoup.Jsoup
-import org.jsoup.parser.Parser
-import org.jsoup.safety.Safelist
-import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 

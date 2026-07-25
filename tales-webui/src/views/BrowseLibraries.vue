@@ -20,7 +20,7 @@
 
       <page-size-select v-model="pageSize"/>
 
-      <v-btn icon @click="drawer = !drawer">
+      <v-btn icon @click="drawer = !drawer" :aria-label="$t('common.filter')">
         <v-icon :color="sortOrFilterActive ? 'secondary' : ''">mdi-filter-variant</v-icon>
       </v-btn>
     </toolbar-sticky>

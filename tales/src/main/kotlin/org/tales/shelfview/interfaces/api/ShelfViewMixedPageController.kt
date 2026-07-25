@@ -3,14 +3,6 @@ package org.tales.shelfview.interfaces.api
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.apache.commons.io.FilenameUtils
-import org.tales.domain.model.Media
-import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.MediaRepository
-import org.tales.infrastructure.mediacontainer.ContentDetector
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.infrastructure.web.getMediaTypeOrDefault
-import org.tales.interfaces.api.ContentRestrictionChecker
-import org.tales.interfaces.api.persistence.BookDtoRepository
 import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -22,7 +14,18 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.context.request.ServletWebRequest
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.Media
+import org.tales.domain.persistence.BookRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.infrastructure.mediacontainer.ContentDetector
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.infrastructure.web.getMediaTypeOrDefault
+import org.tales.interfaces.api.ContentRestrictionChecker
+import org.tales.interfaces.api.getBookLastModified
+import org.tales.interfaces.api.persistence.BookDtoRepository
+import org.tales.interfaces.api.setNotModified
 import java.nio.charset.StandardCharsets
 import org.tales.domain.model.MediaType as TalesMediaType
 
@@ -44,6 +47,7 @@ class ShelfViewMixedPageController(
   )
   fun getMixedPage(
     @AuthenticationPrincipal principal: TalesPrincipal,
+    request: ServletWebRequest,
     @PathVariable bookId: String,
     @PathVariable itemId: String,
     @PathVariable pageNumber: Int,
@@ -56,6 +60,12 @@ class ShelfViewMixedPageController(
     ensureReady(media)
     if (TalesMediaType.fromMediaType(media.mediaType) != TalesMediaType.ZIP) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_MIXED_UNSUPPORTED_MEDIA")
+    }
+    if (request.checkNotModified(getBookLastModified(media))) {
+      return ResponseEntity
+        .status(HttpStatus.NOT_MODIFIED)
+        .setNotModified(media)
+        .body(ByteArray(0))
     }
 
     val book = bookRepository.findByIdOrNull(bookDto.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -81,6 +91,7 @@ class ShelfViewMixedPageController(
               .build()
         },
       ).contentType(getMediaTypeOrDefault(page.mediaType))
+      .setNotModified(media)
       .body(page.bytes)
   }
 

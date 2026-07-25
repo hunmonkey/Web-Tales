@@ -1,16 +1,6 @@
 package org.tales.infrastructure.jooq.main
 
 import com.github.f4b6a3.tsid.TsidCreator
-import org.tales.domain.model.BookSearch
-import org.tales.domain.model.SearchContext
-import org.tales.domain.model.SyncPoint
-import org.tales.domain.model.SyncPoint.ReadList.Companion.ON_DECK_ID
-import org.tales.domain.persistence.SyncPointRepository
-import org.tales.infrastructure.jooq.BookSearchHelper
-import org.tales.infrastructure.jooq.RequiredJoin
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.jooq.main.Tables
-import org.tales.language.toZonedDateTime
 import org.jooq.DSLContext
 import org.jooq.Field
 import org.jooq.Record1
@@ -24,6 +14,16 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.tales.domain.model.BookSearch
+import org.tales.domain.model.SearchContext
+import org.tales.domain.model.SyncPoint
+import org.tales.domain.model.SyncPoint.ReadList.Companion.ON_DECK_ID
+import org.tales.domain.persistence.SyncPointRepository
+import org.tales.infrastructure.jooq.BookSearchHelper
+import org.tales.infrastructure.jooq.RequiredJoin
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.jooq.main.Tables
+import org.tales.language.toZonedDateTime
 import java.time.LocalDateTime
 import java.time.ZoneId
 

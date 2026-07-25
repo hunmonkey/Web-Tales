@@ -1,12 +1,12 @@
 package org.tales.interfaces.apprunner
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.service.TalesUserLifecycle
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.TalesUserLifecycle
 
 private val logger = KotlinLogging.logger {}
 

@@ -1,13 +1,17 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.tales.domain.model.Book
 import org.tales.domain.model.BookAction
 import org.tales.domain.model.BookWithMedia
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.model.HistoricalEvent
 import org.tales.domain.model.ImageConversionException
-import org.tales.domain.model.TalesUser
 import org.tales.domain.model.MarkSelectedPreference
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaExtensionEpub
@@ -19,6 +23,7 @@ import org.tales.domain.model.ReadProgress
 import org.tales.domain.model.SearchCondition
 import org.tales.domain.model.SearchContext
 import org.tales.domain.model.SearchOperator
+import org.tales.domain.model.TalesUser
 import org.tales.domain.model.ThumbnailBook
 import org.tales.domain.model.TypedBytes
 import org.tales.domain.persistence.BookMetadataRepository
@@ -34,11 +39,6 @@ import org.tales.infrastructure.hash.Hasher
 import org.tales.infrastructure.hash.KoreaderHasher
 import org.tales.infrastructure.image.ImageConverter
 import org.tales.infrastructure.image.ImageType
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.domain.Pageable
-import org.springframework.stereotype.Service
-import org.springframework.transaction.support.TransactionTemplate
 import java.io.File
 import java.net.URLDecoder
 import java.nio.file.Files

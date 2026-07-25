@@ -4,10 +4,6 @@ import com.ninjasquad.springmockk.SpykBean
 import io.mockk.every
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
-import org.tales.domain.model.DuplicateNameException
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.infrastructure.security.apikey.ApiKeyGenerator
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -16,6 +12,10 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.tales.domain.model.DuplicateNameException
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.infrastructure.security.apikey.ApiKeyGenerator
 
 @SpringBootTest
 class TalesUserLifecycleTest(

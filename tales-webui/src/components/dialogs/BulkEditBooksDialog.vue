@@ -7,7 +7,7 @@
     <v-form ref="form">
       <v-card>
         <v-toolbar class="hidden-sm-and-up">
-          <v-btn icon @click="dialogCancel">
+          <v-btn icon @click="dialogCancel" :aria-label="$t('common.close')">
             <v-icon>mdi-close</v-icon>
           </v-btn>
           <v-toolbar-title>{{ dialogTitle }}</v-toolbar-title>
@@ -31,7 +31,7 @@
                 :key="i"
                 :cols="prop.cols ? prop.cols : undefined"
               >
-                <v-btn icon @click="changeAllLock(prop.prop, lockStatus(prop.prop) !== 2)">
+                <v-btn icon @click="changeAllLock(prop.prop, lockStatus(prop.prop) !== 2)" :aria-label="$t('common.lock_all')">
                   <v-tooltip bottom>
                     <template v-slot:activator="{ on }">
                       <v-icon v-on="on" :color="lockStatus(prop.prop) === 2 ? 'secondary' : ''">
@@ -43,7 +43,7 @@
                 </v-btn>
 
                 <span class="subtitle-1">{{ prop.label }}</span>
-                <v-btn v-if="prop.prop === 'number'" icon @click="copyFromNumberSort">
+                <v-btn v-if="prop.prop === 'number'" icon @click="copyFromNumberSort" :aria-label="$t('dialog.edit_books.field_number_sort')">
                   <v-tooltip bottom>
                     <template v-slot:activator="{ on }">
                       <v-icon v-on="on">mdi-content-copy</v-icon>
@@ -52,7 +52,7 @@
                   </v-tooltip>
                 </v-btn>
                 <span v-if="prop.prop === 'numberSort'">
-                  <v-btn icon @click="numberSortDecrement">
+                  <v-btn icon @click="numberSortDecrement" :aria-label="$t('dialog.edit_books.number_sort_decrement')">
                     <v-tooltip bottom>
                     <template v-slot:activator="{ on }">
                       <v-icon v-on="on">mdi-numeric-negative-1</v-icon>
@@ -60,7 +60,7 @@
                     <span>{{ $t('dialog.edit_books.number_sort_decrement') }}</span>
                   </v-tooltip>
                   </v-btn>
-                  <v-btn icon @click="numberSortIncrement">
+                  <v-btn icon @click="numberSortIncrement" :aria-label="$t('dialog.edit_books.number_sort_increment')">
                     <v-tooltip bottom>
                     <template v-slot:activator="{ on }">
                       <v-icon v-on="on">mdi-numeric-positive-1</v-icon>

@@ -5,11 +5,11 @@ import io.mockk.every
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
 import org.tales.domain.model.ComicRackListException
 import org.tales.infrastructure.metadata.comicrack.dto.Book
 import org.tales.infrastructure.metadata.comicrack.dto.ReadingList
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
 
 class ReadListProviderTest {
   private val mockMapper = mockk<XmlMapper>()

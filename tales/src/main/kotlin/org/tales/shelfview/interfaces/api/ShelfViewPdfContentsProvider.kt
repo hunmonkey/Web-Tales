@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem
-import org.tales.shelfview.interfaces.api.dto.ShelfViewManifestContentsItemDto
 import org.springframework.stereotype.Component
+import org.tales.shelfview.interfaces.api.dto.ShelfViewManifestContentsItemDto
 import java.nio.file.Path
 
 @Component

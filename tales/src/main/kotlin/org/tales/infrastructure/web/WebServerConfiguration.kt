@@ -1,10 +1,10 @@
 package org.tales.infrastructure.web
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.springframework.boot.web.server.WebServerFactoryCustomizer
 import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory
 import org.springframework.stereotype.Component
+import org.tales.infrastructure.configuration.TalesSettingsProvider
 
 private val logger = KotlinLogging.logger {}
 

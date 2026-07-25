@@ -1,12 +1,5 @@
 package org.tales.shelfview.interfaces.api
 
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.interfaces.api.rest.WithMockCustomUser
-import org.tales.shelfview.domain.ShelfViewDictionaryEntry
-import org.tales.shelfview.domain.ShelfViewDictionaryProvider
-import org.tales.shelfview.domain.ShelfViewDictionaryProviderKind
-import org.tales.shelfview.domain.persistence.ShelfViewDictionaryRepository
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -19,6 +12,13 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.interfaces.api.rest.WithMockCustomUser
+import org.tales.shelfview.domain.ShelfViewDictionaryEntry
+import org.tales.shelfview.domain.ShelfViewDictionaryProvider
+import org.tales.shelfview.domain.ShelfViewDictionaryProviderKind
+import org.tales.shelfview.domain.persistence.ShelfViewDictionaryRepository
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)
@@ -75,7 +75,11 @@ class ShelfViewDictionaryControllerTest(
         jsonPath("$.entryCount") { value(2) }
       }
 
-    val providerId = dictionaryRepository.findProviderSummaries(USER_1_ID).first().provider.id
+    val providerId =
+      dictionaryRepository
+        .findProviderSummaries(USER_1_ID)
+        .first()
+        .provider.id
 
     mockMvc
       .get("/api/shelfview/v1/dictionary/providers")

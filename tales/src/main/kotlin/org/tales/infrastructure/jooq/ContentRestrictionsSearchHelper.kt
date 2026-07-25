@@ -1,10 +1,10 @@
 package org.tales.infrastructure.jooq
 
+import org.jooq.Condition
+import org.jooq.impl.DSL
 import org.tales.domain.model.AllowExclude
 import org.tales.domain.model.ContentRestrictions
 import org.tales.jooq.main.Tables
-import org.jooq.Condition
-import org.jooq.impl.DSL
 
 abstract class ContentRestrictionsSearchHelper {
   protected fun toConditionInternal(restrictions: ContentRestrictions): Pair<Condition, Set<RequiredJoin>> {

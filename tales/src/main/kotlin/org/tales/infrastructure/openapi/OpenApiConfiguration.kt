@@ -18,6 +18,12 @@ import io.swagger.v3.oas.models.servers.Server
 import io.swagger.v3.oas.models.servers.ServerVariable
 import io.swagger.v3.oas.models.servers.ServerVariables
 import io.swagger.v3.oas.models.tags.Tag
+import org.springdoc.core.customizers.OperationCustomizer
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.Environment
+import org.springframework.security.access.prepost.PreAuthorize
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.ANNOUNCEMENTS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.API_KEYS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.BOOKS
@@ -53,12 +59,6 @@ import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.SYNCPOINTS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.TASKS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.USERS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.USER_SESSION
-import org.springdoc.core.customizers.OperationCustomizer
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-import org.springframework.core.env.Environment
-import org.springframework.security.access.prepost.PreAuthorize
 
 @Configuration
 class OpenApiConfiguration(

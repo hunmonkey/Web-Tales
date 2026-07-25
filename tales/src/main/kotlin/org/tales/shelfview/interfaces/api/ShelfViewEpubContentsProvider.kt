@@ -1,11 +1,11 @@
 package org.tales.shelfview.interfaces.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.stereotype.Component
 import org.tales.domain.model.EpubTocEntry
 import org.tales.domain.model.MediaExtension
 import org.tales.domain.model.MediaExtensionEpub
 import org.tales.shelfview.interfaces.api.dto.ShelfViewManifestContentsItemDto
-import org.springframework.stereotype.Component
 
 @Component
 class ShelfViewEpubContentsProvider(

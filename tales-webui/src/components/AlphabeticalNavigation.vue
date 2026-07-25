@@ -15,6 +15,7 @@
           :color="selected === symbol ? 'secondary' : undefined"
           :disabled="groupCount && selected !== symbol ? getCount(symbol) === 0 : false"
           v-on="on"
+          :aria-label="$t('common.go_to_letter', {letter: symbol})"
         >
           {{ symbol }}
         </v-btn>

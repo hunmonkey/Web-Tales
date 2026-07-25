@@ -1,16 +1,5 @@
 package org.tales.interfaces.api.rest
 
-import org.tales.domain.model.Series
-import org.tales.domain.model.SeriesCollection
-import org.tales.domain.model.makeBook
-import org.tales.domain.model.makeLibrary
-import org.tales.domain.model.makeSeries
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.domain.persistence.SeriesCollectionRepository
-import org.tales.domain.persistence.SeriesMetadataRepository
-import org.tales.domain.service.LibraryLifecycle
-import org.tales.domain.service.SeriesCollectionLifecycle
-import org.tales.domain.service.SeriesLifecycle
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -25,6 +14,17 @@ import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
+import org.tales.domain.model.Series
+import org.tales.domain.model.SeriesCollection
+import org.tales.domain.model.makeBook
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.model.makeSeries
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.SeriesCollectionRepository
+import org.tales.domain.persistence.SeriesMetadataRepository
+import org.tales.domain.service.LibraryLifecycle
+import org.tales.domain.service.SeriesCollectionLifecycle
+import org.tales.domain.service.SeriesLifecycle
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)

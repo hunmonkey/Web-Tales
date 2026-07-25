@@ -1,9 +1,9 @@
 package org.tales.domain.persistence
 
-import org.tales.domain.model.ContentRestrictions
-import org.tales.domain.model.SeriesCollection
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.tales.domain.model.ContentRestrictions
+import org.tales.domain.model.SeriesCollection
 
 interface SeriesCollectionRepository {
   /**

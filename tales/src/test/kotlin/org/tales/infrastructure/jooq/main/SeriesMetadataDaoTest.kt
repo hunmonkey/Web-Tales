@@ -2,6 +2,12 @@ package org.tales.infrastructure.jooq.main
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
 import org.tales.domain.model.AlternateTitle
 import org.tales.domain.model.SeriesMetadata
 import org.tales.domain.model.WebLink
@@ -10,12 +16,6 @@ import org.tales.domain.model.makeSeries
 import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.infrastructure.jooq.offset
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import java.net.URI
 import java.time.LocalDateTime
 

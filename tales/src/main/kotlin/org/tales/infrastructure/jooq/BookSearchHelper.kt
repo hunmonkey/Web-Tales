@@ -1,6 +1,8 @@
 package org.tales.infrastructure.jooq
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jooq.Condition
+import org.jooq.impl.DSL
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaType
 import org.tales.domain.model.ReadStatus
@@ -10,8 +12,6 @@ import org.tales.domain.model.SearchOperator
 import org.tales.infrastructure.datasource.SqliteUdfDataSource
 import org.tales.infrastructure.jooq.RequiredJoin.ReadProgress
 import org.tales.jooq.main.Tables
-import org.jooq.Condition
-import org.jooq.impl.DSL
 
 private val logger = KotlinLogging.logger {}
 

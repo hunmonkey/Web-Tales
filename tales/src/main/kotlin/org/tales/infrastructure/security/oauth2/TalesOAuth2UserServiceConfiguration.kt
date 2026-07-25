@@ -2,11 +2,6 @@ package org.tales.infrastructure.security.oauth2
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.lang3.RandomStringUtils
-import org.tales.domain.model.TalesUser
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.service.TalesUserLifecycle
-import org.tales.infrastructure.configuration.TalesProperties
-import org.tales.infrastructure.security.TalesPrincipal
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest
@@ -17,6 +12,11 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserService
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.oauth2.core.user.OAuth2User
+import org.tales.domain.model.TalesUser
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.TalesUserLifecycle
+import org.tales.infrastructure.configuration.TalesProperties
+import org.tales.infrastructure.security.TalesPrincipal
 
 private val logger = KotlinLogging.logger {}
 

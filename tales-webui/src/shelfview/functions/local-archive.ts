@@ -3,6 +3,24 @@ export const SHELFVIEW_LOCAL_ARCHIVE_MAX_IMAGES = 1000
 export const SHELFVIEW_LOCAL_ARCHIVE_MAX_IMAGE_BYTES = 80 * 1024 * 1024
 export const SHELFVIEW_LOCAL_ARCHIVE_MAX_TOTAL_IMAGE_BYTES = 512 * 1024 * 1024
 
+// The reader must not show these English messages to the user. The code lets the
+// view pick a translated explanation instead (Rule_UIUX 6-1).
+export type ShelfViewLocalArchiveErrorCode =
+  | 'TOO_MANY_ENTRIES'
+  | 'NO_SUPPORTED_PAGES'
+  | 'OVER_SIZE_LIMIT'
+  | 'INVALID_IMAGE'
+
+export class ShelfViewLocalArchiveError extends Error {
+  readonly code: ShelfViewLocalArchiveErrorCode
+
+  constructor(code: ShelfViewLocalArchiveErrorCode, message: string) {
+    super(message)
+    this.name = 'ShelfViewLocalArchiveError'
+    this.code = code
+  }
+}
+
 export interface ShelfViewLocalArchivePage {
   index: number,
   name: string,
@@ -62,20 +80,22 @@ export async function openShelfViewLocalArchiveFile(
 
   try {
     if (source.entries.length > SHELFVIEW_LOCAL_ARCHIVE_MAX_ENTRIES) {
-      throw new Error('The archive has too many entries.')
+      throw new ShelfViewLocalArchiveError('TOO_MANY_ENTRIES', 'The archive has too many entries.')
     }
 
     const candidates = selectImageEntries(source.entries)
-    if (candidates.length === 0) throw new Error('The archive does not contain supported image pages.')
+    if (candidates.length === 0) {
+      throw new ShelfViewLocalArchiveError('NO_SUPPORTED_PAGES', 'The archive does not contain supported image pages.')
+    }
     if (candidates.length > SHELFVIEW_LOCAL_ARCHIVE_MAX_IMAGES) {
-      throw new Error('The archive has too many image pages.')
+      throw new ShelfViewLocalArchiveError('TOO_MANY_ENTRIES', 'The archive has too many image pages.')
     }
 
     const pages: ShelfViewLocalArchivePage[] = []
     for (const candidate of candidates) {
       const blob = await candidate.entry.getBlob(candidate.mimeType)
       if (blob.size > SHELFVIEW_LOCAL_ARCHIVE_MAX_IMAGE_BYTES) {
-        throw new Error('An archive image is over the local image size limit.')
+        throw new ShelfViewLocalArchiveError('OVER_SIZE_LIMIT', 'An archive image is over the local image size limit.')
       }
 
       const url = createObjectUrl(blob)
@@ -139,15 +159,15 @@ function selectImageEntries(entries: ShelfViewLocalArchiveEntry[]): ShelfViewLoc
     if (!mimeType) continue
 
     if (!Number.isFinite(entry.uncompressedSize) || entry.uncompressedSize < 0) {
-      throw new Error('An archive image has an invalid size.')
+      throw new ShelfViewLocalArchiveError('INVALID_IMAGE', 'An archive image has an invalid size.')
     }
     if (entry.uncompressedSize > SHELFVIEW_LOCAL_ARCHIVE_MAX_IMAGE_BYTES) {
-      throw new Error('An archive image is over the local image size limit.')
+      throw new ShelfViewLocalArchiveError('OVER_SIZE_LIMIT', 'An archive image is over the local image size limit.')
     }
 
     totalImageBytes += entry.uncompressedSize
     if (totalImageBytes > SHELFVIEW_LOCAL_ARCHIVE_MAX_TOTAL_IMAGE_BYTES) {
-      throw new Error('The archive images are over the local total size limit.')
+      throw new ShelfViewLocalArchiveError('OVER_SIZE_LIMIT', 'The archive images are over the local total size limit.')
     }
 
     candidates.push({entry, path, mimeType})

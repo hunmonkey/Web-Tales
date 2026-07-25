@@ -18,6 +18,7 @@
         elevation="2"
         @click="clear"
         color="primary"
+        :aria-label="$t('common.reset_filters')"
       >
         <v-icon>mdi-filter-variant-remove</v-icon>
       </v-btn>

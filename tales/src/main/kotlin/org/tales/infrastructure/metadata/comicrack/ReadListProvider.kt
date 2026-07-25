@@ -2,12 +2,12 @@ package org.tales.infrastructure.metadata.comicrack
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Service
 import org.tales.domain.model.ComicRackListException
 import org.tales.domain.model.ReadListRequest
 import org.tales.domain.model.ReadListRequestBook
 import org.tales.infrastructure.metadata.comicrack.dto.ReadingList
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Service
 
 private val logger = KotlinLogging.logger {}
 

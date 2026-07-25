@@ -1,14 +1,14 @@
 package org.tales.interfaces.api
 
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
+import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Book
 import org.tales.domain.model.TalesUser
 import org.tales.domain.persistence.BookRepository
 import org.tales.domain.persistence.SeriesMetadataRepository
 import org.tales.interfaces.api.rest.dto.BookDto
 import org.tales.interfaces.api.rest.dto.SeriesDto
-import org.springframework.http.HttpStatus
-import org.springframework.stereotype.Component
-import org.springframework.web.server.ResponseStatusException
 
 @Component
 class ContentRestrictionChecker(

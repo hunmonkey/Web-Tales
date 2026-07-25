@@ -2,6 +2,7 @@ package org.tales.infrastructure.metadata.localartwork
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.io.FilenameUtils
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Book
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.Series
@@ -12,7 +13,6 @@ import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.tales.infrastructure.sidecar.SidecarBookConsumer
 import org.tales.infrastructure.sidecar.SidecarSeriesConsumer
-import org.springframework.stereotype.Service
 import java.nio.file.Files
 import kotlin.io.path.extension
 import kotlin.io.path.fileSize

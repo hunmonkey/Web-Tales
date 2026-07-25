@@ -1,7 +1,7 @@
 package org.tales.infrastructure.mediacontainer.epub
 
-import org.tales.domain.model.EpubTocEntry
 import org.jsoup.nodes.Document
+import org.tales.domain.model.EpubTocEntry
 import java.net.URLDecoder
 import java.nio.file.Path
 import java.nio.file.Paths

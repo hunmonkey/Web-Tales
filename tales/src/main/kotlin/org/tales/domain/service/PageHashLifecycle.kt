@@ -1,6 +1,8 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookPageNumbered
 import org.tales.domain.model.Library
 import org.tales.domain.model.MediaType
@@ -10,8 +12,6 @@ import org.tales.domain.persistence.BookRepository
 import org.tales.domain.persistence.MediaRepository
 import org.tales.domain.persistence.PageHashRepository
 import org.tales.infrastructure.configuration.TalesProperties
-import org.springframework.data.domain.Pageable
-import org.springframework.stereotype.Service
 
 private val logger = KotlinLogging.logger {}
 

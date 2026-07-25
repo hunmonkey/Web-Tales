@@ -3,10 +3,6 @@ package org.tales.interfaces.api.rest
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.interfaces.api.rest.dto.JsonFeedDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.access.prepost.PreAuthorize
@@ -18,6 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.interfaces.api.rest.dto.JsonFeedDto
 import java.util.concurrent.TimeUnit
 
 @RestController

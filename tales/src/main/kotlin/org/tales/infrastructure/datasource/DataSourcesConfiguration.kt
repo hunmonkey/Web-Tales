@@ -2,13 +2,13 @@ package org.tales.infrastructure.datasource
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import org.tales.infrastructure.configuration.TalesProperties
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.sqlite.SQLiteConfig
 import org.sqlite.SQLiteDataSource
+import org.tales.infrastructure.configuration.TalesProperties
 import javax.sql.DataSource
 
 @Configuration

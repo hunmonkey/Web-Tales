@@ -57,7 +57,7 @@
       </template>
 
       <template v-slot:footer.prepend>
-        <v-btn icon @click="loadBooks">
+        <v-btn icon @click="loadBooks" :aria-label="$t('common.refresh')">
           <v-icon>mdi-refresh</v-icon>
         </v-btn>
       </template>

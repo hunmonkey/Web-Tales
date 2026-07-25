@@ -1,6 +1,8 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookWithMedia
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.model.MetadataPatchTarget
@@ -15,8 +17,6 @@ import org.tales.domain.persistence.SeriesMetadataRepository
 import org.tales.infrastructure.metadata.SeriesMetadataFromBookProvider
 import org.tales.infrastructure.metadata.SeriesMetadataProvider
 import org.tales.language.mostFrequent
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
 
 private val logger = KotlinLogging.logger {}
 

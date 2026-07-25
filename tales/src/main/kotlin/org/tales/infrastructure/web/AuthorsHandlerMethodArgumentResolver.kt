@@ -1,11 +1,11 @@
 package org.tales.infrastructure.web
 
-import org.tales.domain.model.Author
 import org.springframework.core.MethodParameter
 import org.springframework.web.bind.support.WebDataBinderFactory
 import org.springframework.web.context.request.NativeWebRequest
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
+import org.tales.domain.model.Author
 
 class AuthorsHandlerMethodArgumentResolver : HandlerMethodArgumentResolver {
   override fun supportsParameter(parameter: MethodParameter): Boolean = parameter.getParameterAnnotation(Authors::class.java) != null

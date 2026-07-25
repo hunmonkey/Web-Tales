@@ -7,6 +7,7 @@
           <v-btn icon
                  v-on="on"
                  :to="parentLocation"
+                 :aria-label="$t('common.back')"
           >
             <rtl-icon icon="mdi-arrow-left" rtl="mdi-arrow-right"/>
           </v-btn>
@@ -27,13 +28,13 @@
 
       <v-spacer/>
 
-      <v-btn icon @click="editSeries" v-if="isAdmin">
+      <v-btn icon @click="editSeries" v-if="isAdmin" :aria-label="$t('menu.edit_metadata')">
         <v-icon>mdi-pencil</v-icon>
       </v-btn>
 
       <page-size-select v-model="pageSize"/>
 
-      <v-btn icon @click="drawer = !drawer">
+      <v-btn icon @click="drawer = !drawer" :aria-label="$t('common.filter')">
         <v-icon :color="sortOrFilterActive ? 'secondary' : ''">mdi-filter-variant</v-icon>
       </v-btn>
     </toolbar-sticky>
@@ -310,13 +311,13 @@
         <v-col cols="8" sm="9" md="10" xl="11" class="py-1 text-capitalize">
           <vue-horizontal>
             <template v-slot:btn-prev>
-              <v-btn icon small>
+              <v-btn icon small :aria-label="$t('common.scroll_left')">
                 <v-icon>mdi-chevron-left</v-icon>
               </v-btn>
             </template>
 
             <template v-slot:btn-next>
-              <v-btn icon small>
+              <v-btn icon small :aria-label="$t('common.scroll_right')">
                 <v-icon>mdi-chevron-right</v-icon>
               </v-btn>
             </template>
@@ -342,13 +343,13 @@
         <v-col cols="8" sm="9" md="10" xl="11" class="py-1 text-capitalize">
           <vue-horizontal>
             <template v-slot:btn-prev>
-              <v-btn icon small>
+              <v-btn icon small :aria-label="$t('common.scroll_left')">
                 <v-icon>mdi-chevron-left</v-icon>
               </v-btn>
             </template>
 
             <template v-slot:btn-next>
-              <v-btn icon small>
+              <v-btn icon small :aria-label="$t('common.scroll_right')">
                 <v-icon>mdi-chevron-right</v-icon>
               </v-btn>
             </template>
@@ -415,13 +416,13 @@
         <v-col cols="8" sm="9" md="10" xl="11" class="py-1">
           <vue-horizontal>
             <template v-slot:btn-prev>
-              <v-btn icon small>
+              <v-btn icon small :aria-label="$t('common.scroll_left')">
                 <v-icon>mdi-chevron-left</v-icon>
               </v-btn>
             </template>
 
             <template v-slot:btn-next>
-              <v-btn icon small>
+              <v-btn icon small :aria-label="$t('common.scroll_right')">
                 <v-icon>mdi-chevron-right</v-icon>
               </v-btn>
             </template>
@@ -447,7 +448,7 @@
             <template v-slot:prepend="props">
               <v-tooltip bottom>
                 <template v-slot:activator="{ on }">
-                  <v-btn icon class="me-2" v-on="on" @click="removeFromCollection(props.collection.id)">
+                  <v-btn icon class="me-2" v-on="on" @click="removeFromCollection(props.collection.id)" :aria-label="$t('common.remove_from_collection')">
                     <v-icon>mdi-playlist-remove</v-icon>
                   </v-btn>
                 </template>

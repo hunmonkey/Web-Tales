@@ -1,9 +1,5 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.domain.model.ContentRestrictions
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.infrastructure.jooq.toCondition
-import org.tales.jooq.main.Tables
 import org.jooq.DSLContext
 import org.jooq.Field
 import org.jooq.Record
@@ -16,6 +12,10 @@ import org.jooq.impl.DSL.name
 import org.jooq.impl.DSL.select
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
+import org.tales.domain.model.ContentRestrictions
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.infrastructure.jooq.toCondition
+import org.tales.jooq.main.Tables
 import java.time.LocalDateTime
 
 @Component

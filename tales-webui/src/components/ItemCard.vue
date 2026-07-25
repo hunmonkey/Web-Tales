@@ -103,6 +103,7 @@
                      v-if="!selected && !preselect && onEdit"
                      :style="'position: absolute; bottom: 5px; ' + ($vuetify.rtl ? 'right' : 'left' ) +': 5px'"
                      @click.stop="editItem"
+                     :aria-label="$t('menu.edit')"
               >
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>

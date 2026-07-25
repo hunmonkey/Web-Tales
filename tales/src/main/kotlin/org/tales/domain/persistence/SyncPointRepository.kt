@@ -1,10 +1,10 @@
 package org.tales.domain.persistence
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.tales.domain.model.BookSearch
 import org.tales.domain.model.SearchContext
 import org.tales.domain.model.SyncPoint
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 
 interface SyncPointRepository {
   fun create(

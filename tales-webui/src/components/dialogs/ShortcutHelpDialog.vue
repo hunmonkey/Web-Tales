@@ -5,7 +5,7 @@
     scrollable
   >
     <v-card>
-      <v-btn icon absolute top right @click="model = false">
+      <v-btn icon absolute top right @click="model = false" :aria-label="$t('common.close')">
         <v-icon>mdi-close</v-icon>
       </v-btn>
       <v-card-text>

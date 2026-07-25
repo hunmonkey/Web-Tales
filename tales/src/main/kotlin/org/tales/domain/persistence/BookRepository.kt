@@ -1,10 +1,10 @@
 package org.tales.domain.persistence
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.tales.domain.model.Book
 import org.tales.domain.model.SearchCondition
 import org.tales.domain.model.SearchContext
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 import java.math.BigDecimal
 import java.net.URL
 

@@ -1,17 +1,17 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.domain.model.Library
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.jooq.main.Tables
-import org.tales.jooq.main.tables.records.LibraryRecord
-import org.tales.language.toCurrentTimeZone
 import org.jooq.DSLContext
 import org.jooq.Record
 import org.jooq.ResultQuery
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.tales.domain.model.Library
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.jooq.main.Tables
+import org.tales.jooq.main.tables.records.LibraryRecord
+import org.tales.language.toCurrentTimeZone
 import java.net.URL
 import java.time.LocalDateTime
 import java.time.ZoneId

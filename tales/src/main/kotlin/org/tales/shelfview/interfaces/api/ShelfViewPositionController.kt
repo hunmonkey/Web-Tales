@@ -4,6 +4,17 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.apache.commons.io.FilenameUtils
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaFile
 import org.tales.domain.model.MediaProfile
@@ -20,17 +31,6 @@ import org.tales.shelfview.domain.persistence.ShelfViewReaderPositionRepository
 import org.tales.shelfview.interfaces.api.dto.ShelfViewPositionDto
 import org.tales.shelfview.interfaces.api.dto.ShelfViewPositionUpdateDto
 import org.tales.shelfview.interfaces.api.dto.toDto
-import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
-import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.MediaType as TalesMediaType
 
 @RestController

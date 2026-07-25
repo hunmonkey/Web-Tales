@@ -5,13 +5,13 @@ import io.mockk.every
 import io.mockk.slot
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
 import org.tales.domain.model.Book
 import org.tales.domain.model.makeBook
 import org.tales.domain.persistence.BookRepository
 import org.tales.domain.service.BookLifecycle
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 

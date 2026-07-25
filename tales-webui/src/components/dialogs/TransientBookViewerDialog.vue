@@ -7,7 +7,7 @@
       <v-card>
         <v-card-title v-if="single">{{ $t('dialog.transient_book_viewer.title') }}</v-card-title>
         <v-card-title v-else>{{ $t('dialog.transient_book_viewer.title_comparison') }}</v-card-title>
-        <v-btn icon absolute top right @click="dialogClose">
+        <v-btn icon absolute top right @click="dialogClose" :aria-label="$t('common.close')">
           <v-icon>mdi-close</v-icon>
         </v-btn>
 
@@ -23,51 +23,51 @@
 
             <v-row justify="space-around">
               <v-col cols="auto" class="pa-1">
-                <v-btn icon :disabled="!canPrevLeft" @click="firstPageLeft">
+                <v-btn icon :disabled="!canPrevLeft" @click="firstPageLeft" :aria-label="$t('bookreader.shortcuts.first_page')">
                   <rtl-icon icon="mdi-chevron-double-left" rtl="mdi-chevron-double-right"/>
                 </v-btn>
-                <v-btn icon :disabled="!canPrevLeft" @click="previousPageLeft">
+                <v-btn icon :disabled="!canPrevLeft" @click="previousPageLeft" :aria-label="$t('bookreader.shortcuts.previous_page')">
                   <rtl-icon icon="mdi-chevron-left" rtl="mdi-chevron-right"/>
                 </v-btn>
                 {{ $t('dialog.transient_book_viewer.page_of_pages', {page: leftPageNumber, pages: leftPages.length}) }}
-                <v-btn icon :disabled="!canNextLeft" @click="nextPageLeft">
+                <v-btn icon :disabled="!canNextLeft" @click="nextPageLeft" :aria-label="$t('bookreader.shortcuts.next_page')">
                   <rtl-icon icon="mdi-chevron-right" rtl="mdi-chevron-left"/>
                 </v-btn>
-                <v-btn icon :disabled="!canNextLeft" @click="lastPageLeft">
+                <v-btn icon :disabled="!canNextLeft" @click="lastPageLeft" :aria-label="$t('bookreader.shortcuts.last_page')">
                   <rtl-icon icon="mdi-chevron-double-right" rtl="mdi-chevron-double-left"/>
                 </v-btn>
               </v-col>
 
 
               <v-col cols="auto" class="pa-1" v-if="!single">
-                <v-btn icon :disabled="!canPrevAny" @click="firstPageBoth">
+                <v-btn icon :disabled="!canPrevAny" @click="firstPageBoth" :aria-label="$t('bookreader.shortcuts.first_page')">
                   <rtl-icon icon="mdi-chevron-double-left" rtl="mdi-chevron-double-right"/>
                 </v-btn>
-                <v-btn icon :disabled="!canPrevAny" @click="previousPageBoth">
+                <v-btn icon :disabled="!canPrevAny" @click="previousPageBoth" :aria-label="$t('bookreader.shortcuts.previous_page')">
                   <rtl-icon icon="mdi-chevron-left" rtl="mdi-chevron-right"/>
                 </v-btn>
-                <v-btn icon :disabled="!canNextAny" @click="nextPageBoth">
+                <v-btn icon :disabled="!canNextAny" @click="nextPageBoth" :aria-label="$t('bookreader.shortcuts.next_page')">
                   <rtl-icon icon="mdi-chevron-right" rtl="mdi-chevron-left"/>
                 </v-btn>
-                <v-btn icon :disabled="!canNextAny" @click="lastPageBoth">
+                <v-btn icon :disabled="!canNextAny" @click="lastPageBoth" :aria-label="$t('bookreader.shortcuts.last_page')">
                   <rtl-icon icon="mdi-chevron-double-right" rtl="mdi-chevron-double-left"/>
                 </v-btn>
               </v-col>
 
               <v-col cols="auto" class="pa-1" v-if="!single">
-                <v-btn icon :disabled="!canPrevRight" @click="firstPageRight">
+                <v-btn icon :disabled="!canPrevRight" @click="firstPageRight" :aria-label="$t('bookreader.shortcuts.first_page')">
                   <rtl-icon icon="mdi-chevron-double-left" rtl="mdi-chevron-double-right"/>
                 </v-btn>
-                <v-btn icon :disabled="!canPrevRight" @click="previousPageRight">
+                <v-btn icon :disabled="!canPrevRight" @click="previousPageRight" :aria-label="$t('bookreader.shortcuts.previous_page')">
                   <rtl-icon icon="mdi-chevron-left" rtl="mdi-chevron-right"/>
                 </v-btn>
                 {{
                   $t('dialog.transient_book_viewer.page_of_pages', {page: rightPageNumber, pages: rightPages.length})
                 }}
-                <v-btn icon :disabled="!canNextRight" @click="nextPageRight">
+                <v-btn icon :disabled="!canNextRight" @click="nextPageRight" :aria-label="$t('bookreader.shortcuts.next_page')">
                   <rtl-icon icon="mdi-chevron-right" rtl="mdi-chevron-left"/>
                 </v-btn>
-                <v-btn icon :disabled="!canNextRight" @click="lastPageRight">
+                <v-btn icon :disabled="!canNextRight" @click="lastPageRight" :aria-label="$t('bookreader.shortcuts.last_page')">
                   <rtl-icon icon="mdi-chevron-double-right" rtl="mdi-chevron-double-left"/>
                 </v-btn>
               </v-col>

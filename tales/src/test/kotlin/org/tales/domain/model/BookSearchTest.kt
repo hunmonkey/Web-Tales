@@ -3,10 +3,10 @@ package org.tales.domain.model
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.SearchCondition.AuthorMatch
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.tales.domain.model.SearchCondition.AuthorMatch
 import java.time.Duration
 import java.time.ZoneOffset
 import java.time.ZonedDateTime

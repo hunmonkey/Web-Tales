@@ -1,8 +1,8 @@
 package org.tales.infrastructure.configuration
 
-import org.tales.infrastructure.image.ImageType
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.tales.infrastructure.image.ImageType
 
 @Configuration
 class StaticConfiguration {

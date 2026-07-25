@@ -6,7 +6,7 @@
     <v-card>
       <v-form v-model="form" ref="form">
         <v-toolbar class="hidden-sm-and-up">
-          <v-btn icon @click="dialogCancel">
+          <v-btn icon @click="dialogCancel" :aria-label="$t('common.close')">
             <v-icon>mdi-close</v-icon>
           </v-btn>
           <v-toolbar-title>

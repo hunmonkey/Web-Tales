@@ -2,11 +2,11 @@ package org.tales.infrastructure.datasource
 
 import com.ibm.icu.text.Collator
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.language.stripAccents
 import org.sqlite.Collation
 import org.sqlite.Function
 import org.sqlite.SQLiteConnection
 import org.sqlite.SQLiteDataSource
+import org.tales.language.stripAccents
 import java.sql.Connection
 
 private val log = KotlinLogging.logger {}

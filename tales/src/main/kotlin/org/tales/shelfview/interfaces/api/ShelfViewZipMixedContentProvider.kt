@@ -9,6 +9,11 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel
 import org.apache.commons.io.FilenameUtils
 import org.apache.pdfbox.Loader
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
+import org.springframework.validation.annotation.Validated
+import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.TypedBytes
 import org.tales.infrastructure.image.ImageAnalyzer
@@ -17,11 +22,6 @@ import org.tales.infrastructure.mediacontainer.pdf.PdfExtractor
 import org.tales.infrastructure.util.use
 import org.tales.shelfview.domain.ShelfViewPublicationKind
 import org.tales.shelfview.domain.ShelfViewSourceFormat
-import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.http.HttpStatus
-import org.springframework.stereotype.Component
-import org.springframework.validation.annotation.Validated
-import org.springframework.web.server.ResponseStatusException
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -337,8 +337,7 @@ class ShelfViewZipMixedContentProvider(
 
   private fun isNestedArchive(normalizedName: String): Boolean = NESTED_ARCHIVE_EXTENSIONS.contains(FilenameUtils.getExtension(normalizedName).lowercase())
 
-  private fun isSupportedNestedImageArchive(normalizedName: String): Boolean =
-    SUPPORTED_NESTED_IMAGE_ARCHIVE_EXTENSIONS.contains(FilenameUtils.getExtension(normalizedName).lowercase())
+  private fun isSupportedNestedImageArchive(normalizedName: String): Boolean = SUPPORTED_NESTED_IMAGE_ARCHIVE_EXTENSIONS.contains(FilenameUtils.getExtension(normalizedName).lowercase())
 
   private fun isUnsupportedNestedArchive(normalizedName: String): Boolean = isNestedArchive(normalizedName) && !isSupportedNestedImageArchive(normalizedName)
 

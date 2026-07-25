@@ -1,10 +1,10 @@
 package org.tales.infrastructure.mediacontainer.epub
 
-import org.tales.domain.model.EpubTocEntry
-import org.tales.infrastructure.util.getEntryBytes
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
+import org.tales.domain.model.EpubTocEntry
+import org.tales.infrastructure.util.getEntryBytes
 import java.net.URLDecoder
 import java.nio.file.Path
 import kotlin.io.path.Path

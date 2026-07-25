@@ -210,3 +210,61 @@ implement any of these candidates.
 ## Deferred after SV-950 closure
 
 - [x] Browser/device performance evidence for Canvas sharpen and future WebGL image-quality modes
+
+## Reader improvement and defect sweep from 2026-07-25
+
+Owner request: review the document/comic reader for feature improvements and
+defects. The sweep found five items and the owner approved all of them.
+
+- [x] SV-1010 Lazy page and thumbnail image loading so continuous scroll and the
+  thumbnail strip stop requesting every page at once
+- [x] SV-1011 Mixed ZIP page HTTP cache headers matching the other page APIs
+- [x] SV-1012 Reset the failed-page-image state when paging inside mixed and text
+  books so a load failure no longer keeps the error screen
+- [x] SV-1013 Prefetch a full double-page spread ahead instead of one page
+- [x] SV-1014 Restore a clean `tsc --noEmit` pass so the build type-check is a
+  real safety net again
+
+## UI/UX pass from 2026-07-25
+
+Owner request after the reader defect sweep. Scored against the applicable parts
+of `Rule_UIUX.txt` (1-4 accessibility, 1-5 Korean text, 6-1 plain wording).
+
+- [x] SV-1020 Restore keyboard focus rings that `outline: none` removed, and stop
+  focus from looking identical to hover or to the active row
+- [x] SV-1021 Stop showing raw English server/browser/archive error text in the
+  reader; local archive failures now carry a code the view translates
+- [x] SV-1022 Fill the one missing Korean key (`common.image_directory`)
+- [x] SV-1023 Add `aria-label` to every icon-only `v-btn` (142 buttons across 54
+  files, including 4 in `ShelfViewLocalReader`)
+
+## Codebase audit from 2026-07-25
+
+Owner request after the UI/UX pass. Tests, lint, type-check, auth coverage,
+resource handling and Flyway integrity were clean; two problems were found.
+
+- [x] SV-1030 Raise the dependencies that had a non-breaking fix, most
+  importantly `axios` (authentication bypass via `validateStatus` prototype
+  pollution)
+- [x] SV-1031 Repair the `import` ordering that the `org.komga` → `org.tales`
+  debrand broke, so `ktlintCheck` passes again (257 files)
+
+### Audit findings deliberately not fixed
+
+- `vue` / `vuex` / `vuetify` advisories need a Vue 3 / Vuetify 3 migration,
+  which this project forbids without explicit owner approval.
+- `pdfjs-dist` (arbitrary JS execution from a malicious PDF) is pinned through
+  `@d-i-t-a/reader`. ShelfView renders PDFs to images server-side, so the
+  exposure is limited to the existing EPUB reader route.
+- `brace-expansion` and its dependents (`minimatch`, `file-js`, `filehound`,
+  `recursive-readdir`, `r2-utils-js`) have no non-breaking fix available.
+- CI does not run ktlint (only `:tales:test` and `:tales:bootJar`), which is why
+  SV-1031 stayed invisible. Adding it to CI is a separate decision.
+
+### Known follow-up not implemented
+
+- Mixed ZIP books have no thumbnail endpoint, so the thumbnail strip falls back
+  to full-size page images (`shelfViewThumbnailUrl` only receives a thumbnail
+  template for plain fixed-page books). SV-1010 lazy loading limits this to the
+  visible strip, but a real mixed-item thumbnail endpoint would need a new API
+  and an ADR.

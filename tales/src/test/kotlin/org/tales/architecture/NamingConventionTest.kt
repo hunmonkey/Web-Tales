@@ -6,9 +6,9 @@ import com.tngtech.archunit.junit.ArchTest
 import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
-import org.tales.Application
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.RestController
+import org.tales.Application
 
 @AnalyzeClasses(packagesOf = [Application::class], importOptions = [ImportOption.DoNotIncludeTests::class])
 class NamingConventionTest {

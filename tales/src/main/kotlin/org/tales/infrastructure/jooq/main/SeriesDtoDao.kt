@@ -1,5 +1,23 @@
 package org.tales.infrastructure.jooq.main
 
+import org.jooq.Condition
+import org.jooq.DSLContext
+import org.jooq.Record
+import org.jooq.ResultQuery
+import org.jooq.SelectOnConditionStep
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.count
+import org.jooq.impl.DSL.countDistinct
+import org.jooq.impl.DSL.lower
+import org.jooq.impl.DSL.substring
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.stereotype.Component
 import org.tales.domain.model.SearchContext
 import org.tales.domain.model.SearchField
 import org.tales.domain.model.SeriesSearch
@@ -27,24 +45,6 @@ import org.tales.jooq.main.Tables
 import org.tales.jooq.main.tables.records.BookMetadataAggregationRecord
 import org.tales.jooq.main.tables.records.SeriesMetadataRecord
 import org.tales.jooq.main.tables.records.SeriesRecord
-import org.jooq.Condition
-import org.jooq.DSLContext
-import org.jooq.Record
-import org.jooq.ResultQuery
-import org.jooq.SelectOnConditionStep
-import org.jooq.impl.DSL
-import org.jooq.impl.DSL.count
-import org.jooq.impl.DSL.countDistinct
-import org.jooq.impl.DSL.lower
-import org.jooq.impl.DSL.substring
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
-import org.springframework.stereotype.Component
 import java.net.URL
 
 const val BOOKS_UNREAD_COUNT = "booksUnreadCount"

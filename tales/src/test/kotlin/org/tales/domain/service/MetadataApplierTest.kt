@@ -1,14 +1,14 @@
 package org.tales.domain.service
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
 import org.tales.domain.model.Author
 import org.tales.domain.model.BookMetadata
 import org.tales.domain.model.BookMetadataPatch
 import org.tales.domain.model.SeriesMetadata
 import org.tales.domain.model.SeriesMetadataPatch
 import org.tales.domain.model.WebLink
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
 import java.net.URI
 import java.time.LocalDate
 

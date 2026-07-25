@@ -1,6 +1,9 @@
 package org.tales.application.tasks
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.Sort
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Book
 import org.tales.domain.model.BookMetadataPatchCapability
 import org.tales.domain.model.BookPageNumbered
@@ -14,9 +17,6 @@ import org.tales.domain.persistence.BookRepository
 import org.tales.domain.service.BookConverter
 import org.tales.infrastructure.jooq.UnpagedSorted
 import org.tales.infrastructure.search.LuceneEntity
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.domain.Sort
-import org.springframework.stereotype.Service
 
 private val logger = KotlinLogging.logger {}
 

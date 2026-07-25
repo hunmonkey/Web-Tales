@@ -2,12 +2,12 @@ package org.tales.infrastructure.mediacontainer.divina
 
 import org.apache.tika.config.TikaConfig
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.Dimension
-import org.tales.infrastructure.image.ImageAnalyzer
-import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.core.io.ClassPathResource
+import org.tales.domain.model.Dimension
+import org.tales.infrastructure.image.ImageAnalyzer
+import org.tales.infrastructure.mediacontainer.ContentDetector
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files

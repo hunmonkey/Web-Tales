@@ -2,6 +2,10 @@ package org.tales.infrastructure.mediacontainer.epub
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.compress.archivers.ArchiveEntry
+import org.jsoup.Jsoup
+import org.jsoup.parser.Parser
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookPage
 import org.tales.domain.model.EpubTocEntry
 import org.tales.domain.model.MediaFile
@@ -13,10 +17,6 @@ import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.tales.infrastructure.util.getEntryBytes
 import org.tales.infrastructure.util.getEntryInputStream
 import org.tales.infrastructure.util.getZipEntryBytes
-import org.jsoup.Jsoup
-import org.jsoup.parser.Parser
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Service
 import java.net.URLDecoder
 import java.nio.file.Path
 import kotlin.io.path.Path

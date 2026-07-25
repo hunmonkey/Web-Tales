@@ -1,11 +1,11 @@
 package org.tales.infrastructure.security.apikey
 
 import jakarta.servlet.http.HttpServletRequest
-import org.tales.infrastructure.hash.Hasher
-import org.tales.infrastructure.security.TokenEncoder
 import org.springframework.security.authentication.AuthenticationDetailsSource
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.AuthenticationConverter
+import org.tales.infrastructure.hash.Hasher
+import org.tales.infrastructure.security.TokenEncoder
 
 /**
  * A strategy that retrieves the API key from the [headerName],

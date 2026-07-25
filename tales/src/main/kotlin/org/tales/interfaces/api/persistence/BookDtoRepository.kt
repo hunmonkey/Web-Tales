@@ -1,12 +1,12 @@
 package org.tales.interfaces.api.persistence
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.tales.domain.model.BookSearch
 import org.tales.domain.model.ContentRestrictions
 import org.tales.domain.model.ReadList
 import org.tales.domain.model.SearchContext
 import org.tales.interfaces.api.rest.dto.BookDto
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 
 interface BookDtoRepository {
   fun findAll(pageable: Pageable): Page<BookDto>

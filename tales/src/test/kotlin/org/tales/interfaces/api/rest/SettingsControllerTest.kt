@@ -1,8 +1,6 @@
 package org.tales.interfaces.api.rest
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.ThumbnailSize
-import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -15,6 +13,8 @@ import org.springframework.security.test.context.support.WithAnonymousUser
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
+import org.tales.domain.model.ThumbnailSize
+import org.tales.infrastructure.configuration.TalesSettingsProvider
 import kotlin.time.Duration.Companion.days
 
 @SpringBootTest

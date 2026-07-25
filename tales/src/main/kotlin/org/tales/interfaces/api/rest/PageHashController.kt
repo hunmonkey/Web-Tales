@@ -7,19 +7,6 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
-import org.tales.application.tasks.TaskEmitter
-import org.tales.domain.model.BookPageNumbered
-import org.tales.domain.model.PageHashKnown
-import org.tales.domain.persistence.PageHashRepository
-import org.tales.domain.service.PageHashLifecycle
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.infrastructure.openapi.PageableAsQueryParam
-import org.tales.infrastructure.web.getMediaTypeOrDefault
-import org.tales.interfaces.api.rest.dto.PageHashCreationDto
-import org.tales.interfaces.api.rest.dto.PageHashKnownDto
-import org.tales.interfaces.api.rest.dto.PageHashMatchDto
-import org.tales.interfaces.api.rest.dto.PageHashUnknownDto
-import org.tales.interfaces.api.rest.dto.toDto
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
@@ -36,6 +23,19 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.application.tasks.TaskEmitter
+import org.tales.domain.model.BookPageNumbered
+import org.tales.domain.model.PageHashKnown
+import org.tales.domain.persistence.PageHashRepository
+import org.tales.domain.service.PageHashLifecycle
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.infrastructure.openapi.PageableAsQueryParam
+import org.tales.infrastructure.web.getMediaTypeOrDefault
+import org.tales.interfaces.api.rest.dto.PageHashCreationDto
+import org.tales.interfaces.api.rest.dto.PageHashKnownDto
+import org.tales.interfaces.api.rest.dto.PageHashMatchDto
+import org.tales.interfaces.api.rest.dto.PageHashUnknownDto
+import org.tales.interfaces.api.rest.dto.toDto
 
 @RestController
 @RequestMapping("api/v1/page-hashes", produces = [MediaType.APPLICATION_JSON_VALUE])

@@ -1,9 +1,9 @@
 package org.tales.infrastructure.mediacontainer.pdf
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.infrastructure.image.ImageType
 import org.junit.jupiter.api.Test
 import org.springframework.core.io.ClassPathResource
+import org.tales.infrastructure.image.ImageType
 
 class PdfExtractorTest {
   private val pdfExtractor = PdfExtractor(ImageType.JPEG, 1000F)

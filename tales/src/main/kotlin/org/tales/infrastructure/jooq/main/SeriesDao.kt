@@ -1,5 +1,16 @@
 package org.tales.infrastructure.jooq.main
 
+import org.jooq.DSLContext
+import org.jooq.impl.DSL
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort.unsorted
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import org.tales.domain.model.SearchCondition
 import org.tales.domain.model.SearchContext
 import org.tales.domain.model.Series
@@ -12,17 +23,6 @@ import org.tales.infrastructure.jooq.csAlias
 import org.tales.jooq.main.Tables
 import org.tales.jooq.main.tables.records.SeriesRecord
 import org.tales.language.toCurrentTimeZone
-import org.jooq.DSLContext
-import org.jooq.impl.DSL
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort.unsorted
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.net.URL
 import java.time.LocalDateTime
 import java.time.ZoneId

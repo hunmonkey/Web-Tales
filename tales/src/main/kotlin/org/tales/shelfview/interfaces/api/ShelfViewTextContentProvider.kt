@@ -1,13 +1,13 @@
 package org.tales.shelfview.interfaces.api
 
 import jakarta.validation.constraints.Positive
-import org.tales.domain.model.Book
-import org.tales.shelfview.interfaces.api.dto.ShelfViewTextContentDto
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.Book
+import org.tales.shelfview.interfaces.api.dto.ShelfViewTextContentDto
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.Charset

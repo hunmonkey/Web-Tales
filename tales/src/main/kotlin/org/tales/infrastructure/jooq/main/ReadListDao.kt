@@ -1,5 +1,17 @@
 package org.tales.infrastructure.jooq.main
 
+import org.jooq.DSLContext
+import org.jooq.Record
+import org.jooq.ResultQuery
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import org.tales.domain.model.ContentRestrictions
 import org.tales.domain.model.ReadList
 import org.tales.domain.persistence.ReadListRepository
@@ -15,18 +27,6 @@ import org.tales.infrastructure.search.LuceneHelper
 import org.tales.jooq.main.Tables
 import org.tales.jooq.main.tables.records.ReadlistRecord
 import org.tales.language.toCurrentTimeZone
-import org.jooq.DSLContext
-import org.jooq.Record
-import org.jooq.ResultQuery
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.SortedMap

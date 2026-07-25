@@ -1,6 +1,10 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.tales.application.tasks.TaskEmitter
 import org.tales.domain.model.Book
 import org.tales.domain.model.BookMetadataPatchCapability
@@ -31,10 +35,6 @@ import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.tales.infrastructure.hash.Hasher
 import org.tales.language.notEquals
 import org.tales.language.toIndexedMap
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.domain.Pageable
-import org.springframework.stereotype.Service
-import org.springframework.transaction.support.TransactionTemplate
 import java.nio.file.Paths
 import java.time.LocalDateTime
 import kotlin.time.measureTime

@@ -1,9 +1,9 @@
 package org.tales.infrastructure.cache
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import org.springframework.stereotype.Service
 import org.tales.domain.model.TransientBook
 import org.tales.domain.persistence.TransientBookRepository
-import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
 
 @Service

@@ -2,6 +2,7 @@ package org.tales.application.tasks
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.MeterRegistry
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookAction
 import org.tales.domain.persistence.BookRepository
 import org.tales.domain.persistence.LibraryRepository
@@ -19,7 +20,6 @@ import org.tales.domain.service.SeriesMetadataLifecycle
 import org.tales.infrastructure.search.SearchIndexLifecycle
 import org.tales.interfaces.scheduler.METER_TASKS_EXECUTION
 import org.tales.interfaces.scheduler.METER_TASKS_FAILURE
-import org.springframework.stereotype.Service
 import java.nio.file.Paths
 import kotlin.time.measureTime
 import kotlin.time.toJavaDuration

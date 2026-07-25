@@ -50,7 +50,7 @@
             <v-tooltip bottom>
               <template v-slot:activator="{ on }">
                 <v-btn icon @click="editRestrictions(u)" :disabled="u.roles.includes(UserRoles.ADMIN)"
-                       v-on="on">
+                       v-on="on" :aria-label="$t('settings_user.edit_restrictions')">
                   <v-icon>mdi-book-lock</v-icon>
                 </v-btn>
               </template>
@@ -61,7 +61,7 @@
           <v-list-item-action>
             <v-tooltip bottom>
               <template v-slot:activator="{ on }">
-                <v-btn icon @click="changeUserPassword(u)" v-on="on">
+                <v-btn icon @click="changeUserPassword(u)" v-on="on" :aria-label="$t('settings_user.change_password')">
                   <v-icon>mdi-lock-reset</v-icon>
                 </v-btn>
               </template>
@@ -72,7 +72,7 @@
           <v-list-item-action>
             <v-tooltip bottom>
               <template v-slot:activator="{ on }">
-                <v-btn icon @click="editUser(u)" :disabled="u.id === me.id" v-on="on">
+                <v-btn icon @click="editUser(u)" :disabled="u.id === me.id" v-on="on" :aria-label="$t('settings_user.edit_user')">
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
               </template>
@@ -83,6 +83,7 @@
           <v-list-item-action>
             <v-btn icon @click="promptDeleteUser(u)"
                    :disabled="u.id === me.id"
+                   :aria-label="$t('common.delete')"
             >
               <v-icon>mdi-delete</v-icon>
             </v-btn>

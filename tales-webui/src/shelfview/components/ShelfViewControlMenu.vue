@@ -116,10 +116,16 @@ export default Vue.extend({
   width: 100%;
 }
 
-.shelfview-control-menu__option:hover,
+.shelfview-control-menu__option:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Keyboard focus must stay visible and must not look identical to hover, even on
+   the active option, which already carries its own background. */
 .shelfview-control-menu__option:focus-visible {
   background: rgba(255, 255, 255, 0.08);
-  outline: none;
+  outline: 2px solid #90caf9;
+  outline-offset: -2px;
 }
 
 .shelfview-control-menu__option--active {

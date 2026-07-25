@@ -2079,6 +2079,42 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('3 / 3')
   })
 
+  it('defers off-screen page images in continuous scroll and keeps thumbnails lazy', async () => {
+    const getManifest = jest.fn().mockResolvedValue({
+      ...manifest,
+      pageCount: 3,
+      pages: {
+        ...manifest.pages!,
+        thumbnailEndpointTemplate: '/api/v1/books/book-1/pages/{pageOneBased}/thumbnail',
+      },
+    })
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const singlePage = wrapper.find('[data-testid="shelfview-reader-page"]')
+    expect(singlePage.attributes('loading')).toBe('eager')
+    expect(singlePage.attributes('decoding')).toBe('async')
+
+    await wrapper.setData({chromeVisible: true, overflowMenuOpen: true})
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
+    await Vue.nextTick()
+
+    const continuousPages = wrapper.findAll('[data-testid="shelfview-reader-page"]')
+    expect(continuousPages.length).toBe(3)
+    expect(continuousPages.at(0).attributes('loading')).toBe('lazy')
+    expect(continuousPages.at(2).attributes('loading')).toBe('lazy')
+
+    await wrapper.setData({chromeVisible: true, overflowMenuOpen: true})
+    await wrapper.find('[data-testid="shelfview-reader-thumbnails-toggle"]').trigger('click')
+    await Vue.nextTick()
+
+    const thumbnail = wrapper.find('[data-testid="shelfview-reader-thumbnail-image"]')
+    expect(thumbnail.attributes('loading')).toBe('lazy')
+    expect(thumbnail.attributes('decoding')).toBe('async')
+  })
+
   it('zooms fixed pages with the mouse wheel and keeps the pointer area anchored', async () => {
     const getManifest = jest.fn().mockResolvedValue(manifest)
     const savePreference = jest.fn().mockResolvedValue({})
@@ -3031,6 +3067,20 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').exists()).toBe(false)
   })
 
+  it('does not show raw English error text for an unmapped failure', async () => {
+    const getManifest = jest.fn().mockRejectedValue(new Error('Network Error: ECONNREFUSED 10.0.0.5:25600'))
+    const wrapper = mountShell({getManifest})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const error = wrapper.find('[data-testid="shelfview-reader-error"]')
+    expect(error.exists()).toBe(true)
+    expect(error.text()).toContain('shelfview_reader.error_generic_message')
+    expect(error.text()).not.toContain('ECONNREFUSED')
+    expect(error.text()).not.toContain('Network Error')
+  })
+
   it('retries opening the reader after a temporary manifest failure', async () => {
     const getManifest = jest
       .fn()
@@ -3071,6 +3121,33 @@ describe('ShelfViewReaderShell', () => {
     expect(getManifest).toHaveBeenCalledTimes(1)
     expect(page.exists()).toBe(true)
     expect(page.attributes('data-page-reload')).toBe('1')
+  })
+
+  it('clears a failed page image state when moving between mixed content items', async () => {
+    const getManifest = jest.fn().mockResolvedValue(mixedManifest)
+    const getTextContent = jest.fn().mockResolvedValue(mixedTextContent)
+    const wrapper = mountShell({getManifest, shelfViewText: {getTextContent}})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-contents-toggle"]').trigger('click')
+    await Vue.nextTick()
+    await wrapper.findAll('[data-testid="shelfview-contents-item"]').at(1).trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-page"]').trigger('error')
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').text()).toContain('shelfview_reader.error_page_failed_title')
+
+    await (wrapper.vm as any).previousPage()
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-text"]').exists()).toBe(true)
   })
 
   it('retries text content with a manual encoding when automatic decoding fails', async () => {

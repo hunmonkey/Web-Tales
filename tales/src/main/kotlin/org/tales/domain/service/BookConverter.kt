@@ -4,6 +4,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.io.FilenameUtils
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.tales.domain.model.Book
 import org.tales.domain.model.BookConversionException
 import org.tales.domain.model.BookWithMedia
@@ -20,9 +23,6 @@ import org.tales.domain.persistence.HistoricalEventRepository
 import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.MediaRepository
 import org.tales.language.notEquals
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
-import org.springframework.transaction.support.TransactionTemplate
 import java.io.FileNotFoundException
 import java.nio.file.FileAlreadyExistsException
 import java.util.zip.Deflater

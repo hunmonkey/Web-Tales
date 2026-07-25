@@ -1,12 +1,12 @@
 package org.tales.infrastructure.web
 
 import jakarta.annotation.PostConstruct
-import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.Ordered
 import org.springframework.web.filter.ForwardedHeaderFilter
+import org.tales.infrastructure.configuration.TalesSettingsProvider
 
 @Configuration
 class KoboMissingPortFilterConfiguration(

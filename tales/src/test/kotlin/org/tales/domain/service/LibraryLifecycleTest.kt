@@ -2,11 +2,6 @@ package org.tales.domain.service
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
-import org.tales.domain.model.DirectoryNotFoundException
-import org.tales.domain.model.DuplicateNameException
-import org.tales.domain.model.Library
-import org.tales.domain.model.PathContainedInPath
-import org.tales.domain.persistence.LibraryRepository
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Nested
@@ -14,6 +9,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.tales.domain.model.DirectoryNotFoundException
+import org.tales.domain.model.DuplicateNameException
+import org.tales.domain.model.Library
+import org.tales.domain.model.PathContainedInPath
+import org.tales.domain.persistence.LibraryRepository
 import java.io.FileNotFoundException
 import java.net.URL
 import java.nio.file.Files

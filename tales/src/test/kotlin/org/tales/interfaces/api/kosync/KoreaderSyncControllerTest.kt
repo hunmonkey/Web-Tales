@@ -1,9 +1,5 @@
 package org.tales.interfaces.api.kosync
 
-import org.tales.domain.model.TalesUser
-import org.tales.domain.model.UserRoles
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.service.TalesUserLifecycle
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -17,6 +13,10 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.tales.domain.model.TalesUser
+import org.tales.domain.model.UserRoles
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.TalesUserLifecycle
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)

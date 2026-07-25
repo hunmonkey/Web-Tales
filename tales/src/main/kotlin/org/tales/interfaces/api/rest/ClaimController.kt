@@ -5,12 +5,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
-import org.tales.domain.model.TalesUser
-import org.tales.domain.model.UserRoles
-import org.tales.domain.service.TalesUserLifecycle
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.interfaces.api.rest.dto.UserDto
-import org.tales.interfaces.api.rest.dto.toDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -20,6 +14,12 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.TalesUser
+import org.tales.domain.model.UserRoles
+import org.tales.domain.service.TalesUserLifecycle
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.interfaces.api.rest.dto.UserDto
+import org.tales.interfaces.api.rest.dto.toDto
 
 @RestController
 @RequestMapping("api/v1/claim", produces = [MediaType.APPLICATION_JSON_VALUE])

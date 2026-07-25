@@ -1,10 +1,6 @@
 package org.tales.infrastructure.security
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.domain.model.AuthenticationActivity
-import org.tales.domain.persistence.AuthenticationActivityRepository
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationToken
 import org.springframework.context.event.EventListener
 import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.authentication.RememberMeAuthenticationToken
@@ -15,6 +11,10 @@ import org.springframework.security.authentication.event.AuthenticationSuccessEv
 import org.springframework.security.oauth2.client.authentication.OAuth2LoginAuthenticationToken
 import org.springframework.security.web.authentication.WebAuthenticationDetails
 import org.springframework.stereotype.Component
+import org.tales.domain.model.AuthenticationActivity
+import org.tales.domain.persistence.AuthenticationActivityRepository
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationToken
 import java.util.EventObject
 
 private val logger = KotlinLogging.logger {}

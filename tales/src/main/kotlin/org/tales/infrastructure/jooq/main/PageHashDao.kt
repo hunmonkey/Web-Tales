@@ -1,15 +1,5 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.domain.model.BookPageNumbered
-import org.tales.domain.model.PageHashKnown
-import org.tales.domain.model.PageHashMatch
-import org.tales.domain.model.PageHashUnknown
-import org.tales.domain.persistence.PageHashRepository
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.infrastructure.jooq.toOrderBy
-import org.tales.jooq.main.Tables
-import org.tales.jooq.main.tables.records.PageHashRecord
-import org.tales.language.toCurrentTimeZone
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.beans.factory.annotation.Qualifier
@@ -20,6 +10,16 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.tales.domain.model.BookPageNumbered
+import org.tales.domain.model.PageHashKnown
+import org.tales.domain.model.PageHashMatch
+import org.tales.domain.model.PageHashUnknown
+import org.tales.domain.persistence.PageHashRepository
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.infrastructure.jooq.toOrderBy
+import org.tales.jooq.main.Tables
+import org.tales.jooq.main.tables.records.PageHashRecord
+import org.tales.language.toCurrentTimeZone
 import java.net.URL
 import java.time.LocalDateTime
 import java.time.ZoneId

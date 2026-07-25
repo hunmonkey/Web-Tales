@@ -1,5 +1,21 @@
 package org.tales.infrastructure.jooq.main
 
+import org.jooq.Condition
+import org.jooq.DSLContext
+import org.jooq.Record
+import org.jooq.ResultQuery
+import org.jooq.SelectOnConditionStep
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.falseCondition
+import org.jooq.impl.DSL.noCondition
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.stereotype.Component
 import org.tales.domain.model.BookSearch
 import org.tales.domain.model.ContentRestrictions
 import org.tales.domain.model.ReadList
@@ -32,22 +48,6 @@ import org.tales.jooq.main.tables.records.BookRecord
 import org.tales.jooq.main.tables.records.MediaRecord
 import org.tales.jooq.main.tables.records.ReadProgressRecord
 import org.tales.language.toUTC
-import org.jooq.Condition
-import org.jooq.DSLContext
-import org.jooq.Record
-import org.jooq.ResultQuery
-import org.jooq.SelectOnConditionStep
-import org.jooq.impl.DSL
-import org.jooq.impl.DSL.falseCondition
-import org.jooq.impl.DSL.noCondition
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
-import org.springframework.stereotype.Component
 import java.net.URL
 
 @Component

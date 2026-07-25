@@ -4,17 +4,6 @@ import com.jakewharton.byteunits.BinaryByteUnit
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.domain.model.CodedException
-import org.tales.domain.model.MediaNotReadyException
-import org.tales.domain.model.MediaProfile
-import org.tales.domain.model.TransientBook
-import org.tales.domain.persistence.TransientBookRepository
-import org.tales.domain.service.BookAnalyzer
-import org.tales.domain.service.TransientBookLifecycle
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.infrastructure.web.getMediaTypeOrDefault
-import org.tales.infrastructure.web.toFilePath
-import org.tales.interfaces.api.rest.dto.PageDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -26,6 +15,17 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.CodedException
+import org.tales.domain.model.MediaNotReadyException
+import org.tales.domain.model.MediaProfile
+import org.tales.domain.model.TransientBook
+import org.tales.domain.persistence.TransientBookRepository
+import org.tales.domain.service.BookAnalyzer
+import org.tales.domain.service.TransientBookLifecycle
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.infrastructure.web.getMediaTypeOrDefault
+import org.tales.infrastructure.web.toFilePath
+import org.tales.interfaces.api.rest.dto.PageDto
 import java.nio.file.NoSuchFileException
 import java.time.LocalDateTime
 

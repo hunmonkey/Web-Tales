@@ -3,6 +3,8 @@ package org.tales.infrastructure.metadata.comicrack
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.validator.routines.ISBNValidator
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Author
 import org.tales.domain.model.BCP47TagValidator
 import org.tales.domain.model.BookMetadataPatch
@@ -18,8 +20,6 @@ import org.tales.infrastructure.metadata.BookMetadataProvider
 import org.tales.infrastructure.metadata.SeriesMetadataFromBookProvider
 import org.tales.infrastructure.metadata.comicrack.dto.ComicInfo
 import org.tales.infrastructure.metadata.comicrack.dto.Manga
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Service
 import java.net.URI
 import java.time.LocalDate
 

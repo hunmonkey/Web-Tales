@@ -1,8 +1,8 @@
 package org.tales.domain.persistence
 
-import org.tales.domain.model.Author
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.tales.domain.model.Author
 import java.time.LocalDate
 
 interface ReferentialRepository {

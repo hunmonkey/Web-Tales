@@ -14,10 +14,14 @@ export interface ShelfViewPagePreload {
 export type ShelfViewPageUrlResolver = (manifest: ShelfViewManifest, pageIndex: number) => string | undefined
 export type ShelfViewPagePreloader = (url: string) => ShelfViewPagePreload
 
+// Double page shows two pages per turn, so prefetching only one page leaves the
+// second half of the next spread unfetched. Two pages covers both layouts.
+export const SHELFVIEW_PREFETCH_PAGE_COUNT = 2
+
 export class FixedPageAdapter implements ReaderAdapter {
   private manifest: ShelfViewManifest | undefined
   private currentPageIndex = 0
-  private prefetchHandle: ShelfViewPagePreload | undefined
+  private prefetchHandles: ShelfViewPagePreload[] = []
 
   constructor(
     private readonly resolvePageUrl: ShelfViewPageUrlResolver = shelfViewPageUrl,
@@ -130,18 +134,21 @@ export class FixedPageAdapter implements ReaderAdapter {
 
     if (!this.manifest) return
 
-    const nextPageIndex = this.currentPageIndex + 1
-    if (nextPageIndex >= this.getPagesCount()) return
+    const pageCount = this.getPagesCount()
+    for (let offset = 1; offset <= SHELFVIEW_PREFETCH_PAGE_COUNT; offset++) {
+      const nextPageIndex = this.currentPageIndex + offset
+      if (nextPageIndex >= pageCount) return
 
-    const nextPageUrl = this.resolvePageUrl(this.manifest, nextPageIndex)
-    if (!nextPageUrl) return
+      const nextPageUrl = this.resolvePageUrl(this.manifest, nextPageIndex)
+      if (!nextPageUrl) return
 
-    this.prefetchHandle = this.preloadPage(nextPageUrl)
+      this.prefetchHandles.push(this.preloadPage(nextPageUrl))
+    }
   }
 
   private cancelPrefetch(): void {
-    this.prefetchHandle?.cancel()
-    this.prefetchHandle = undefined
+    this.prefetchHandles.forEach(handle => handle.cancel())
+    this.prefetchHandles = []
   }
 
   private requireManifest(): ShelfViewManifest {

@@ -18,7 +18,7 @@
 
       <v-spacer/>
 
-      <v-btn icon @click="startEditElements" v-if="isAdmin">
+      <v-btn icon @click="startEditElements" v-if="isAdmin" :aria-label="$t('browse_collection.edit_elements')">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-icon v-on="on">mdi-playlist-edit</v-icon>
@@ -27,7 +27,7 @@
         </v-tooltip>
       </v-btn>
 
-      <v-btn icon @click="editCollection" v-if="isAdmin">
+      <v-btn icon @click="editCollection" v-if="isAdmin" :aria-label="$t('browse_collection.edit_collection')">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
             <v-icon v-on="on">mdi-pencil</v-icon>
@@ -38,7 +38,7 @@
 
       <page-size-select v-model="pageSize"/>
 
-      <v-btn icon @click="drawer = !drawer">
+      <v-btn icon @click="drawer = !drawer" :aria-label="$t('common.filter')">
         <v-icon :color="filterActive ? 'secondary' : ''">mdi-filter-variant</v-icon>
       </v-btn>
 
@@ -62,11 +62,11 @@
     <!--  Edit elements sticky bar  -->
     <v-scroll-y-transition hide-on-leave>
       <toolbar-sticky v-if="editElements" :elevation="5" color="base">
-        <v-btn icon @click="cancelEditElements">
+        <v-btn icon @click="cancelEditElements" :aria-label="$t('common.cancel')">
           <v-icon>mdi-close</v-icon>
         </v-btn>
 
-        <v-btn icon color="primary" @click="doEditElements" :disabled="series.length === 0">
+        <v-btn icon color="primary" @click="doEditElements" :disabled="series.length === 0" :aria-label="$t('common.save_changes')">
           <v-icon>mdi-check</v-icon>
         </v-btn>
 

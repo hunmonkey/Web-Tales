@@ -5,18 +5,18 @@ import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
 import org.apache.commons.validator.routines.ISBNValidator
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.Author
-import org.tales.domain.model.BookWithMedia
-import org.tales.domain.model.Media
-import org.tales.domain.model.SeriesMetadata
-import org.tales.domain.model.makeBook
-import org.tales.infrastructure.mediacontainer.epub.getPackageFileContent
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.core.io.ClassPathResource
+import org.tales.domain.model.Author
+import org.tales.domain.model.BookWithMedia
+import org.tales.domain.model.Media
+import org.tales.domain.model.SeriesMetadata
+import org.tales.domain.model.makeBook
+import org.tales.infrastructure.mediacontainer.epub.getPackageFileContent
 import java.time.LocalDate
 
 class EpubMetadataProviderTest {

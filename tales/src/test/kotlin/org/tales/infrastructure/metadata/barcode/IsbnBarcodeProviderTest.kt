@@ -4,13 +4,13 @@ import io.mockk.every
 import io.mockk.mockk
 import org.apache.commons.validator.routines.ISBNValidator
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.springframework.core.io.ClassPathResource
 import org.tales.domain.model.BookPage
 import org.tales.domain.model.BookWithMedia
 import org.tales.domain.model.Media
 import org.tales.domain.model.makeBook
 import org.tales.domain.service.BookAnalyzer
-import org.junit.jupiter.api.Test
-import org.springframework.core.io.ClassPathResource
 
 class IsbnBarcodeProviderTest {
   private val mockAnalyzer = mockk<BookAnalyzer>()

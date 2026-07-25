@@ -1,6 +1,7 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Book
 import org.tales.domain.model.DirectoryNotFoundException
 import org.tales.domain.model.ScanResult
@@ -8,7 +9,6 @@ import org.tales.domain.model.Series
 import org.tales.domain.model.Sidecar
 import org.tales.infrastructure.sidecar.SidecarBookConsumer
 import org.tales.infrastructure.sidecar.SidecarSeriesConsumer
-import org.springframework.stereotype.Service
 import java.io.IOException
 import java.net.URL
 import java.nio.file.FileVisitOption

@@ -9,10 +9,10 @@ import org.apache.lucene.store.ByteBuffersDirectory
 import org.apache.lucene.store.Directory
 import org.apache.lucene.store.FSDirectory
 import org.apache.lucene.store.SingleInstanceLockFactory
-import org.tales.infrastructure.configuration.TalesProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
+import org.tales.infrastructure.configuration.TalesProperties
 import java.nio.file.Paths
 
 @Configuration

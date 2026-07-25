@@ -1,12 +1,12 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.stereotype.Service
 import org.tales.domain.model.ReadListMatch
 import org.tales.domain.model.ReadListRequest
 import org.tales.domain.model.ReadListRequestMatch
 import org.tales.domain.persistence.ReadListRepository
 import org.tales.domain.persistence.ReadListRequestRepository
-import org.springframework.stereotype.Service
 
 private val logger = KotlinLogging.logger {}
 

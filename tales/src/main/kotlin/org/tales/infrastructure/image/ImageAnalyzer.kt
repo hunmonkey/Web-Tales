@@ -1,8 +1,8 @@
 package org.tales.infrastructure.image
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.domain.model.Dimension
 import org.springframework.stereotype.Service
+import org.tales.domain.model.Dimension
 import java.io.InputStream
 import javax.imageio.ImageIO
 

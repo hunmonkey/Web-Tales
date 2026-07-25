@@ -1,10 +1,10 @@
 package org.tales.domain.service
 
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookMetadata
 import org.tales.domain.model.BookMetadataPatch
 import org.tales.domain.model.SeriesMetadata
 import org.tales.domain.model.SeriesMetadataPatch
-import org.springframework.stereotype.Service
 
 @Service
 class MetadataApplier {

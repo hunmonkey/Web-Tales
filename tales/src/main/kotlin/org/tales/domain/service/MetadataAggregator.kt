@@ -1,8 +1,8 @@
 package org.tales.domain.service
 
+import org.springframework.stereotype.Service
 import org.tales.domain.model.BookMetadata
 import org.tales.domain.model.BookMetadataAggregation
-import org.springframework.stereotype.Service
 
 @Service
 class MetadataAggregator {

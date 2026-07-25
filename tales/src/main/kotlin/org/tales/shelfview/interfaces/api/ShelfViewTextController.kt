@@ -2,13 +2,6 @@ package org.tales.shelfview.interfaces.api
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.domain.model.Media
-import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.MediaRepository
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.interfaces.api.ContentRestrictionChecker
-import org.tales.interfaces.api.persistence.BookDtoRepository
-import org.tales.shelfview.interfaces.api.dto.ShelfViewTextContentDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -18,6 +11,13 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.Media
+import org.tales.domain.persistence.BookRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.interfaces.api.ContentRestrictionChecker
+import org.tales.interfaces.api.persistence.BookDtoRepository
+import org.tales.shelfview.interfaces.api.dto.ShelfViewTextContentDto
 import org.tales.domain.model.MediaType as TalesMediaType
 
 @RestController

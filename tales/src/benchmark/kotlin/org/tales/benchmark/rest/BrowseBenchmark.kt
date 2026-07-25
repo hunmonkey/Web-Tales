@@ -1,9 +1,5 @@
 package org.tales.benchmark.rest
 
-import org.tales.domain.model.BookSearch
-import org.tales.domain.model.SearchCondition
-import org.tales.domain.model.SearchOperator
-import org.tales.domain.model.SeriesSearch
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.Level
 import org.openjdk.jmh.annotations.OutputTimeUnit
@@ -11,6 +7,10 @@ import org.openjdk.jmh.annotations.Param
 import org.openjdk.jmh.annotations.Setup
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.tales.domain.model.BookSearch
+import org.tales.domain.model.SearchCondition
+import org.tales.domain.model.SearchOperator
+import org.tales.domain.model.SeriesSearch
 import java.util.concurrent.TimeUnit
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)

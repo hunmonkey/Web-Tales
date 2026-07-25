@@ -1,12 +1,12 @@
 package org.tales.infrastructure.mediacontainer.epub
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.EpubTocEntry
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.core.io.ClassPathResource
+import org.tales.domain.model.EpubTocEntry
 import java.nio.file.Path
 
 class OpfTest {

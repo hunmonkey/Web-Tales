@@ -2,13 +2,13 @@ package org.tales.infrastructure.kobo
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.annotation.PostConstruct
-import org.tales.domain.model.BookWithMedia
-import org.tales.domain.model.MediaType
-import org.tales.infrastructure.configuration.TalesSettingsProvider
-import org.tales.infrastructure.configuration.SettingChangedEvent
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.tales.domain.model.BookWithMedia
+import org.tales.domain.model.MediaType
+import org.tales.infrastructure.configuration.SettingChangedEvent
+import org.tales.infrastructure.configuration.TalesSettingsProvider
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit

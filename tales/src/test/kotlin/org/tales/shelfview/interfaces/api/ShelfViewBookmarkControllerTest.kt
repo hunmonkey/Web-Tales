@@ -1,22 +1,5 @@
 package org.tales.shelfview.interfaces.api
 
-import org.tales.domain.model.Book
-import org.tales.domain.model.BookPage
-import org.tales.domain.model.TalesUser
-import org.tales.domain.model.Media
-import org.tales.domain.model.makeBook
-import org.tales.domain.model.makeLibrary
-import org.tales.domain.model.makeSeries
-import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.TalesUserRepository
-import org.tales.domain.persistence.LibraryRepository
-import org.tales.domain.persistence.MediaRepository
-import org.tales.domain.persistence.SeriesRepository
-import org.tales.domain.service.LibraryLifecycle
-import org.tales.domain.service.SeriesLifecycle
-import org.tales.interfaces.api.rest.WithMockCustomUser
-import org.tales.shelfview.domain.ShelfViewBookmark
-import org.tales.shelfview.infrastructure.jooq.ShelfViewReaderStateDao
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -32,6 +15,23 @@ import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
+import org.tales.domain.model.Book
+import org.tales.domain.model.BookPage
+import org.tales.domain.model.Media
+import org.tales.domain.model.TalesUser
+import org.tales.domain.model.makeBook
+import org.tales.domain.model.makeLibrary
+import org.tales.domain.model.makeSeries
+import org.tales.domain.persistence.BookRepository
+import org.tales.domain.persistence.LibraryRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.domain.persistence.SeriesRepository
+import org.tales.domain.persistence.TalesUserRepository
+import org.tales.domain.service.LibraryLifecycle
+import org.tales.domain.service.SeriesLifecycle
+import org.tales.interfaces.api.rest.WithMockCustomUser
+import org.tales.shelfview.domain.ShelfViewBookmark
+import org.tales.shelfview.infrastructure.jooq.ShelfViewReaderStateDao
 import org.tales.domain.model.MediaType as TalesMediaType
 
 @SpringBootTest

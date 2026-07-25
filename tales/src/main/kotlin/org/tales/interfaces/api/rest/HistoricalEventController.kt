@@ -3,10 +3,6 @@ package org.tales.interfaces.api.rest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.tales.infrastructure.openapi.OpenApiConfiguration
-import org.tales.infrastructure.openapi.PageableAsQueryParam
-import org.tales.interfaces.api.persistence.HistoricalEventDtoRepository
-import org.tales.interfaces.api.rest.dto.HistoricalEventDto
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
@@ -16,6 +12,10 @@ import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.tales.infrastructure.openapi.OpenApiConfiguration
+import org.tales.infrastructure.openapi.PageableAsQueryParam
+import org.tales.interfaces.api.persistence.HistoricalEventDtoRepository
+import org.tales.interfaces.api.rest.dto.HistoricalEventDto
 
 @RestController
 @RequestMapping("api/v1/history", produces = [MediaType.APPLICATION_JSON_VALUE])

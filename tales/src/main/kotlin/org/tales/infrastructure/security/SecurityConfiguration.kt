@@ -1,13 +1,6 @@
 package org.tales.infrastructure.security
 
 import jakarta.servlet.Filter
-import org.tales.domain.model.UserRoles
-import org.tales.infrastructure.configuration.TalesSettingsProvider
-import org.tales.infrastructure.hash.Hasher
-import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationFilter
-import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationProvider
-import org.tales.infrastructure.security.apikey.HeaderApiKeyAuthenticationConverter
-import org.tales.infrastructure.security.apikey.UriRegexApiKeyAuthenticationConverter
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest
 import org.springframework.boot.actuate.health.HealthEndpoint
 import org.springframework.context.annotation.Bean
@@ -37,6 +30,13 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
+import org.tales.domain.model.UserRoles
+import org.tales.infrastructure.configuration.TalesSettingsProvider
+import org.tales.infrastructure.hash.Hasher
+import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationFilter
+import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationProvider
+import org.tales.infrastructure.security.apikey.HeaderApiKeyAuthenticationConverter
+import org.tales.infrastructure.security.apikey.UriRegexApiKeyAuthenticationConverter
 
 @Configuration
 @EnableWebSecurity

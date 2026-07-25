@@ -2,12 +2,12 @@ package org.tales.interfaces.api.rest.dto
 
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
+import org.hibernate.validator.constraints.URL
 import org.tales.domain.model.Author
 import org.tales.domain.model.BookMetadata
 import org.tales.domain.model.WebLink
 import org.tales.infrastructure.validation.NullOrBlankOrISBN
 import org.tales.infrastructure.validation.NullOrNotBlank
-import org.hibernate.validator.constraints.URL
 import java.net.URI
 import java.time.LocalDate
 import kotlin.properties.Delegates

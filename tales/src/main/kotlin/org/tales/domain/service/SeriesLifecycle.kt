@@ -2,6 +2,9 @@ package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.tales.application.tasks.TaskEmitter
 import org.tales.domain.model.Book
 import org.tales.domain.model.BookMetadata
@@ -9,13 +12,13 @@ import org.tales.domain.model.BookMetadataAggregation
 import org.tales.domain.model.BookMetadataPatchCapability
 import org.tales.domain.model.DomainEvent
 import org.tales.domain.model.HistoricalEvent
-import org.tales.domain.model.TalesUser
 import org.tales.domain.model.Library
 import org.tales.domain.model.MarkSelectedPreference
 import org.tales.domain.model.Media
 import org.tales.domain.model.ReadProgress
 import org.tales.domain.model.Series
 import org.tales.domain.model.SeriesMetadata
+import org.tales.domain.model.TalesUser
 import org.tales.domain.model.ThumbnailSeries
 import org.tales.domain.persistence.BookMetadataAggregationRepository
 import org.tales.domain.persistence.BookMetadataRepository
@@ -29,9 +32,6 @@ import org.tales.domain.persistence.SeriesMetadataRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.persistence.ThumbnailSeriesRepository
 import org.tales.language.stripAccents
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
-import org.springframework.transaction.support.TransactionTemplate
 import java.io.File
 import java.time.LocalDateTime
 import kotlin.io.path.deleteIfExists

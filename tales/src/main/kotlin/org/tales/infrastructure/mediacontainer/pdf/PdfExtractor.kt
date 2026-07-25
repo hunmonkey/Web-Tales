@@ -5,13 +5,13 @@ import org.apache.pdfbox.multipdf.PageExtractor
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.rendering.ImageType.RGB
 import org.apache.pdfbox.rendering.PDFRenderer
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.MediaContainerEntry
 import org.tales.domain.model.MediaType
 import org.tales.domain.model.TypedBytes
 import org.tales.infrastructure.image.ImageType
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import javax.imageio.ImageIO

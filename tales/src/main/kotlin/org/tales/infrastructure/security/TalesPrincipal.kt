@@ -1,7 +1,5 @@
 package org.tales.infrastructure.security
 
-import org.tales.domain.model.ApiKey
-import org.tales.domain.model.TalesUser
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
@@ -9,6 +7,8 @@ import org.springframework.security.oauth2.core.oidc.OidcIdToken
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.oauth2.core.user.OAuth2User
+import org.tales.domain.model.ApiKey
+import org.tales.domain.model.TalesUser
 
 class TalesPrincipal(
   val user: TalesUser,

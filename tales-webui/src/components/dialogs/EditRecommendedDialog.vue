@@ -5,7 +5,7 @@
   >
     <v-card>
       <v-card-title>{{ $t('dialog.edit_recommended.dialog_title') }}</v-card-title>
-      <v-btn icon absolute top right @click="dialogClose">
+      <v-btn icon absolute top right @click="dialogClose" :aria-label="$t('common.close')">
         <v-icon>mdi-close</v-icon>
       </v-btn>
 

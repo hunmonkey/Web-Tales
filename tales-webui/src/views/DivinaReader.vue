@@ -14,6 +14,7 @@
           <v-btn
             icon
             @click="closeBook"
+            :aria-label="$t('bookreader.shortcuts.close')"
           >
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
@@ -30,32 +31,34 @@
           <v-btn
             icon
             :disabled="!screenfull.isEnabled"
-            @click="screenfull.isFullscreen ? screenfull.exit() : enterFullscreen()">
+            @click="screenfull.isFullscreen ? screenfull.exit() : enterFullscreen()" :aria-label="$t('bookreader.shortcuts.fullscreen')">
             <v-icon>{{ fullscreenIcon }}</v-icon>
           </v-btn>
 
           <v-btn
             icon
-            @click="showHelp = !showHelp">
+            @click="showHelp = !showHelp" :aria-label="$t('common.help')">
             <v-icon>mdi-help-circle</v-icon>
           </v-btn>
 
           <v-btn
             icon
             @click="showExplorer = !showExplorer"
+            :aria-label="$t('bookreader.shortcuts.show_hide_thumbnails')"
           >
             <v-icon>mdi-view-grid</v-icon>
           </v-btn>
           <v-btn
             icon
             @click="showSettings = !showSettings"
+            :aria-label="$t('bookreader.reader_settings')"
           >
             <v-icon>mdi-cog</v-icon>
           </v-btn>
 
           <v-menu offset-y>
             <template v-slot:activator="{ on }">
-              <v-btn icon v-on="on" @click.prevent="">
+              <v-btn icon v-on="on" @click.prevent="" :aria-label="$t('common.actions')">
                 <v-icon>mdi-dots-vertical</v-icon>
               </v-btn>
             </template>
@@ -166,7 +169,7 @@
     >
       <v-card>
         <v-toolbar dark color="primary">
-          <v-btn icon dark @click="showSettings = false">
+          <v-btn icon dark @click="showSettings = false" :aria-label="$t('common.close')">
             <v-icon>mdi-close</v-icon>
           </v-btn>
           <v-toolbar-title>{{ $t('bookreader.reader_settings') }}</v-toolbar-title>

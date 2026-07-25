@@ -1,5 +1,11 @@
 package org.tales.interfaces.api.rest
 
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContext
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.test.context.support.TestExecutionEvent
+import org.springframework.security.test.context.support.WithSecurityContext
+import org.springframework.security.test.context.support.WithSecurityContextFactory
 import org.tales.domain.model.AgeRestriction
 import org.tales.domain.model.AllowExclude
 import org.tales.domain.model.ContentRestrictions
@@ -7,12 +13,6 @@ import org.tales.domain.model.TalesUser
 import org.tales.domain.model.UserRoles
 import org.tales.infrastructure.security.TalesPrincipal
 import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationToken
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.context.SecurityContext
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.test.context.support.TestExecutionEvent
-import org.springframework.security.test.context.support.WithSecurityContext
-import org.springframework.security.test.context.support.WithSecurityContextFactory
 
 @Retention(AnnotationRetention.RUNTIME)
 @WithSecurityContext(factory = WithMockCustomUserSecurityContextFactory::class, setupBefore = TestExecutionEvent.TEST_EXECUTION)

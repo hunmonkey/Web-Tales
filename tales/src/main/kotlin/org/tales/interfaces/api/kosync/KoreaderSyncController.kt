@@ -1,18 +1,6 @@
 package org.tales.interfaces.api.kosync
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.tales.domain.model.MediaExtensionEpub
-import org.tales.domain.model.MediaProfile
-import org.tales.domain.model.R2Device
-import org.tales.domain.model.R2Locator
-import org.tales.domain.model.R2Progression
-import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.MediaRepository
-import org.tales.domain.persistence.ReadProgressRepository
-import org.tales.domain.service.BookLifecycle
-import org.tales.infrastructure.security.TalesPrincipal
-import org.tales.interfaces.api.kosync.dto.DocumentProgressDto
-import org.tales.interfaces.api.kosync.dto.UserAuthenticationDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -25,6 +13,18 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.MediaExtensionEpub
+import org.tales.domain.model.MediaProfile
+import org.tales.domain.model.R2Device
+import org.tales.domain.model.R2Locator
+import org.tales.domain.model.R2Progression
+import org.tales.domain.persistence.BookRepository
+import org.tales.domain.persistence.MediaRepository
+import org.tales.domain.persistence.ReadProgressRepository
+import org.tales.domain.service.BookLifecycle
+import org.tales.infrastructure.security.TalesPrincipal
+import org.tales.interfaces.api.kosync.dto.DocumentProgressDto
+import org.tales.interfaces.api.kosync.dto.UserAuthenticationDto
 import java.time.ZonedDateTime
 
 private val logger = KotlinLogging.logger {}

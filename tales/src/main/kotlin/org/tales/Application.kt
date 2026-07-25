@@ -1,9 +1,9 @@
 package org.tales
 
-import org.tales.infrastructure.util.checkTempDirectory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.scheduling.annotation.EnableScheduling
+import org.tales.infrastructure.util.checkTempDirectory
 
 @SpringBootApplication
 @EnableScheduling

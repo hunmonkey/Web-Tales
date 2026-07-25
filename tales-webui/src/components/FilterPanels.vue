@@ -38,7 +38,7 @@
                         :value="filtersActiveMode[key]?.allOf">
             <v-tooltip bottom>
               <template v-slot:activator="{ on }">
-                <v-btn small icon :value="false" v-on="on" @click.stop="clickFilterMode(key, false)">
+                <v-btn small icon :value="false" v-on="on" @click.stop="clickFilterMode(key, false)" :aria-label="$t('common.any_of')">
                   <v-icon small>mdi-filter-outline</v-icon>
                 </v-btn>
               </template>
@@ -47,7 +47,7 @@
 
             <v-tooltip bottom>
               <template v-slot:activator="{ on }">
-                <v-btn small icon :value="true" v-on="on" @click.stop="clickFilterMode(key, true)">
+                <v-btn small icon :value="true" v-on="on" @click.stop="clickFilterMode(key, true)" :aria-label="$t('common.all_of')">
                   <v-icon small>mdi-filter-multiple-outline</v-icon>
                 </v-btn>
               </template>

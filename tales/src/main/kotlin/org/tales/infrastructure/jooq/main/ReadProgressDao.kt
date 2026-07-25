@@ -1,6 +1,13 @@
 package org.tales.infrastructure.jooq.main
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.jooq.DSLContext
+import org.jooq.Query
+import org.jooq.impl.DSL
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import org.tales.domain.model.R2Locator
 import org.tales.domain.model.ReadProgress
 import org.tales.domain.persistence.ReadProgressRepository
@@ -13,13 +20,6 @@ import org.tales.jooq.main.Tables
 import org.tales.jooq.main.tables.records.ReadProgressRecord
 import org.tales.language.toCurrentTimeZone
 import org.tales.language.toUTC
-import org.jooq.DSLContext
-import org.jooq.Query
-import org.jooq.impl.DSL
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.time.ZoneId
 

@@ -2,6 +2,7 @@ package org.tales.infrastructure.metadata.mylar
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.stereotype.Service
 import org.tales.domain.model.Library
 import org.tales.domain.model.MetadataPatchTarget
 import org.tales.domain.model.Series
@@ -11,7 +12,6 @@ import org.tales.domain.model.Sidecar
 import org.tales.infrastructure.metadata.SeriesMetadataProvider
 import org.tales.infrastructure.metadata.mylar.dto.Status
 import org.tales.infrastructure.sidecar.SidecarSeriesConsumer
-import org.springframework.stereotype.Service
 import kotlin.io.path.notExists
 import org.tales.infrastructure.metadata.mylar.dto.Series as MylarSeries
 

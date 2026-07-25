@@ -1,7 +1,7 @@
 package org.tales.infrastructure.jooq
 
-import org.tales.domain.model.SearchOperator
 import org.jooq.Field
+import org.tales.domain.model.SearchOperator
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit

@@ -8,7 +8,7 @@
     <form novalidate>
       <v-card>
         <v-toolbar class="hidden-sm-and-up">
-          <v-btn icon @click="dialogClose">
+          <v-btn icon @click="dialogClose" :aria-label="$t('common.close')">
             <v-icon>mdi-close</v-icon>
           </v-btn>
           <v-toolbar-title>{{ dialogTitle }}</v-toolbar-title>

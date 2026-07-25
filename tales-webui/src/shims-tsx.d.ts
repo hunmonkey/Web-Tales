@@ -10,8 +10,8 @@ declare global {
     interface ElementClass extends Vue {
     }
 
-    interface IntrinsicElements {
-      [elem: string]: any
-    }
+    // Vue 2.7 already declares JSX.IntrinsicElements with an arbitrary-element
+    // index signature in vue/types/jsx.d.ts, so redeclaring it here is a
+    // duplicate string index signature (TS2374).
   }
 }

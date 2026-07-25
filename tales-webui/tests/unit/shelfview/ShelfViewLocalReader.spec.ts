@@ -1,8 +1,9 @@
 import {shallowMount} from '@vue/test-utils'
 import ShelfViewLocalReader from '@/shelfview/views/ShelfViewLocalReader.vue'
-import {openShelfViewLocalArchiveFile} from '@/shelfview/functions/local-archive'
+import {ShelfViewLocalArchiveError, openShelfViewLocalArchiveFile} from '@/shelfview/functions/local-archive'
 
 jest.mock('@/shelfview/functions/local-archive', () => ({
+  ...jest.requireActual('@/shelfview/functions/local-archive'),
   openShelfViewLocalArchiveFile: jest.fn(),
 }))
 
@@ -54,7 +55,7 @@ describe('ShelfViewLocalReader', () => {
     expect(wrapper.find('[data-testid="shelfview-local-reader-page"]').exists()).toBe(false)
   })
 
-  it('shows an error when the local archive cannot be opened', async () => {
+  it('shows a translated error instead of the raw archive message', async () => {
     openLocalArchive.mockRejectedValue(new Error('bad archive'))
     const wrapper = mountLocalReader()
 
@@ -62,8 +63,25 @@ describe('ShelfViewLocalReader', () => {
     await flushPromises()
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.find('[data-testid="shelfview-local-reader-error"]').text()).toContain('bad archive')
+    const error = wrapper.find('[data-testid="shelfview-local-reader-error"]')
+    expect(error.text()).toContain('shelfview_local_reader.error_open')
+    expect(error.text()).not.toContain('bad archive')
     expect(wrapper.find('[data-testid="shelfview-local-reader-page"]').exists()).toBe(false)
+  })
+
+  it('explains why a local archive was rejected using its error code', async () => {
+    openLocalArchive.mockRejectedValue(
+      new ShelfViewLocalArchiveError('NO_SUPPORTED_PAGES', 'The archive does not contain supported image pages.'),
+    )
+    const wrapper = mountLocalReader()
+
+    await (wrapper.vm as any).openFile(file('text-only.cbz'))
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    const error = wrapper.find('[data-testid="shelfview-local-reader-error"]')
+    expect(error.text()).toContain('shelfview_local_reader.error_no_pages')
+    expect(error.text()).not.toContain('supported image pages')
   })
 
   it('cleans up the opened archive on destroy', async () => {

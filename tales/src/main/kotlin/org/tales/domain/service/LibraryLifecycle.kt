@@ -1,6 +1,9 @@
 package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.tales.application.scheduler.LibraryScanScheduler
 import org.tales.application.tasks.LOWEST_PRIORITY
 import org.tales.application.tasks.TaskEmitter
@@ -12,9 +15,6 @@ import org.tales.domain.model.PathContainedInPath
 import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.persistence.SidecarRepository
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
-import org.springframework.transaction.support.TransactionTemplate
 import java.io.FileNotFoundException
 import java.nio.file.Files
 

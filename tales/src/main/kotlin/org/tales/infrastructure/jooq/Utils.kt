@@ -1,16 +1,16 @@
 package org.tales.infrastructure.jooq
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.tales.domain.model.AllowExclude
-import org.tales.domain.model.ContentRestrictions
-import org.tales.domain.model.MediaExtension
-import org.tales.infrastructure.datasource.SqliteUdfDataSource
-import org.tales.jooq.main.Tables
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.SortField
 import org.jooq.impl.DSL
 import org.springframework.data.domain.Sort
+import org.tales.domain.model.AllowExclude
+import org.tales.domain.model.ContentRestrictions
+import org.tales.domain.model.MediaExtension
+import org.tales.infrastructure.datasource.SqliteUdfDataSource
+import org.tales.jooq.main.Tables
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream

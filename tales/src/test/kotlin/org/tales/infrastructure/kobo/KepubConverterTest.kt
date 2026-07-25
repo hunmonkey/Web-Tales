@@ -2,15 +2,15 @@ package org.tales.infrastructure.kobo
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
-import org.tales.domain.model.BookWithMedia
-import org.tales.domain.model.Media
-import org.tales.domain.model.MediaType
-import org.tales.domain.model.makeBook
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.tales.domain.model.BookWithMedia
+import org.tales.domain.model.Media
+import org.tales.domain.model.MediaType
+import org.tales.domain.model.makeBook
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createFile

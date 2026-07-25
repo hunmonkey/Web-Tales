@@ -27,13 +27,14 @@
         icon
         color="error"
         @click="deleteMatch(item)"
+        :aria-label="$t('common.delete')"
       >
         <v-icon>mdi-trash-can-outline</v-icon>
       </v-btn>
     </template>
 
     <template v-slot:footer.prepend>
-      <v-btn icon @click="loadData(hash)">
+      <v-btn icon @click="loadData(hash)" :aria-label="$t('common.refresh')">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
     </template>

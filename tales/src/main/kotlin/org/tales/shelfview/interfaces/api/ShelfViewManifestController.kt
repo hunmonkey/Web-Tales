@@ -3,6 +3,14 @@ package org.tales.shelfview.interfaces.api
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.apache.commons.io.FilenameUtils
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaFile
 import org.tales.domain.model.MediaProfile
@@ -21,14 +29,6 @@ import org.tales.shelfview.interfaces.api.dto.ShelfViewManifestDto
 import org.tales.shelfview.interfaces.api.dto.ShelfViewManifestItemDto
 import org.tales.shelfview.interfaces.api.dto.ShelfViewPagesDto
 import org.tales.shelfview.interfaces.api.dto.ShelfViewTextDto
-import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
-import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.MediaType as TalesMediaType
 
 @RestController

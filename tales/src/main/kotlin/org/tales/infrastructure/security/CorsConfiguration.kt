@@ -1,6 +1,5 @@
 package org.tales.infrastructure.security
 
-import org.tales.infrastructure.configuration.TalesProperties
 import org.springframework.boot.autoconfigure.condition.ConditionOutcome
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition
 import org.springframework.boot.context.properties.bind.Bindable
@@ -15,6 +14,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import org.tales.infrastructure.configuration.TalesProperties
 import java.util.Collections
 
 @Configuration

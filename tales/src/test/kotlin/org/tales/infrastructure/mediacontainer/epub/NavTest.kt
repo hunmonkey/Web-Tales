@@ -1,11 +1,11 @@
 package org.tales.infrastructure.mediacontainer.epub
 
 import org.assertj.core.api.Assertions.assertThat
-import org.tales.domain.model.EpubTocEntry
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.core.io.ClassPathResource
+import org.tales.domain.model.EpubTocEntry
 import java.util.stream.Stream
 import kotlin.io.path.Path
 

@@ -1,11 +1,11 @@
 package org.tales.infrastructure.jooq.main
 
-import org.tales.infrastructure.jooq.SplitDslDaoBase
-import org.tales.interfaces.api.rest.dto.ClientSettingDto
-import org.tales.jooq.main.Tables
 import org.jooq.DSLContext
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
+import org.tales.infrastructure.jooq.SplitDslDaoBase
+import org.tales.interfaces.api.rest.dto.ClientSettingDto
+import org.tales.jooq.main.Tables
 
 @Component
 class ClientSettingsDtoDao(

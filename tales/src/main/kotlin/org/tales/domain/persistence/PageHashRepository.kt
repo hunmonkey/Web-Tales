@@ -1,11 +1,11 @@
 package org.tales.domain.persistence
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.tales.domain.model.BookPageNumbered
 import org.tales.domain.model.PageHashKnown
 import org.tales.domain.model.PageHashMatch
 import org.tales.domain.model.PageHashUnknown
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 
 interface PageHashRepository {
   fun findKnown(pageHash: String): PageHashKnown?
