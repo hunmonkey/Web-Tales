@@ -40,7 +40,7 @@
             {{ $t('dialog.edit_books.tab_links') }}
           </v-tab>
           <v-tab class="justify-start" v-if="single">
-            <v-icon left class="hidden-xs-only">mdi-image</v-icon>
+            <v-icon left class="hidden-xs-only">mdi-image-outline</v-icon>
             {{ $t('dialog.edit_series.tab_poster') }}
           </v-tab>
           <v-tab class="justify-start">
@@ -306,7 +306,7 @@
                                     @change="form.alternateTitlesLock = true"
                       >
                         <template v-slot:append-outer>
-                          <v-icon @click="form.alternateTitles.splice(i, 1)">mdi-delete</v-icon>
+                          <v-icon @click="form.alternateTitles.splice(i, 1)">mdi-delete-outline</v-icon>
                         </template>
                       </v-text-field>
                     </v-col>
@@ -443,7 +443,7 @@
                                     @change="form.linksLock = true"
                       >
                         <template v-slot:append-outer>
-                          <v-icon @click="form.links.splice(i, 1)">mdi-delete</v-icon>
+                          <v-icon @click="form.links.splice(i, 1)">mdi-delete-outline</v-icon>
                         </template>
                       </v-text-field>
                     </v-col>

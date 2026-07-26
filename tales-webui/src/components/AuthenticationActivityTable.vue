@@ -15,8 +15,8 @@
       }"
   >
     <template v-slot:item.success="{ item }">
-      <v-icon v-if="item.success" color="success">mdi-check-circle</v-icon>
-      <v-icon v-else color="error">mdi-alert-circle</v-icon>
+      <v-icon v-if="item.success" color="success">mdi-check-circle-outline</v-icon>
+      <v-icon v-else color="error">mdi-alert-circle-outline</v-icon>
     </template>
 
     <template v-slot:item.dateTime="{ item }">

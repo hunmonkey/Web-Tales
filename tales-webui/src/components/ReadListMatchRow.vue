@@ -44,7 +44,7 @@
       <template v-if="error">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
-            <v-icon color="error" v-on="on">mdi-alert-circle</v-icon>
+            <v-icon color="error" v-on="on">mdi-alert-circle-outline</v-icon>
           </template>
           {{ error }}
         </v-tooltip>
@@ -52,7 +52,7 @@
       <template v-else-if="duplicate">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
-            <v-icon color="warning" v-on="on">mdi-alert-circle</v-icon>
+            <v-icon color="warning" v-on="on">mdi-alert-circle-outline</v-icon>
           </template>
           {{ $t('readlist_import.row.duplicate_book') }}
         </v-tooltip>

@@ -8,6 +8,35 @@ html {
     --tales-radius-lg: 24px;
 }
 
+/* Reader chrome. The reader stays dark in both app themes so nothing glows next
+   to the page, but it borrows the dark palette above instead of inventing its
+   own greys and its own blue accent. */
+:root {
+    --sv-chrome-bg: #0b111a;
+    --sv-chrome-surface: #151e2b;
+    --sv-chrome-surface-soft: #1c2837;
+    --sv-chrome-elevated: rgba(21, 30, 43, 0.94);
+    --sv-chrome-text: #edf3f8;
+    --sv-chrome-muted: #99a7b7;
+    --sv-chrome-border: rgba(185, 209, 225, 0.16);
+    --sv-chrome-border-strong: rgba(185, 209, 225, 0.3);
+    --sv-chrome-accent: #83c5e8;
+    --sv-chrome-accent-soft: rgba(131, 197, 232, 0.16);
+    --sv-chrome-shadow: 0 18px 44px rgba(0, 0, 0, 0.46);
+    --sv-chrome-scrim: rgba(6, 10, 16, 0.72);
+    --sv-chrome-danger: #ef9a9a;
+    --sv-chrome-success: #a5d6a7;
+}
+
+/* Set on reader snackbars through content-class, which Vuetify renders outside
+   the readers' scoped styles. */
+.tales-reader-snackbar.v-snack__content {
+    background: var(--sv-chrome-elevated);
+    border: 1px solid var(--sv-chrome-border);
+    border-radius: var(--tales-radius-md);
+    color: var(--sv-chrome-text);
+}
+
 .theme--light.v-application {
     --tales-app-background: #f3f6f8;
     --tales-surface: #ffffff;

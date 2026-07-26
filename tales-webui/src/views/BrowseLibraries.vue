@@ -93,7 +93,7 @@
       <empty-state
         v-if="totalPages === 0 && !sortOrFilterActive"
         :title="$t('common.nothing_to_show')"
-        icon="mdi-help-circle"
+        icon="mdi-help-circle-outline"
         icon-color="secondary"
       />
 

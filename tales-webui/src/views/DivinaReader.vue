@@ -38,7 +38,7 @@
           <v-btn
             icon
             @click="showHelp = !showHelp" :aria-label="$t('common.help')">
-            <v-icon>mdi-help-circle</v-icon>
+            <v-icon>mdi-help-circle-outline</v-icon>
           </v-btn>
 
           <v-btn
@@ -262,7 +262,7 @@
       v-model="jumpToPreviousBook"
       :timeout="jumpConfirmationDelay"
       top
-      color="rgba(0, 0, 0, 0.8)"
+      content-class="tales-reader-snackbar"
       multi-line
       class="mt-12"
     >
@@ -276,7 +276,7 @@
       v-model="jumpToNextBook"
       :timeout="jumpConfirmationDelay"
       top
-      color="rgba(0, 0, 0, 0.8)"
+      content-class="tales-reader-snackbar"
       multi-line
       class="mt-12"
     >
@@ -289,7 +289,7 @@
 
     <v-snackbar
       v-model="notificationReadingDirection.enabled"
-      color="rgba(0, 0, 0, 0.8)"
+      content-class="tales-reader-snackbar"
       bottom
       timeout="3000"
     >
@@ -302,7 +302,7 @@
 
     <v-snackbar
       v-model="notification.enabled"
-      color="rgba(0, 0, 0, 0.8)"
+      content-class="tales-reader-snackbar"
       centered
       :timeout="notification.timeout"
     >

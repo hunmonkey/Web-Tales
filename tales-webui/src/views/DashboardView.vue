@@ -56,7 +56,7 @@
 
       <empty-state v-if="allEmpty && !loading"
                    :title="$t('common.nothing_to_show')"
-                   icon="mdi-help-circle"
+                   icon="mdi-help-circle-outline"
                    icon-color="secondary"
       >
       </empty-state>

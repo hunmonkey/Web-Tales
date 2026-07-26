@@ -6,13 +6,15 @@
       'shelfview-reader-shell--thumbnails': thumbnailStripVisible,
       'shelfview-reader-shell--chrome-visible': chromeVisible,
     }"
+    dark
     fluid
     data-testid="shelfview-reader-shell"
   >
     <v-toolbar
       v-show="chromeVisible"
+      dark
       dense
-      elevation="1"
+      flat
       class="shelfview-reader-shell__toolbar full-width"
       :class="{'shelfview-reader-shell__toolbar--visible': chromeVisible}"
       data-testid="shelfview-reader-toolbar"
@@ -73,7 +75,7 @@
         >
           <v-icon small>{{ pageFitIcon }}</v-icon>
           <span class="shelfview-reader-shell__control-toggle-label">{{ pageFitLabel }}</span>
-          <v-icon small>mdi-menu-down</v-icon>
+          <v-icon small>mdi-chevron-down</v-icon>
         </v-btn>
 
         <v-tooltip
@@ -95,22 +97,20 @@
           <span>{{ isFullscreen ? $t('shelfview_reader.exit_fullscreen') : $t('shelfview_reader.fullscreen') }}</span>
         </v-tooltip>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              icon
-              :aria-label="$t('shelfview_reader.more_controls')"
-              :aria-expanded="overflowMenuOpen ? 'true' : 'false'"
-              aria-haspopup="menu"
-              data-testid="shelfview-reader-more-toggle"
-              v-on="on"
-              @click="toggleOverflowMenu"
-            >
-              <v-icon>mdi-dots-vertical</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.more_controls') }}</span>
-        </v-tooltip>
+        <v-btn
+          text
+          small
+          class="shelfview-reader-shell__control-toggle shelfview-reader-shell__settings-button"
+          :class="{'shelfview-reader-shell__settings-button--open': overflowMenuOpen}"
+          :aria-label="$t('shelfview_reader.settings')"
+          :aria-expanded="overflowMenuOpen ? 'true' : 'false'"
+          aria-haspopup="dialog"
+          data-testid="shelfview-reader-more-toggle"
+          @click="toggleOverflowMenu"
+        >
+          <v-icon small>mdi-tune-variant</v-icon>
+          <span class="shelfview-reader-shell__control-toggle-label">{{ $t('shelfview_reader.settings') }}</span>
+        </v-btn>
       </div>
     </v-toolbar>
 
@@ -118,296 +118,12 @@
       v-if="pageControlsVisible"
       v-show="chromeVisible && overflowMenuOpen"
       class="shelfview-reader-shell__overflow"
-      role="menu"
-      :aria-label="$t('shelfview_reader.more_controls')"
+      role="dialog"
+      :aria-label="$t('shelfview_reader.settings')"
       data-testid="shelfview-reader-overflow"
     >
-      <div class="shelfview-reader-shell__overflow-actions">
-        <v-btn
-          text
-          small
-          class="shelfview-reader-shell__control-toggle"
-          :aria-label="readerLayoutLabel"
-          :aria-expanded="openControlMenu === 'layout' ? 'true' : 'false'"
-          aria-haspopup="menu"
-          data-testid="shelfview-reader-layout-toggle"
-          @click="toggleControlMenu('layout', $event)"
-        >
-          <v-icon small>{{ readerLayoutIcon }}</v-icon>
-          <span class="shelfview-reader-shell__control-toggle-label">{{ readerLayoutLabel }}</span>
-          <v-icon small>mdi-menu-down</v-icon>
-        </v-btn>
-
-        <v-btn
-          v-if="textControlsVisible"
-          text
-          small
-          class="shelfview-reader-shell__control-toggle"
-          :aria-label="textThemeLabel"
-          :aria-expanded="openControlMenu === 'text-theme' ? 'true' : 'false'"
-          aria-haspopup="menu"
-          data-testid="shelfview-reader-text-theme-toggle"
-          @click="toggleControlMenu('text-theme', $event)"
-        >
-          <v-icon small>{{ textThemeIcon }}</v-icon>
-          <span class="shelfview-reader-shell__control-toggle-label">{{ textThemeLabel }}</span>
-          <v-icon small>mdi-menu-down</v-icon>
-        </v-btn>
-
-        <v-btn
-          v-if="fixedPageControlsVisible"
-          text
-          small
-          class="shelfview-reader-shell__control-toggle"
-          :aria-label="fixedPageRotationLabel"
-          :aria-expanded="openControlMenu === 'rotate' ? 'true' : 'false'"
-          aria-haspopup="menu"
-          data-testid="shelfview-reader-rotate-toggle"
-          @click="toggleControlMenu('rotate', $event)"
-        >
-          <v-icon small>mdi-rotate-right</v-icon>
-          <span class="shelfview-reader-shell__control-toggle-label">{{ fixedPageRotationShortLabel }}</span>
-          <v-icon small>mdi-menu-down</v-icon>
-        </v-btn>
-
-        <v-btn
-          v-if="fixedPageControlsVisible"
-          text
-          small
-          class="shelfview-reader-shell__control-toggle"
-          :aria-label="readingDirectionLabel"
-          :aria-expanded="openControlMenu === 'direction' ? 'true' : 'false'"
-          aria-haspopup="menu"
-          :disabled="!rtlAvailable"
-          data-testid="shelfview-reader-direction-toggle"
-          @click="toggleControlMenu('direction', $event)"
-        >
-          <v-icon small>{{ readingDirectionIcon }}</v-icon>
-          <span class="shelfview-reader-shell__control-toggle-label">{{ readingDirectionLabel }}</span>
-          <v-icon small>mdi-menu-down</v-icon>
-        </v-btn>
-
-        <v-btn
-          v-if="fixedPageControlsVisible"
-          text
-          small
-          class="shelfview-reader-shell__control-toggle"
-          :aria-label="imageFilterPresetLabel"
-          :aria-expanded="openControlMenu === 'filter' ? 'true' : 'false'"
-          aria-haspopup="menu"
-          :disabled="!imageFiltersAvailable"
-          data-testid="shelfview-reader-filter-toggle"
-          @click="toggleControlMenu('filter', $event)"
-        >
-          <v-icon small>{{ imageFilterPresetIcon }}</v-icon>
-          <span class="shelfview-reader-shell__control-toggle-label">{{ imageFilterPresetLabel }}</span>
-          <v-icon small>mdi-menu-down</v-icon>
-        </v-btn>
-
-        <input
-          v-if="fixedPageControlsVisible"
-          v-model="pageJumpInput"
-          class="shelfview-reader-shell__page-jump"
-          type="number"
-          min="1"
-          :max="pagesCount"
-          :aria-label="$t('shelfview_reader.page_jump')"
-          data-testid="shelfview-reader-page-jump"
-          @change="goToPageJumpInput"
-          @keyup.enter="goToPageJumpInput"
-        />
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="thumbnailStripAvailable"
-              icon
-              :aria-label="thumbnailStripOpen ? $t('shelfview_reader.hide_thumbnails') : $t('shelfview_reader.show_thumbnails')"
-              :aria-pressed="thumbnailStripOpen ? 'true' : 'false'"
-              data-testid="shelfview-reader-thumbnails-toggle"
-              v-on="on"
-              @click="toggleThumbnailStrip"
-            >
-              <v-icon>{{ thumbnailStripOpen ? 'mdi-view-carousel' : 'mdi-view-carousel-outline' }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ thumbnailStripOpen ? $t('shelfview_reader.hide_thumbnails') : $t('shelfview_reader.show_thumbnails') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="fixedPageControlsVisible"
-              icon
-              :aria-label="$t('shelfview_reader.fixed_settings')"
-              data-testid="shelfview-reader-fixed-settings-toggle"
-              v-on="on"
-              @click="openFixedPageSettings"
-            >
-              <v-icon>mdi-tune-variant</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.fixed_settings') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="fixedPageControlsVisible"
-              icon
-              :aria-label="slideshowLabel"
-              data-testid="shelfview-reader-slideshow-toggle"
-              v-on="on"
-              @click="toggleSlideshow"
-            >
-              <v-icon>{{ slideshowActive ? 'mdi-pause-circle-outline' : 'mdi-play-circle-outline' }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ slideshowLabel }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="textControlsVisible"
-              icon
-              :aria-label="$t('shelfview_reader.text_settings')"
-              data-testid="shelfview-reader-text-settings-toggle"
-              v-on="on"
-              @click="openTextSettings"
-            >
-              <v-icon>mdi-format-size</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.text_settings') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="textSearchAvailable"
-              icon
-              :aria-label="$t('shelfview_reader.search')"
-              data-testid="shelfview-reader-search-toggle"
-              v-on="on"
-              @click="toggleTextSearch"
-            >
-              <v-icon>mdi-magnify</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.search') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="textToSpeechAvailable"
-              icon
-              :aria-label="textToSpeechLabel"
-              data-testid="shelfview-reader-tts-toggle"
-              v-on="on"
-              @click="toggleTextToSpeech"
-            >
-              <v-icon>{{ textToSpeechActive ? 'mdi-volume-off' : 'mdi-volume-high' }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ textToSpeechLabel }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="textControlsVisible"
-              icon
-              :disabled="!textHighlightAvailable"
-              :aria-label="textHighlightLabel"
-              data-testid="shelfview-reader-highlight-add"
-              v-on="on"
-              @click="addTextHighlightForCurrentSelection"
-            >
-              <v-icon>{{ currentTextParagraphHighlighted ? 'mdi-marker-check' : 'mdi-format-color-highlight' }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ textHighlightLabel }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="textControlsVisible"
-              icon
-              :aria-label="$t('shelfview_reader.dictionary_lookup')"
-              data-testid="shelfview-reader-dictionary-toggle"
-              v-on="on"
-              @click="openDictionaryLookup"
-            >
-              <v-icon>mdi-book-search-outline</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.dictionary_lookup') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              v-if="contentsAvailable"
-              icon
-              :aria-label="$t('shelfview_reader.contents')"
-              data-testid="shelfview-reader-contents-toggle"
-              v-on="on"
-              @click="contentsDrawerOpen = true"
-            >
-              <v-icon>mdi-table-of-contents</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.contents') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              icon
-              :aria-label="$t('shelfview_reader.bookmarks')"
-              data-testid="shelfview-reader-bookmarks-toggle"
-              v-on="on"
-              @click="bookmarksDrawerOpen = true"
-            >
-              <v-icon>mdi-bookmark-multiple-outline</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.bookmarks') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              icon
-              :aria-label="$t('shelfview_reader.add_bookmark')"
-              data-testid="shelfview-reader-bookmark-add"
-              v-on="on"
-              @click="addBookmarkForCurrentPage"
-            >
-              <v-icon>mdi-bookmark-plus-outline</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.add_bookmark') }}</span>
-        </v-tooltip>
-
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              icon
-              :aria-label="$t('shelfview_reader.shortcuts')"
-              data-testid="shelfview-reader-shortcuts-toggle"
-              v-on="on"
-              @click="showShortcutHelp = true"
-            >
-              <v-icon>mdi-keyboard-outline</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.shortcuts') }}</span>
-        </v-tooltip>
-
+      <header class="shelfview-reader-shell__overflow-header">
+        <h2>{{ $t('shelfview_reader.settings') }}</h2>
         <span
           v-if="readerStateNoticeVisible"
           class="shelfview-reader-shell__sync-status"
@@ -416,21 +132,282 @@
         >
           {{ readerStateMessage }}
         </span>
+        <v-btn
+          icon
+          small
+          :aria-label="$t('shelfview_reader.settings_close')"
+          data-testid="shelfview-reader-overflow-close"
+          @click="closeOverflowMenu"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </header>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-btn
-              icon
-              :aria-label="$t('shelfview_reader.close_more_controls')"
-              data-testid="shelfview-reader-overflow-close"
-              v-on="on"
-              @click="closeOverflowMenu"
-            >
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ $t('shelfview_reader.close_more_controls') }}</span>
-        </v-tooltip>
+      <div class="shelfview-reader-shell__overflow-actions">
+        <section class="shelfview-reader-shell__setting-group">
+          <h3 class="shelfview-reader-shell__setting-group-title">{{ $t('shelfview_reader.group_view') }}</h3>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-expanded="openControlMenu === 'layout' ? 'true' : 'false'"
+            aria-haspopup="menu"
+            data-testid="shelfview-reader-layout-toggle"
+            @click="toggleControlMenu('layout', $event)"
+          >
+            <v-icon small>{{ readerLayoutIcon }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.control_layout') }}</span>
+            <span class="shelfview-reader-shell__setting-row-value">{{ readerLayoutLabel }}</span>
+            <v-icon small>mdi-chevron-down</v-icon>
+          </button>
+
+          <button
+            v-if="fixedPageControlsVisible"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-label="fixedPageRotationLabel"
+            :aria-expanded="openControlMenu === 'rotate' ? 'true' : 'false'"
+            aria-haspopup="menu"
+            data-testid="shelfview-reader-rotate-toggle"
+            @click="toggleControlMenu('rotate', $event)"
+          >
+            <v-icon small>mdi-rotate-right</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.control_rotate') }}</span>
+            <span class="shelfview-reader-shell__setting-row-value">{{ fixedPageRotationShortLabel }}</span>
+            <v-icon small>mdi-chevron-down</v-icon>
+          </button>
+
+          <button
+            v-if="fixedPageControlsVisible"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-expanded="openControlMenu === 'direction' ? 'true' : 'false'"
+            aria-haspopup="menu"
+            :disabled="!rtlAvailable"
+            data-testid="shelfview-reader-direction-toggle"
+            @click="toggleControlMenu('direction', $event)"
+          >
+            <v-icon small>{{ readingDirectionIcon }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.control_direction') }}</span>
+            <span class="shelfview-reader-shell__setting-row-value">{{ readingDirectionLabel }}</span>
+            <v-icon small>mdi-chevron-down</v-icon>
+          </button>
+
+          <button
+            v-if="fixedPageControlsVisible"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-expanded="openControlMenu === 'filter' ? 'true' : 'false'"
+            aria-haspopup="menu"
+            :disabled="!imageFiltersAvailable"
+            data-testid="shelfview-reader-filter-toggle"
+            @click="toggleControlMenu('filter', $event)"
+          >
+            <v-icon small>{{ imageFilterPresetIcon }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.control_filter') }}</span>
+            <span class="shelfview-reader-shell__setting-row-value">{{ imageFilterPresetLabel }}</span>
+            <v-icon small>mdi-chevron-down</v-icon>
+          </button>
+
+          <button
+            v-if="fixedPageControlsVisible"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-fixed-settings-toggle"
+            @click="openFixedPageSettings"
+          >
+            <v-icon small>mdi-image-edit-outline</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.fixed_settings') }}</span>
+            <v-icon small>mdi-chevron-right</v-icon>
+          </button>
+        </section>
+
+        <section
+          v-if="fixedPageControlsVisible || thumbnailStripAvailable"
+          class="shelfview-reader-shell__setting-group"
+        >
+          <h3 class="shelfview-reader-shell__setting-group-title">{{ $t('shelfview_reader.group_page') }}</h3>
+
+          <div
+            v-if="fixedPageControlsVisible"
+            class="shelfview-reader-shell__setting-row shelfview-reader-shell__setting-row--static"
+          >
+            <v-icon small>mdi-numeric</v-icon>
+            <label
+              class="shelfview-reader-shell__setting-row-label"
+              for="shelfview-reader-page-jump-input"
+            >{{ $t('shelfview_reader.page_jump') }}</label>
+            <input
+              id="shelfview-reader-page-jump-input"
+              v-model="pageJumpInput"
+              class="shelfview-reader-shell__page-jump"
+              type="number"
+              min="1"
+              :max="pagesCount"
+              :aria-label="$t('shelfview_reader.page_jump')"
+              data-testid="shelfview-reader-page-jump"
+              @change="goToPageJumpInput"
+              @keyup.enter="goToPageJumpInput"
+            />
+          </div>
+
+          <button
+            v-if="thumbnailStripAvailable"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-label="thumbnailStripOpen ? $t('shelfview_reader.hide_thumbnails') : $t('shelfview_reader.show_thumbnails')"
+            :aria-pressed="thumbnailStripOpen ? 'true' : 'false'"
+            data-testid="shelfview-reader-thumbnails-toggle"
+            @click="toggleThumbnailStrip"
+          >
+            <v-icon small>mdi-view-carousel-outline</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.thumbnail_strip') }}</span>
+            <span class="shelfview-reader-shell__setting-row-state">{{ thumbnailStripOpen ? $t('shelfview_reader.state_on') : $t('shelfview_reader.state_off') }}</span>
+          </button>
+
+          <button
+            v-if="fixedPageControlsVisible"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-label="slideshowLabel"
+            :aria-pressed="slideshowActive ? 'true' : 'false'"
+            data-testid="shelfview-reader-slideshow-toggle"
+            @click="toggleSlideshow"
+          >
+            <v-icon small>{{ slideshowActive ? 'mdi-pause-circle-outline' : 'mdi-play-circle-outline' }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.slideshow') }}</span>
+            <span class="shelfview-reader-shell__setting-row-state">{{ slideshowActive ? $t('shelfview_reader.state_on') : $t('shelfview_reader.state_off') }}</span>
+          </button>
+        </section>
+
+        <section
+          v-if="textControlsVisible"
+          class="shelfview-reader-shell__setting-group"
+        >
+          <h3 class="shelfview-reader-shell__setting-group-title">{{ $t('shelfview_reader.group_text') }}</h3>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-expanded="openControlMenu === 'text-theme' ? 'true' : 'false'"
+            aria-haspopup="menu"
+            data-testid="shelfview-reader-text-theme-toggle"
+            @click="toggleControlMenu('text-theme', $event)"
+          >
+            <v-icon small>{{ textThemeIcon }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.control_text_theme') }}</span>
+            <span class="shelfview-reader-shell__setting-row-value">{{ textThemeLabel }}</span>
+            <v-icon small>mdi-chevron-down</v-icon>
+          </button>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-text-settings-toggle"
+            @click="openTextSettings"
+          >
+            <v-icon small>mdi-format-size</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.text_settings') }}</span>
+            <v-icon small>mdi-chevron-right</v-icon>
+          </button>
+
+          <button
+            v-if="textToSpeechAvailable"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-label="textToSpeechLabel"
+            :aria-pressed="textToSpeechActive ? 'true' : 'false'"
+            data-testid="shelfview-reader-tts-toggle"
+            @click="toggleTextToSpeech"
+          >
+            <v-icon small>{{ textToSpeechActive ? 'mdi-volume-off' : 'mdi-volume-high' }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.read_aloud') }}</span>
+            <span class="shelfview-reader-shell__setting-row-state">{{ textToSpeechActive ? $t('shelfview_reader.state_on') : $t('shelfview_reader.state_off') }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :disabled="!textHighlightAvailable"
+            data-testid="shelfview-reader-highlight-add"
+            @click="addTextHighlightForCurrentSelection"
+          >
+            <v-icon small>{{ currentTextParagraphHighlighted ? 'mdi-marker-check' : 'mdi-format-color-highlight' }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ textHighlightLabel }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-dictionary-toggle"
+            @click="openDictionaryLookup"
+          >
+            <v-icon small>mdi-book-search-outline</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.dictionary_lookup') }}</span>
+            <v-icon small>mdi-chevron-right</v-icon>
+          </button>
+        </section>
+
+        <section class="shelfview-reader-shell__setting-group">
+          <h3 class="shelfview-reader-shell__setting-group-title">{{ $t('shelfview_reader.group_tools') }}</h3>
+
+          <button
+            v-if="contentsAvailable"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-contents-toggle"
+            @click="contentsDrawerOpen = true"
+          >
+            <v-icon small>mdi-format-list-bulleted</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.contents') }}</span>
+            <v-icon small>mdi-chevron-right</v-icon>
+          </button>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-bookmarks-toggle"
+            @click="bookmarksDrawerOpen = true"
+          >
+            <v-icon small>mdi-bookmark-multiple-outline</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.bookmarks') }}</span>
+            <v-icon small>mdi-chevron-right</v-icon>
+          </button>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-bookmark-add"
+            @click="addBookmarkForCurrentPage"
+          >
+            <v-icon small>mdi-bookmark-plus-outline</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.add_bookmark') }}</span>
+          </button>
+
+          <button
+            v-if="textSearchAvailable"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-pressed="textSearchOpen ? 'true' : 'false'"
+            data-testid="shelfview-reader-search-toggle"
+            @click="toggleTextSearch"
+          >
+            <v-icon small>mdi-magnify</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.search') }}</span>
+            <span class="shelfview-reader-shell__setting-row-state">{{ textSearchOpen ? $t('shelfview_reader.state_on') : $t('shelfview_reader.state_off') }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-shortcuts-toggle"
+            @click="showShortcutHelp = true"
+          >
+            <v-icon small>mdi-keyboard-outline</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.shortcuts') }}</span>
+            <v-icon small>mdi-chevron-right</v-icon>
+          </button>
+        </section>
       </div>
     </section>
 
@@ -439,6 +416,7 @@
       :menu="openControlMenu"
       :title="controlMenuTitle"
       :left="controlMenuLeft"
+      :top="controlMenuTop"
       :options="controlMenuOptions"
       @close="closeControlMenu"
       @select="selectControlOption"
@@ -503,7 +481,7 @@
 
     <v-snackbar
       v-model="chromeHintVisible"
-      color="rgba(0, 0, 0, 0.82)"
+      content-class="tales-reader-snackbar"
       top
       centered
       :timeout="chromeHintTimeoutMs"
@@ -1838,6 +1816,7 @@ export default Vue.extend({
     textSettingsOpen: false,
     openControlMenu: null as string | null,
     controlMenuLeft: 0,
+    controlMenuTop: 50,
     chromeVisible: false,
     overflowMenuOpen: false,
     thumbnailStripOpen: false,
@@ -2982,7 +2961,9 @@ export default Vue.extend({
       }
     },
     readingDirectionIconFor(direction: ShelfViewFixedPageReadingDirection): string {
-      return direction === 'RTL' ? 'mdi-format-textdirection-r-to-l' : 'mdi-format-textdirection-l-to-r'
+      // mdi-format-textdirection-* was dropped from Material Design Icons and
+      // rendered as an empty box in the bundled 7.x font.
+      return direction === 'RTL' ? 'mdi-format-pilcrow-arrow-left' : 'mdi-format-pilcrow-arrow-right'
     },
     readingDirectionLabelFor(direction: ShelfViewFixedPageReadingDirection): string {
       return direction === 'RTL'
@@ -2998,8 +2979,13 @@ export default Vue.extend({
       const target = event.currentTarget as HTMLElement | null
       const rect = target?.getBoundingClientRect()
       const menuWidth = 240
+      const menuHeight = 280
       const left = rect ? Math.min(rect.left, window.innerWidth - menuWidth - 8) : 8
+      // Rows now sit inside the settings panel, so the menu opens next to the
+      // row that was clicked instead of always hanging below the toolbar.
+      const top = rect ? Math.min(rect.bottom + 6, window.innerHeight - menuHeight - 8) : 50
       this.controlMenuLeft = Math.max(8, left)
+      this.controlMenuTop = Math.max(50, top)
       this.openControlMenu = menu
     },
     closeControlMenu() {
@@ -4770,13 +4756,20 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell {
-  background: #111111;
+  background: var(--sv-chrome-bg);
   height: 100vh;
   overflow: hidden;
   width: 100%;
 }
 
-.shelfview-reader-shell__toolbar {
+/* The toolbar stays dark in both application themes so the chrome never glows
+   next to the page, and it is painted from the shared tokens rather than the
+   Vuetify theme surface. */
+.shelfview-reader-shell__toolbar.v-toolbar {
+  backdrop-filter: blur(18px);
+  background-color: var(--sv-chrome-elevated) !important;
+  border-bottom: 1px solid var(--sv-chrome-border);
+  color: var(--sv-chrome-text);
   min-width: 0;
   opacity: 0;
   position: fixed;
@@ -4815,38 +4808,179 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__control-toggle {
+  border-radius: var(--tales-radius-sm);
   flex: 0 0 auto;
+  letter-spacing: 0;
   text-transform: none;
 }
 
 .shelfview-reader-shell__control-toggle-label {
   font-size: 12px;
-  margin: 0 2px 0 4px;
+  margin: 0 2px 0 6px;
   max-width: 96px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.shelfview-reader-shell__settings-button--open {
+  background: var(--sv-chrome-accent-soft) !important;
+  color: var(--sv-chrome-accent) !important;
+}
+
+/* The settings panel replaces the old row of unlabelled icons. Every control
+   keeps its own data-testid so the toolbar contract in the spec still holds,
+   but each one now carries a written label and a written state. */
 .shelfview-reader-shell__overflow {
-  background: rgba(22, 27, 34, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 8px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-  max-width: min(720px, calc(100vw - 24px));
-  padding: 8px;
+  background: var(--sv-chrome-surface);
+  border-inline-start: 1px solid var(--sv-chrome-border);
+  bottom: 0;
+  box-shadow: var(--sv-chrome-shadow);
+  color: var(--sv-chrome-text);
+  display: flex;
+  flex-direction: column;
+  max-width: min(360px, 94vw);
+  overflow-y: auto;
+  padding: 16px 20px 24px;
   position: fixed;
-  right: 12px;
-  top: 56px;
+  right: 0;
+  top: 48px;
+  width: 360px;
   z-index: 3;
 }
 
-.shelfview-reader-shell__overflow-actions {
+.shelfview-reader-shell__overflow-header {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.shelfview-reader-shell__overflow-header h2 {
+  flex: 1 1 auto;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.shelfview-reader-shell__overflow-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.shelfview-reader-shell__setting-group-title {
+  color: var(--sv-chrome-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  margin: 0 0 4px;
+  padding-inline: 10px;
+  text-transform: uppercase;
+}
+
+.shelfview-reader-shell__setting-row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-text);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.shelfview-reader-shell__setting-row--static {
+  cursor: default;
+}
+
+.shelfview-reader-shell__setting-row:hover:not(:disabled):not(.shelfview-reader-shell__setting-row--static) {
+  background: var(--sv-chrome-surface-soft);
+}
+
+.shelfview-reader-shell__setting-row:focus-visible {
+  outline: 2px solid var(--sv-chrome-accent);
+  outline-offset: -2px;
+}
+
+.shelfview-reader-shell__setting-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.shelfview-reader-shell__setting-row-label {
+  flex: 1 1 auto;
+  font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelfview-reader-shell__setting-row-value {
+  color: var(--sv-chrome-muted);
+  flex: 0 1 auto;
+  font-size: 13px;
+  max-width: 44%;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Written state, not colour alone, so the on/off reading survives for anyone
+   who cannot separate the two accents. */
+.shelfview-reader-shell__setting-row-state {
+  border: 1px solid var(--sv-chrome-border-strong);
+  border-radius: 999px;
+  color: var(--sv-chrome-muted);
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 10px;
+}
+
+.shelfview-reader-shell__setting-row[aria-pressed="true"] .shelfview-reader-shell__setting-row-state {
+  background: var(--sv-chrome-accent-soft);
+  border-color: var(--sv-chrome-accent);
+  color: var(--sv-chrome-accent);
+}
+
+.shelfview-reader-shell__setting-row[aria-pressed="true"] .v-icon,
+.shelfview-reader-shell__setting-row[aria-expanded="true"] .v-icon {
+  color: var(--sv-chrome-accent);
+}
+
+/* The reader chrome is dark in both application themes, so its icons and
+   buttons cannot inherit the Vuetify theme colour or they turn invisible on
+   the light theme. */
+.shelfview-reader-shell__overflow .v-icon,
+.shelfview-reader-shell__contents-drawer .v-icon,
+.shelfview-reader-shell__dictionary-drawer .v-icon,
+.shelfview-reader-shell__bookmarks-drawer .v-icon,
+.shelfview-reader-shell__text-settings .v-icon,
+.shelfview-reader-shell__shortcut-panel .v-icon,
+.shelfview-reader-shell__end-panel .v-icon {
+  color: var(--sv-chrome-muted);
+}
+
+.shelfview-reader-shell__overflow .v-btn:not(.v-btn--has-bg),
+.shelfview-reader-shell__contents-drawer .v-btn:not(.v-btn--has-bg),
+.shelfview-reader-shell__dictionary-drawer .v-btn:not(.v-btn--has-bg),
+.shelfview-reader-shell__bookmarks-drawer .v-btn:not(.v-btn--has-bg),
+.shelfview-reader-shell__text-settings .v-btn:not(.v-btn--has-bg) {
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-text);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .shelfview-reader-shell__page-counter {
@@ -4856,20 +4990,21 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__page-jump {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 4px;
-  color: #ffffff;
+  background: var(--sv-chrome-surface-soft);
+  border: 1px solid var(--sv-chrome-border-strong);
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-text);
+  flex: 0 0 auto;
   font-size: 13px;
-  height: 28px;
-  padding: 0 4px;
+  height: 34px;
+  padding: 0 6px;
   text-align: center;
-  width: 58px;
+  width: 82px;
 }
 
 .shelfview-reader-shell__page-jump:focus {
-  border-color: #90caf9;
-  outline: 2px solid #90caf9;
+  border-color: var(--sv-chrome-accent);
+  outline: 2px solid var(--sv-chrome-accent);
   outline-offset: 1px;
 }
 
@@ -4881,8 +5016,8 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__search-bar {
   align-items: center;
-  background: #1d232b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--sv-chrome-surface);
+  border-bottom: 1px solid var(--sv-chrome-border);
   display: grid;
   gap: 8px;
   grid-template-columns: minmax(160px, 1fr) auto auto auto;
@@ -4899,34 +5034,33 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__search-status {
-  color: #d9e2ec;
+  color: var(--sv-chrome-muted);
   font-size: 13px;
   min-width: 72px;
   text-align: center;
 }
 
 .shelfview-reader-shell__sync-status {
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 6px;
-  color: #f5f5f5;
+  border: 1px solid var(--sv-chrome-border-strong);
+  border-radius: 999px;
+  color: var(--sv-chrome-muted);
   font-size: 12px;
   line-height: 1;
-  margin-left: 8px;
-  max-width: 120px;
+  max-width: 140px;
   overflow: hidden;
-  padding: 5px 7px;
+  padding: 6px 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .shelfview-reader-shell__sync-status--error {
-  border-color: #ef9a9a;
-  color: #ffcdd2;
+  border-color: var(--sv-chrome-danger);
+  color: var(--sv-chrome-danger);
 }
 
 .shelfview-reader-shell__sync-status--saved {
-  border-color: #a5d6a7;
-  color: #c8e6c9;
+  border-color: var(--sv-chrome-success);
+  color: var(--sv-chrome-success);
 }
 
 .shelfview-reader-shell__stage {
@@ -4956,7 +5090,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__stage:focus {
-  outline: 2px solid #90caf9;
+  outline: 2px solid var(--sv-chrome-accent);
   outline-offset: -6px;
 }
 
@@ -4967,7 +5101,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__stage--fixed {
-  background: var(--sv-fixed-background, #111111);
+  background: var(--sv-fixed-background, var(--sv-chrome-bg));
   cursor: grab;
   overflow: auto;
   padding: var(--sv-fixed-page-margin, 16px);
@@ -5088,7 +5222,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__text {
-  color: #e8ebf0;
+  color: var(--sv-chrome-text);
   filter: brightness(var(--sv-text-brightness, 1));
   font-family: var(--sv-text-font-family, Roboto, Arial, sans-serif);
   font-size: var(--sv-text-font-size, 20px);
@@ -5186,8 +5320,9 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__thumbnail-strip {
   align-items: center;
-  background: rgba(17, 17, 17, 0.94);
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(18px);
+  background: var(--sv-chrome-elevated);
+  border-top: 1px solid var(--sv-chrome-border);
   bottom: 0;
   display: flex;
   gap: 8px;
@@ -5202,9 +5337,9 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__thumbnail-button {
   align-items: center;
-  background: #20242b;
+  background: var(--sv-chrome-surface-soft);
   border: 2px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--tales-radius-sm);
   cursor: pointer;
   display: flex;
   flex: 0 0 58px;
@@ -5214,7 +5349,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__thumbnail-button--active {
-  border-color: #90caf9;
+  border-color: var(--sv-chrome-accent);
 }
 
 .shelfview-reader-shell__thumbnail-button img {
@@ -5225,7 +5360,7 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__status {
   align-items: center;
-  color: #f5f5f5;
+  color: var(--sv-chrome-text);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5240,7 +5375,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__status p {
-  color: #d0d0d0;
+  color: var(--sv-chrome-muted);
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
@@ -5254,20 +5389,21 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__status-note {
-  color: #bdbdbd;
+  color: var(--sv-chrome-muted);
   font-size: 13px;
 }
 
 .shelfview-reader-shell__contents-drawer,
 .shelfview-reader-shell__dictionary-drawer,
 .shelfview-reader-shell__bookmarks-drawer {
-  background: #202020;
+  background: var(--sv-chrome-surface);
+  border-inline-start: 1px solid var(--sv-chrome-border);
   bottom: 0;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.36);
-  color: #f5f5f5;
+  box-shadow: var(--sv-chrome-shadow);
+  color: var(--sv-chrome-text);
   max-width: min(360px, 92vw);
   overflow-y: auto;
-  padding: 16px;
+  padding: 20px;
   position: fixed;
   right: 0;
   top: 48px;
@@ -5282,42 +5418,45 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__contents-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--sv-chrome-border);
 }
 
 .shelfview-reader-shell__contents-link {
   align-items: center;
   background: transparent;
   border: 0;
-  color: #f5f5f5;
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-text);
   cursor: pointer;
   display: flex;
   font: inherit;
   gap: 10px;
   min-height: 44px;
-  padding: 10px 0;
+  padding: 10px 8px;
   text-align: left;
   width: 100%;
 }
 
 .shelfview-reader-shell__contents-link:hover {
-  color: #90caf9;
+  background: var(--sv-chrome-surface-soft);
+  color: var(--sv-chrome-accent);
 }
 
-/* The active contents row is already #90caf9, so colour alone cannot show
-   keyboard focus on the row the reader is currently on. */
+/* The active contents row already carries the accent colour, so colour alone
+   cannot show keyboard focus on the row the reader is currently on. */
 .shelfview-reader-shell__contents-link:focus-visible {
-  color: #90caf9;
-  outline: 2px solid #90caf9;
+  color: var(--sv-chrome-accent);
+  outline: 2px solid var(--sv-chrome-accent);
   outline-offset: 2px;
 }
 
 .shelfview-reader-shell__contents-link--active {
-  color: #90caf9;
+  background: var(--sv-chrome-accent-soft);
+  color: var(--sv-chrome-accent);
 }
 
 .shelfview-reader-shell__contents-index {
-  color: #b8d7f1;
+  color: var(--sv-chrome-muted);
   flex: 0 0 28px;
   font-size: 13px;
   text-align: right;
@@ -5336,7 +5475,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__dictionary-empty {
-  color: #d0d0d0;
+  color: var(--sv-chrome-muted);
   font-size: 14px;
   margin: 16px 0 0;
 }
@@ -5368,17 +5507,17 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__dictionary-provider {
-  color: #d0d0d0;
+  color: var(--sv-chrome-muted);
   font-size: 13px;
 }
 
 .shelfview-reader-shell__dictionary-term {
-  color: #ffffff;
+  color: var(--sv-chrome-text);
   font-size: 15px;
 }
 
 .shelfview-reader-shell__dictionary-definition {
-  color: #f1f1f1;
+  color: var(--sv-chrome-text);
   flex: 1 0 100%;
   font-size: 14px;
   line-height: 1.55;
@@ -5387,16 +5526,18 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__dictionary-source {
-  color: #aeb7c2;
+  color: var(--sv-chrome-muted);
   font-size: 12px;
 }
 
 .shelfview-reader-shell__dictionary-link {
   align-items: center;
-  background: #1976d2;
-  border-radius: 4px;
-  color: #ffffff;
+  background: var(--sv-chrome-accent-soft);
+  border: 1px solid var(--sv-chrome-border-strong);
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-accent);
   display: inline-flex;
+  font-weight: 600;
   gap: 8px;
   min-height: 36px;
   padding: 0 14px;
@@ -5404,23 +5545,24 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__dictionary-link:hover {
-  background: #2196f3;
+  border-color: var(--sv-chrome-accent);
 }
 
 .shelfview-reader-shell__dictionary-link:focus-visible {
-  background: #2196f3;
-  outline: 2px solid #90caf9;
+  border-color: var(--sv-chrome-accent);
+  outline: 2px solid var(--sv-chrome-accent);
   outline-offset: 2px;
 }
 
 .shelfview-reader-shell__text-settings {
-  background: #23272e;
+  background: var(--sv-chrome-surface);
+  border-inline-start: 1px solid var(--sv-chrome-border);
   bottom: 0;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.36);
-  color: #f5f5f5;
+  box-shadow: var(--sv-chrome-shadow);
+  color: var(--sv-chrome-text);
   max-width: min(380px, 94vw);
   overflow-y: auto;
-  padding: 16px;
+  padding: 20px;
   position: fixed;
   right: 0;
   top: 48px;
@@ -5428,16 +5570,20 @@ function isFiniteNumber(value: unknown): value is number {
   z-index: 3;
 }
 
+/* Every reader surface that has a title bar uses the same header rule, so the
+   settings panel, the side drawers and the text settings read as one family. */
 .shelfview-reader-shell__text-settings-header {
   align-items: center;
   display: flex;
+  gap: 10px;
   justify-content: space-between;
   margin-bottom: 16px;
 }
 
 .shelfview-reader-shell__text-settings-header h2 {
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
@@ -5460,7 +5606,7 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__text-setting-group-label,
 .shelfview-reader-shell__text-setting-row-label {
-  color: #f5f5f5;
+  color: var(--sv-chrome-text);
   display: block;
   font-size: 13px;
   font-weight: 600;
@@ -5490,7 +5636,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__text-font-size-value {
-  color: #b8d7f1;
+  color: var(--sv-chrome-accent);
   font-weight: 600;
   min-width: 52px;
   text-align: center;
@@ -5506,25 +5652,27 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__text-setting-row label span {
-  color: #b8d7f1;
+  color: var(--sv-chrome-accent);
   font-weight: 500;
 }
 
 .shelfview-reader-shell__drawer-header {
   align-items: center;
   display: flex;
+  gap: 10px;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
 .shelfview-reader-shell__drawer-header h2 {
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
 .shelfview-reader-shell__bookmarks-empty {
-  color: #d0d0d0;
+  color: var(--sv-chrome-muted);
   font-size: 14px;
   margin: 18px 0 0;
 }
@@ -5537,7 +5685,7 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__bookmark-row {
   align-items: flex-start;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--sv-chrome-border);
   display: flex;
   gap: 8px;
   min-height: 44px;
@@ -5552,7 +5700,7 @@ function isFiniteNumber(value: unknown): value is number {
 .shelfview-reader-shell__bookmark-link {
   background: transparent;
   border: 0;
-  color: #f5f5f5;
+  color: var(--sv-chrome-text);
   cursor: pointer;
   flex: 1;
   font: inherit;
@@ -5565,7 +5713,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__bookmark-note {
-  color: #d7dce2;
+  color: var(--sv-chrome-muted);
   font-size: 13px;
   line-height: 1.4;
   margin: -4px 0 8px;
@@ -5590,7 +5738,7 @@ function isFiniteNumber(value: unknown): value is number {
 .shelfview-reader-shell__shortcut-dialog,
 .shelfview-reader-shell__end-dialog {
   align-items: center;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--sv-chrome-scrim);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -5601,11 +5749,13 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__shortcut-panel,
 .shelfview-reader-shell__end-panel {
-  background: #202020;
-  border-radius: 8px;
-  color: #f5f5f5;
+  background: var(--sv-chrome-surface);
+  border: 1px solid var(--sv-chrome-border);
+  border-radius: var(--tales-radius-lg);
+  box-shadow: var(--sv-chrome-shadow);
+  color: var(--sv-chrome-text);
   max-width: 420px;
-  padding: 20px;
+  padding: 24px;
   width: 100%;
 }
 
@@ -5617,22 +5767,22 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__end-panel p {
-  color: #d7dce2;
+  color: var(--sv-chrome-muted);
   line-height: 1.5;
   margin: 0 0 12px;
 }
 
 .shelfview-reader-shell__end-next-title {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  color: #ffffff !important;
+  background: var(--sv-chrome-surface-soft);
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-text) !important;
   font-weight: 600;
   overflow-wrap: anywhere;
   padding: 10px 12px;
 }
 
 .shelfview-reader-shell__end-no-next {
-  color: #cfd8dc !important;
+  color: var(--sv-chrome-muted) !important;
 }
 
 .shelfview-reader-shell__end-actions {
@@ -5651,7 +5801,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__shortcut-panel dt {
-  color: #bbdefb;
+  color: var(--sv-chrome-accent);
   font-weight: 600;
 }
 
@@ -5694,13 +5844,8 @@ function isFiniteNumber(value: unknown): value is number {
   }
 
   .shelfview-reader-shell__overflow {
-    left: 8px;
-    max-width: none;
-    right: 8px;
-  }
-
-  .shelfview-reader-shell__overflow-actions {
-    justify-content: flex-start;
+    max-width: 100vw;
+    width: 100vw;
   }
 
   .shelfview-reader-shell__stage {

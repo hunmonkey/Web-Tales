@@ -29,7 +29,7 @@
         @click="deleteMatch(item)"
         :aria-label="$t('common.delete')"
       >
-        <v-icon>mdi-trash-can-outline</v-icon>
+        <v-icon>mdi-delete-outline</v-icon>
       </v-btn>
     </template>
 

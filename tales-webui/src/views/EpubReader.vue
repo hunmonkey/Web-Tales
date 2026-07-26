@@ -35,7 +35,7 @@
         <v-btn
           icon
           @click="showHelp = !showHelp" :aria-label="$t('common.help')">
-          <v-icon>mdi-help-circle</v-icon>
+          <v-icon>mdi-help-circle-outline</v-icon>
         </v-btn>
 
         <v-btn

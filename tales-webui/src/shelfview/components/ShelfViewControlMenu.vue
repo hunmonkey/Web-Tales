@@ -7,7 +7,7 @@
     />
     <ul
       class="shelfview-control-menu"
-      :style="{ left: left + 'px' }"
+      :style="{ left: left + 'px', top: top + 'px' }"
       role="menu"
       :aria-label="title"
       data-testid="shelfview-reader-control-menu"
@@ -61,6 +61,10 @@ export default Vue.extend({
       type: Number,
       required: true,
     },
+    top: {
+      type: Number,
+      default: 50,
+    },
     options: {
       type: Array,
       required: true,
@@ -77,27 +81,26 @@ export default Vue.extend({
 }
 
 .shelfview-control-menu {
-  background: #1d232b;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  background: var(--sv-chrome-surface);
+  border: 1px solid var(--sv-chrome-border);
+  border-radius: var(--tales-radius-md);
+  box-shadow: var(--sv-chrome-shadow);
   list-style: none;
   margin: 0;
   max-height: calc(100vh - 64px);
-  min-width: 200px;
+  min-width: 216px;
   overflow-y: auto;
-  padding: 6px;
+  padding: 8px;
   position: fixed;
-  top: 50px;
   z-index: 4;
 }
 
 .shelfview-control-menu__title {
-  color: #9fb0c3;
+  color: var(--sv-chrome-muted);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 4px 10px 6px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding: 4px 10px 8px;
   text-transform: uppercase;
 }
 
@@ -105,32 +108,41 @@ export default Vue.extend({
   align-items: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  color: #e6ecf3;
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-text);
   cursor: pointer;
   display: flex;
   font-size: 14px;
-  gap: 8px;
+  gap: 10px;
+  min-height: 42px;
   padding: 8px 10px;
   text-align: left;
   width: 100%;
 }
 
+.shelfview-control-menu__option .v-icon {
+  color: var(--sv-chrome-muted);
+}
+
 .shelfview-control-menu__option:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--sv-chrome-surface-soft);
 }
 
 /* Keyboard focus must stay visible and must not look identical to hover, even on
    the active option, which already carries its own background. */
 .shelfview-control-menu__option:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  outline: 2px solid #90caf9;
+  background: var(--sv-chrome-surface-soft);
+  outline: 2px solid var(--sv-chrome-accent);
   outline-offset: -2px;
 }
 
 .shelfview-control-menu__option--active {
-  background: rgba(144, 202, 249, 0.16);
-  color: #90caf9;
+  background: var(--sv-chrome-accent-soft);
+  color: var(--sv-chrome-accent);
+}
+
+.shelfview-control-menu__option--active .v-icon {
+  color: var(--sv-chrome-accent);
 }
 
 .shelfview-control-menu__option-label {

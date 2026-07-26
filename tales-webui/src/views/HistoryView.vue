@@ -47,7 +47,7 @@
 
       <template v-slot:item.properties="{ item }">
         <v-btn icon small @click="showDetails(item)" :aria-label="$t('common.details')">
-          <v-icon small>mdi-information</v-icon>
+          <v-icon small>mdi-information-outline</v-icon>
         </v-btn>
       </template>
 
@@ -165,7 +165,7 @@ export default Vue.extend({
         case 'BookFileDeleted':
           return 'mdi-file-remove'
         case 'SeriesFolderDeleted':
-          return 'mdi-folder-remove'
+          return 'mdi-folder-remove-outline'
         case 'DuplicatePageDeleted':
           return 'mdi-book-minus'
         case 'BookConverted':

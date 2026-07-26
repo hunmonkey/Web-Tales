@@ -41,7 +41,7 @@
           @click="promptDeleteBook(item)"
           :aria-label="$t('common.delete')"
         >
-          <v-icon>mdi-trash-can-outline</v-icon>
+          <v-icon>mdi-delete-outline</v-icon>
         </v-btn>
       </template>
 
@@ -54,7 +54,7 @@
           :loading="deleting"
           @click="promptDeleteBooks(selectedBooks)"
         >
-          <v-icon left>mdi-trash-can-outline</v-icon>
+          <v-icon left>mdi-delete-outline</v-icon>
           {{ $t('duplicates.delete_selected', {count: selectedBooks.length}) }}
         </v-btn>
       </template>

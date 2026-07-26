@@ -85,7 +85,7 @@
                    :disabled="u.id === me.id"
                    :aria-label="$t('common.delete')"
             >
-              <v-icon>mdi-delete</v-icon>
+              <v-icon>mdi-delete-outline</v-icon>
             </v-btn>
           </v-list-item-action>
         </v-list-item>

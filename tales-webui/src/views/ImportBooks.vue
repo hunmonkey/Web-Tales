@@ -37,7 +37,7 @@
       :title="$t('book_import.no_files_found')"
       :sub-title="$t('book_import.try_another_directory')"
       icon-color="secondary"
-      icon="mdi-book-search"
+      icon="mdi-book-search-outline"
       />
 
     <template v-if="transientBooks.length > 0">

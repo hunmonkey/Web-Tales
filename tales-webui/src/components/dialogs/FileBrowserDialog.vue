@@ -35,7 +35,7 @@
               @click.prevent="select(d)"
             >
               <v-list-item-icon>
-                <v-icon>{{ d.type === 'directory' ? 'mdi-folder' : 'mdi-file' }}</v-icon>
+                <v-icon>{{ d.type === 'directory' ? 'mdi-folder-outline' : 'mdi-file-outline' }}</v-icon>
               </v-list-item-icon>
 
               <v-list-item-content>
@@ -53,7 +53,7 @@
               @click.prevent="select(d)"
             >
               <v-list-item-icon>
-                <v-icon>{{ d.type === 'directory' ? 'mdi-folder' : 'mdi-file' }}</v-icon>
+                <v-icon>{{ d.type === 'directory' ? 'mdi-folder-outline' : 'mdi-file-outline' }}</v-icon>
               </v-list-item-icon>
 
               <v-list-item-content>

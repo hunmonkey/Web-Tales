@@ -17,7 +17,7 @@
             {{ $t('dialog.edit_readlist.tab_general') }}
           </v-tab>
           <v-tab class="justify-start">
-            <v-icon left class="hidden-xs-only">mdi-image</v-icon>
+            <v-icon left class="hidden-xs-only">mdi-image-outline</v-icon>
             {{ $t('dialog.edit_readlist.tab_poster') }}
           </v-tab>
 

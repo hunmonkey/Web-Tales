@@ -3,7 +3,7 @@
     <v-row>
       <v-col class="d-flex justify-end py-0">
         <v-btn color="error" outlined @click="confirmDialog = true">
-          <v-icon left>mdi-delete-sweep</v-icon>
+          <v-icon left>mdi-delete-sweep-outline</v-icon>
           {{ $t('authentication_activity.clear_history') }}
         </v-btn>
       </v-col>

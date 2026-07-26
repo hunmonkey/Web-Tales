@@ -82,7 +82,7 @@
       <v-btn icon @click="doDelete" v-if="isAdmin" :aria-label="$t('menu.delete')">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
-            <v-icon v-on="on">mdi-delete</v-icon>
+            <v-icon v-on="on">mdi-delete-outline</v-icon>
           </template>
           <span>{{ $t('menu.delete') }}</span>
         </v-tooltip>

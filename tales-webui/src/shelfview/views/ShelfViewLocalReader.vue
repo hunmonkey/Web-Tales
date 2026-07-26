@@ -6,6 +6,7 @@
     @keydown.right.prevent="nextPage"
   >
     <v-toolbar
+      dark
       flat
       dense
       class="shelfview-local-reader__toolbar"
@@ -237,15 +238,18 @@ export default Vue.extend({
 <style scoped>
 .shelfview-local-reader {
   min-height: 100vh;
-  background: #181a1f;
-  color: #f5f7fa;
+  background: var(--sv-chrome-bg);
+  color: var(--sv-chrome-text);
   display: flex;
   flex-direction: column;
 }
 
-.shelfview-local-reader__toolbar {
+/* Kept dark in both application themes, like the main reader chrome. */
+.shelfview-local-reader__toolbar.v-toolbar {
   flex: 0 0 auto;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: var(--sv-chrome-surface) !important;
+  border-bottom: 1px solid var(--sv-chrome-border);
+  color: var(--sv-chrome-text);
 }
 
 .shelfview-local-reader__file-input {
@@ -277,7 +281,7 @@ export default Vue.extend({
 /* The stage is tabindex="0", so keyboard focus needs a visible ring. Mouse
    clicks do not match :focus-visible, so reading stays undisturbed. */
 .shelfview-local-reader__stage:focus-visible {
-  outline: 2px solid #90caf9;
+  outline: 2px solid var(--sv-chrome-accent);
   outline-offset: -2px;
 }
 
@@ -288,7 +292,7 @@ export default Vue.extend({
   justify-content: center;
   gap: 12px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--sv-chrome-muted);
 }
 
 .shelfview-local-reader__empty-text {
@@ -300,6 +304,6 @@ export default Vue.extend({
   max-width: 100%;
   max-height: calc(100vh - 88px);
   object-fit: contain;
-  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.36);
+  box-shadow: var(--sv-chrome-shadow);
 }
 </style>

@@ -36,7 +36,7 @@
         :to="{name: 'browse-readlists', params: {libraryId: libraryId}}"
       >
         <span class="caption">{{ $t('library_navigation.readlists') }}</span>
-        <v-icon>mdi-bookmark-multiple</v-icon>
+        <v-icon>mdi-bookmark-multiple-outline</v-icon>
       </v-btn>
 
     </v-bottom-navigation>

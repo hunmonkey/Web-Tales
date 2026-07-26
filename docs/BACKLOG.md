@@ -278,3 +278,21 @@ application shell refresh as one scoped ticket.
   palette, login/startup/welcome screens, navigation shell, dashboard, empty
   state and book-card surfaces; refresh the offline cache key and cover the
   shared brand assets and primary read action with tests
+
+## Full UI/UX sweep from 2026-07-26
+
+Owner request: audit the whole interface, unify it, make it feel refined, focus
+on the reader, and keep the interaction short. SV-1040 refreshed the application
+shell but stopped at the reader, which still carries 66 hardcoded colours and a
+Material Blue accent that does not match the Tales palette.
+
+- [x] SV-1050 Unify the ShelfView reader with the application design language:
+  token-driven surfaces, a minimal top bar (back, title, paging, fit,
+  fullscreen, settings), and the unlabelled 20-icon overflow popover rebuilt as
+  a labelled settings panel grouped into view / page / text / tools. No feature
+  is removed and every existing `data-testid` is preserved, so the toolbar
+  contract asserted by `ShelfViewReaderShell.spec.ts` keeps holding.
+- [x] SV-1051 Unify icons across the app on the outline family where filled and
+  outline variants of the same meaning are currently mixed, and move the
+  remaining fallback readers (`DivinaReader`, `EpubReader`,
+  `ShelfViewLocalReader`) onto the same tokens.

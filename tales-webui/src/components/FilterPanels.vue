@@ -11,7 +11,7 @@
           style="max-width: 24px"
           class="mx-0"
           @click.stop="clickFilterMode(key, false)"
-        >{{ groupAllOfActive(key) ? 'mdi-filter-multiple' : '' }}
+        >{{ groupAllOfActive(key) ? 'mdi-filter-multiple-outline' : '' }}
         </v-icon>
         <v-icon
           color="secondary"

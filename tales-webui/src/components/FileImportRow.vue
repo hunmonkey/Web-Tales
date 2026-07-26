@@ -69,7 +69,7 @@
              :aria-label="$t('common.preview_pages')"
       >
         <v-icon v-if="bookToUpgrade">mdi-compare</v-icon>
-        <v-icon v-else>mdi-image</v-icon>
+        <v-icon v-else>mdi-image-outline</v-icon>
       </v-btn>
       <transient-book-viewer-dialog
         v-model="modalViewer"
@@ -104,7 +104,7 @@
       <template v-if="error">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
-            <v-icon color="error" v-on="on">mdi-alert-circle</v-icon>
+            <v-icon color="error" v-on="on">mdi-alert-circle-outline</v-icon>
           </template>
           {{ error }}
         </v-tooltip>
@@ -223,9 +223,9 @@ export default Vue.extend({
       if (!this.bookAnalyzed) return {}
       switch (this.bookAnalyzed.status) {
         case MediaStatus.READY:
-          return {icon: 'mdi-check-circle', color: 'success', message: ''}
+          return {icon: 'mdi-check-circle-outline', color: 'success', message: ''}
         default:
-          return {icon: 'mdi-alert-circle', color: 'error', message: this.bookAnalyzed.comment}
+          return {icon: 'mdi-alert-circle-outline', color: 'error', message: this.bookAnalyzed.comment}
       }
     },
     existingFileNames(): string[] {

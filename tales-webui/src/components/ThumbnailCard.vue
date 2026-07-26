@@ -47,7 +47,7 @@
             @click="onClickDelete"
             v-bind="attrs"
             v-on="on">
-            <v-icon>mdi-trash-can-outline</v-icon>
+            <v-icon>mdi-delete-outline</v-icon>
           </v-btn>
         </template>
         <span>{{
@@ -119,7 +119,7 @@ export default Vue.extend({
     statusIcon(): string {
       if (this.item instanceof File) {
         if (this.fileTooBig) {
-          return 'mdi-alert-circle'
+          return 'mdi-alert-circle-outline'
         } else {
           return 'mdi-cloud-upload-outline'
         }

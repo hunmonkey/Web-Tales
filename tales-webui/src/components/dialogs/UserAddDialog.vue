@@ -39,7 +39,7 @@
                               :label="$t('dialog.add_user.field_password')"
                               autocomplete="off"
                               :type="showPassword ? 'text' : 'password'"
-                              :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                              :append-icon="showPassword ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"
                               @click:append="showPassword = !showPassword"
                               :error-messages="getErrors('password')"
                               @input="$v.form.password.$touch()"

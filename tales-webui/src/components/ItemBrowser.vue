@@ -75,7 +75,7 @@
                     @click="deleteItem(item)"
                     style="position: absolute; bottom: 10px; right: 10px;"
                   >
-                    <v-icon>mdi-delete</v-icon>
+                    <v-icon>mdi-delete-outline</v-icon>
                   </v-btn>
                 </v-fab-transition>
 
