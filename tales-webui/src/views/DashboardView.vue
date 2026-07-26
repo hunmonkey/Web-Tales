@@ -54,6 +54,52 @@
         </div>
       </header>
 
+      <!-- Puts the book that is actually in progress on the first screen, so
+           coming back to Tales does not start with scrolling. -->
+      <section
+        v-if="resumeBook"
+        class="dashboard-resume"
+        data-testid="dashboard-resume"
+      >
+        <router-link
+          :to="resumeBookTo"
+          class="dashboard-resume__cover link-none"
+          tabindex="-1"
+          aria-hidden="true"
+        >
+          <img
+            :src="resumeBookThumbnailUrl"
+            alt=""
+          />
+        </router-link>
+
+        <div class="dashboard-resume__body">
+          <p class="dashboard-resume__eyebrow">{{ $t('dashboard.keep_reading') }}</p>
+          <router-link
+            :to="resumeBookTo"
+            class="dashboard-resume__title link-none"
+            data-testid="dashboard-resume-title"
+          >{{ resumeBookTitle }}</router-link>
+          <p class="dashboard-resume__meta">{{ resumeBookProgressLabel }}</p>
+          <v-progress-linear
+            :value="resumeBookPercentage"
+            color="secondary"
+            height="6"
+            rounded
+            class="dashboard-resume__progress"
+          />
+          <v-btn
+            color="primary"
+            class="dashboard-resume__action"
+            :to="resumeBookReadTo"
+            data-testid="dashboard-resume-read"
+          >
+            <v-icon left>mdi-book-open-page-variant</v-icon>
+            {{ $t('dashboard.resume_reading') }}
+          </v-btn>
+        </div>
+      </section>
+
       <empty-state v-if="allEmpty && !loading"
                    :title="$t('common.nothing_to_show')"
                    icon="mdi-help-circle-outline"
@@ -62,9 +108,28 @@
       </empty-state>
 
       <template v-for="(section, i) in sections">
+        <!-- The section titles come from the saved view config, so the shelves
+             can be drawn in their final positions while their pages load. -->
+        <div
+          v-if="loading && (!section.loader || section.loader.items.length === 0)"
+          :key="`skeleton-${i}`"
+          class="dashboard-section mb-8"
+          data-testid="dashboard-section-skeleton"
+        >
+          <div class="dashboard-section__title">{{ $t(`dashboard.${section.value.toLowerCase()}`) }}</div>
+          <div class="dashboard-section__skeleton-row">
+            <item-card-skeleton
+              v-for="n in 8"
+              :key="`skeleton-${i}-${n}`"
+              :width="fixedCardWidth"
+              class="my-2 mx-2"
+            />
+          </div>
+        </div>
+
         <horizontal-scroller
           v-bind:key="i"
-          v-if="section.loader && section.loader.items.length !== 0"
+          v-else-if="section.loader && section.loader.items.length !== 0"
           class="dashboard-section mb-8"
           :tick="section.loader.tick"
           @scroll-changed="(percent) => scrollChanged(section.loader, percent)"
@@ -127,6 +192,7 @@ import MultiSelectBar from '@/components/bars/MultiSelectBar.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import HorizontalScroller from '@/components/HorizontalScroller.vue'
 import ItemBrowser from '@/components/ItemBrowser.vue'
+import ItemCardSkeleton from '@/components/ItemCardSkeleton.vue'
 import ToolbarSticky from '@/components/bars/ToolbarSticky.vue'
 import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
 import LibraryNavigation from '@/components/LibraryNavigation.vue'
@@ -153,6 +219,10 @@ import {BookSseDto, ReadProgressSeriesSseDto, ReadProgressSseDto, SeriesSseDto} 
 import {LibraryDto} from '@/types/tales-libraries'
 import {PageLoader} from '@/types/pageLoader'
 import {ItemContext} from '@/types/items'
+import {RawLocation} from 'vue-router'
+import {bookThumbnailUrl} from '@/functions/urls'
+import {getReadProgressPercentage} from '@/functions/book-progress'
+import {getBookReadRouteFromMedia} from '@/functions/book-format'
 import {
   BookSearch,
   SearchConditionAllOfBook,
@@ -193,6 +263,7 @@ export default Vue.extend({
   components: {
     EditRecommendedDialog,
     HorizontalScroller,
+    ItemCardSkeleton,
     EmptyState,
     ToolbarSticky,
     LibraryNavigation,
@@ -329,6 +400,46 @@ export default Vue.extend({
     },
     individualLibrary(): boolean {
       return this.libraryId !== LIBRARIES_ALL
+    },
+    // The most recently read book still in progress. Absent while loading, when
+    // the Keep Reading section is switched off, or when nothing is in progress,
+    // in which case the dashboard simply starts with its shelves as before.
+    resumeBook(): BookDto | undefined {
+      if (this.loading) return undefined
+      return this.loaderKeepReadingBooks?.items[0]
+    },
+    resumeBookTitle(): string {
+      const book = this.resumeBook
+      if (!book) return ''
+      const series = book.seriesTitle
+      return series && !book.oneshot ? `${series} · ${book.metadata.title}` : book.metadata.title
+    },
+    resumeBookThumbnailUrl(): string {
+      return this.resumeBook ? bookThumbnailUrl(this.resumeBook.id) : ''
+    },
+    resumeBookPercentage(): number {
+      return this.resumeBook ? getReadProgressPercentage(this.resumeBook) : 0
+    },
+    resumeBookProgressLabel(): string {
+      const book = this.resumeBook
+      if (!book) return ''
+      return this.$t('dashboard.resume_progress', {
+        page: book.readProgress?.page ?? 1,
+        total: book.media.pagesCount,
+      }).toString()
+    },
+    resumeBookTo(): RawLocation {
+      const book = this.resumeBook as BookDto
+      return book.oneshot
+        ? {name: 'browse-oneshot', params: {seriesId: book.seriesId}}
+        : {name: 'browse-book', params: {bookId: book.id}}
+    },
+    resumeBookReadTo(): RawLocation {
+      const book = this.resumeBook as BookDto
+      return {
+        name: getBookReadRouteFromMedia(book.media),
+        params: {bookId: book.id},
+      }
     },
     selectedOneshots(): boolean {
       return this.selectedBooks.every(b => b.oneshot)
@@ -603,5 +714,98 @@ export default Vue.extend({
 </script>
 
 <style scoped>
+/* Matches the horizontal-scroller row the real shelf uses, and clips rather
+   than scrolls so placeholders never invite interaction. */
+.dashboard-section__skeleton-row {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
 
+.dashboard-resume {
+  align-items: center;
+  background: var(--tales-surface);
+  border: 1px solid var(--tales-border);
+  border-radius: var(--tales-radius-lg);
+  box-shadow: var(--tales-card-shadow);
+  display: flex;
+  gap: 20px;
+  margin-bottom: 32px;
+  padding: 20px;
+}
+
+.dashboard-resume__cover {
+  flex: 0 0 auto;
+}
+
+.dashboard-resume__cover img {
+  aspect-ratio: 0.7071;
+  border-radius: var(--tales-radius-sm);
+  display: block;
+  object-fit: cover;
+  width: 96px;
+}
+
+.dashboard-resume__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dashboard-resume__eyebrow {
+  color: var(--v-secondary-base);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.dashboard-resume__title {
+  color: var(--tales-text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-resume__meta {
+  color: var(--tales-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.dashboard-resume__progress {
+  max-width: 320px;
+}
+
+.dashboard-resume__action {
+  align-self: flex-start;
+  border-radius: var(--tales-radius-sm);
+  font-weight: 700;
+  letter-spacing: 0;
+  margin-top: 8px;
+  text-transform: none;
+}
+
+@media (max-width: 600px) {
+  .dashboard-resume {
+    gap: 14px;
+    margin-bottom: 24px;
+    padding: 14px;
+  }
+
+  .dashboard-resume__cover img {
+    width: 72px;
+  }
+
+  .dashboard-resume__title {
+    font-size: 1.05rem;
+    white-space: normal;
+  }
+}
 </style>

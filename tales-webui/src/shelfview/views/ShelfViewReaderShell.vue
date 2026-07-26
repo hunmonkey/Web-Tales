@@ -4,6 +4,7 @@
     :class="{
       'shelfview-reader-shell--search-open': textSearchOpen && textSearchAvailable,
       'shelfview-reader-shell--thumbnails': thumbnailStripVisible,
+      'shelfview-reader-shell--page-dock': pageDockVisible,
       'shelfview-reader-shell--chrome-visible': chromeVisible,
     }"
     dark
@@ -673,6 +674,43 @@
         </p>
       </article>
     </main>
+
+    <!-- On a phone the toolbar sits out of thumb reach, so paging is mirrored at
+         the bottom. It follows the same show/hide rules as the rest of the
+         chrome and never covers the page while reading. -->
+    <nav
+      v-if="pageDockVisible"
+      class="shelfview-reader-shell__page-dock"
+      :aria-label="$t('shelfview_reader.group_page')"
+      data-testid="shelfview-reader-page-dock"
+    >
+      <v-btn
+        icon
+        :disabled="!canGoPrevious"
+        :aria-label="$t('shelfview_reader.previous_page')"
+        data-testid="shelfview-reader-dock-previous"
+        @click="previousPage"
+      >
+        <v-icon>mdi-chevron-left</v-icon>
+      </v-btn>
+
+      <span
+        class="shelfview-reader-shell__page-counter"
+        data-testid="shelfview-reader-dock-counter"
+      >
+        {{ currentPageLabel }} / {{ pagesCount }}
+      </span>
+
+      <v-btn
+        icon
+        :disabled="!canGoNext"
+        :aria-label="$t('shelfview_reader.next_page')"
+        data-testid="shelfview-reader-dock-next"
+        @click="nextPage"
+      >
+        <v-icon>mdi-chevron-right</v-icon>
+      </v-btn>
+    </nav>
 
     <section
       v-if="thumbnailStripVisible"
@@ -1814,6 +1852,7 @@ export default Vue.extend({
     textBrightness: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textBrightness,
     fixedPageSettingsOpen: false,
     textSettingsOpen: false,
+    canReturnToPreviousScreen: false,
     openControlMenu: null as string | null,
     controlMenuLeft: 0,
     controlMenuTop: 50,
@@ -1902,8 +1941,20 @@ export default Vue.extend({
     }
     this.destroyAdapter()
   },
+  // Remember whether the reader was opened from somewhere inside the app, so
+  // leaving it can return to that exact screen instead of always landing on the
+  // book detail page.
+  beforeRouteEnter(to, from, next) {
+    const cameFromInsideTheApp = !!from.name && from.name !== to.name
+    next((vm: any) => {
+      vm.canReturnToPreviousScreen = cameFromInsideTheApp
+    })
+  },
   async beforeRouteUpdate(to, from, next) {
     if (to.params.bookId !== from.params.bookId) {
+      // Moving to another book inside the reader makes the previous history
+      // entry another book, so going back is no longer the way out.
+      this.canReturnToPreviousScreen = false
       this.textEncodingOverride = undefined
       await this.flushReaderState()
       await this.setup(to.params.bookId)
@@ -2190,6 +2241,9 @@ export default Vue.extend({
     },
     thumbnailStripVisible(): boolean {
       return this.chromeVisible && this.thumbnailStripOpen && this.thumbnailStripAvailable
+    },
+    pageDockVisible(): boolean {
+      return this.chromeVisible && this.pageControlsVisible && this.$vuetify.breakpoint.smAndDown
     },
     visibleTextParagraphs(): ShelfViewTextParagraph[] {
       return this.textAdapter?.getVisibleParagraphs(this.readerLayout) ?? this.mixedContentAdapter?.getVisibleParagraphs(this.readerLayout) ?? []
@@ -4704,6 +4758,13 @@ export default Vue.extend({
     async closeBook() {
       await this.flushReaderState()
 
+      // The router restores savedPosition, so going back returns the reader to
+      // the originating list at the row they were on.
+      if (this.canReturnToPreviousScreen) {
+        this.$router.back()
+        return
+      }
+
       if (this.book) {
         this.$router.push({
           name: this.book.oneshot ? 'browse-oneshot' : 'browse-book',
@@ -5089,6 +5150,17 @@ function isFiniteNumber(value: unknown): value is number {
   padding-bottom: 104px;
 }
 
+/* Keep the page clear of the bottom dock rather than letting it sit on top. */
+.shelfview-reader-shell--page-dock .shelfview-reader-shell__stage,
+.shelfview-reader-shell--page-dock .shelfview-reader-shell__stage--fixed {
+  padding-bottom: 72px;
+}
+
+.shelfview-reader-shell--page-dock.shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage,
+.shelfview-reader-shell--page-dock.shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage--fixed {
+  padding-bottom: 160px;
+}
+
 .shelfview-reader-shell__stage:focus {
   outline: 2px solid var(--sv-chrome-accent);
   outline-offset: -6px;
@@ -5316,6 +5388,32 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__text-paragraph:last-child {
   margin-bottom: 0;
+}
+
+.shelfview-reader-shell__page-dock {
+  align-items: center;
+  backdrop-filter: blur(18px);
+  background: var(--sv-chrome-elevated);
+  border: 1px solid var(--sv-chrome-border);
+  border-radius: 999px;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  box-shadow: var(--sv-chrome-shadow);
+  color: var(--sv-chrome-text);
+  display: flex;
+  gap: 4px;
+  left: 50%;
+  padding: 4px 8px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.shelfview-reader-shell--thumbnails .shelfview-reader-shell__page-dock {
+  bottom: calc(88px + max(12px, env(safe-area-inset-bottom, 0px)));
+}
+
+.shelfview-reader-shell__page-dock .v-icon {
+  color: var(--sv-chrome-text);
 }
 
 .shelfview-reader-shell__thumbnail-strip {

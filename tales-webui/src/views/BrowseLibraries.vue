@@ -108,6 +108,7 @@
         <item-browser
           :items="series"
           :item-context="itemContext"
+          :loading="totalElements === null"
           :selected.sync="selectedSeries"
           :edit-function="isAdmin ? editSingleSeries : undefined"
         />

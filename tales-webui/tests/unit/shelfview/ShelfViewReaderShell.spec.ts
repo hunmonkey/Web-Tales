@@ -3186,6 +3186,91 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-empty"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shelfview-reader-page"]').exists()).toBe(false)
   })
+
+  it('returns to the originating screen when the reader was opened from inside the app', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    vm.canReturnToPreviousScreen = true
+    await vm.closeBook()
+
+    expect(vm.$router.back).toHaveBeenCalledTimes(1)
+    expect(vm.$router.push).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the book page when the reader was opened directly', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    vm.canReturnToPreviousScreen = false
+    await vm.closeBook()
+
+    expect(vm.$router.back).not.toHaveBeenCalled()
+    expect(vm.$router.push).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'browse-book',
+      params: expect.objectContaining({bookId: 'book-1'}),
+    }))
+  })
+
+  it('mirrors paging in a bottom dock on phone-sized viewports', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest), smAndDown: true})
+
+    await flushPromises()
+    await Vue.nextTick()
+    await wrapper.setData({chromeVisible: true})
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-dock"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-dock-counter"]').text()).toBe('1 / 2')
+
+    await wrapper.find('[data-testid="shelfview-reader-dock-next"]').trigger('click')
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).currentPageIndex).toBe(1)
+  })
+
+  it('hides the bottom dock with the rest of the chrome and on wide viewports', async () => {
+    const phone = mountShell({getManifest: jest.fn().mockResolvedValue(manifest), smAndDown: true})
+
+    await flushPromises()
+    await Vue.nextTick()
+    await phone.setData({chromeVisible: false})
+
+    expect(phone.find('[data-testid="shelfview-reader-page-dock"]').exists()).toBe(false)
+
+    const desktop = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+    await desktop.setData({chromeVisible: true})
+
+    expect(desktop.find('[data-testid="shelfview-reader-page-dock"]').exists()).toBe(false)
+  })
+
+  it('stops offering the back exit after moving to another book inside the reader', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    vm.canReturnToPreviousScreen = true
+    const next = jest.fn()
+    await (wrapper.vm.$options as any).beforeRouteUpdate.call(
+      vm,
+      {params: {bookId: 'book-2'}},
+      {params: {bookId: 'book-1'}},
+      next,
+    )
+
+    expect(vm.canReturnToPreviousScreen).toBe(false)
+    expect(next).toHaveBeenCalled()
+  })
 })
 
 function mountShell({
@@ -3195,6 +3280,7 @@ function mountShell({
   talesBooks = {},
   talesReadLists = {},
   routeQuery = {},
+  smAndDown = false,
 }: {
   getManifest: jest.Mock,
   shelfViewState?: Record<string, jest.Mock>,
@@ -3202,6 +3288,7 @@ function mountShell({
   talesBooks?: Record<string, jest.Mock>,
   talesReadLists?: Record<string, jest.Mock>,
   routeQuery?: Record<string, unknown>,
+  smAndDown?: boolean,
 }) {
   const stateService = {
     getPosition: jest.fn().mockResolvedValue(undefined),
@@ -3275,6 +3362,10 @@ function mountShell({
       },
       $router: {
         push: jest.fn(),
+        back: jest.fn(),
+      },
+      $vuetify: {
+        breakpoint: {smAndDown},
       },
       $t: (key: string) => key,
     },

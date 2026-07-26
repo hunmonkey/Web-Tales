@@ -85,6 +85,19 @@
         </transition-group>
       </draggable>
     </div>
+    <div v-else-if="loading"
+         ref="content"
+         v-resize="onResize"
+         :class="flexClass"
+         data-testid="item-browser-skeleton"
+    >
+      <item-card-skeleton
+        v-for="n in skeletonCount"
+        :key="`skeleton-${n}`"
+        :width="itemWidth"
+        class="my-2 mx-2"
+      />
+    </div>
     <v-row v-else justify="center">
       <slot name="empty"></slot>
     </v-row>
@@ -93,6 +106,7 @@
 
 <script lang="ts">
 import ItemCard from '@/components/ItemCard.vue'
+import ItemCardSkeleton from '@/components/ItemCardSkeleton.vue'
 import {computeCardWidth} from '@/functions/grid-utilities'
 import Vue from 'vue'
 import draggable from 'vuedraggable'
@@ -100,7 +114,7 @@ import {ItemContext} from '@/types/items'
 
 export default Vue.extend({
   name: 'ItemBrowser',
-  components: {ItemCard, draggable},
+  components: {ItemCard, ItemCardSkeleton, draggable},
   props: {
     items: {
       type: Array,
@@ -143,6 +157,12 @@ export default Vue.extend({
     actionMenu: {
       type: Boolean,
       default: true,
+    },
+    // Draws card-shaped placeholders instead of nothing while the first page is
+    // still loading, so the shelf does not appear empty and then jump.
+    loading: {
+      type: Boolean,
+      default: false,
     },
   },
   data: () => {
@@ -198,6 +218,9 @@ export default Vue.extend({
     },
     shouldPreselect(): boolean {
       return this.selectedItems.length > 0
+    },
+    skeletonCount(): number {
+      return this.nowrap ? 8 : 12
     },
     dragOptions(): any {
       return {

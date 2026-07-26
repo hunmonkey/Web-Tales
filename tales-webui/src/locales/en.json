@@ -535,6 +535,8 @@
   },
   "dashboard": {
     "keep_reading": "Keep Reading",
+    "resume_reading": "Resume reading",
+    "resume_progress": "Page {page} of {total}",
     "on_deck": "On Deck",
     "recently_added_books": "Recently Added Books",
     "recently_added_series": "Recently Added Series",
@@ -1233,7 +1235,8 @@
   "searchbox": {
     "in_library": "in {library}",
     "no_results": "No results",
-    "search_all": "Search all…"
+    "search_all": "Search all…",
+    "shortcut_hint": "Search (shortcut: / )"
   },
   "server": {
     "server_management": {

@@ -34,7 +34,10 @@
         :symbol-only="$vuetify.breakpoint.xs"
       />
 
-      <search-box class="app-shell__search flex-fill"/>
+      <search-box
+        ref="searchBox"
+        class="app-shell__search flex-fill"
+      />
 
     </v-app-bar>
 
@@ -340,6 +343,7 @@ import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import ReusableDialogs from '@/components/ReusableDialogs.vue'
 import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
 import SearchBox from '@/components/SearchBox.vue'
+import {resolveShellShortcut} from '@/functions/shell-shortcuts'
 import {Theme} from '@/types/themes'
 import Vue from 'vue'
 import {LIBRARIES_ALL} from '@/types/library'
@@ -396,6 +400,12 @@ export default Vue.extend({
         .then(x => this.$store.commit('setReleases', x))
     }
     this.checkRoute(this.$route)
+  },
+  mounted() {
+    document.addEventListener('keydown', this.onShellShortcut)
+  },
+  beforeDestroy() {
+    document.removeEventListener('keydown', this.onShellShortcut)
   },
   watch: {
     $route(to, from) {
@@ -462,6 +472,23 @@ export default Vue.extend({
     },
   },
   methods: {
+    // Browsing had no shortcuts at all; these two cover the moves people repeat
+    // most. The decision itself lives in functions/shell-shortcuts.ts.
+    onShellShortcut(event: KeyboardEvent) {
+      const shortcut = resolveShellShortcut(event, {
+        drawerVisible: this.drawerVisible,
+        drawerIsOverlay: !this.$vuetify.breakpoint.lgAndUp,
+      })
+      if (!shortcut) return
+
+      event.preventDefault()
+      if (shortcut === 'FOCUS_SEARCH') this.focusSearchBox()
+      else this.drawerVisible = false
+    },
+    focusSearchBox() {
+      const searchBox = this.$refs.searchBox as any
+      searchBox?.focusSearch?.()
+    },
     checkRoute(to) {
       this.expandSettings = to.path.includes('/settings/')
       this.expandMediaManagement = to.path.includes('/media-management/')

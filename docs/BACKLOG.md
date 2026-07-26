@@ -296,3 +296,68 @@ Material Blue accent that does not match the Tales palette.
   outline variants of the same meaning are currently mixed, and move the
   remaining fallback readers (`DivinaReader`, `EpubReader`,
   `ShelfViewLocalReader`) onto the same tokens.
+
+## Perceived-usability plan from 2026-07-26
+
+Owner request after SV-1050/SV-1051 shipped: plan the next round of work on how
+the app *feels* to use, not on how it looks. Recorded as a plan only; nothing
+below is implemented. Each item lists the evidence that motivated it and the
+check that would close it.
+
+Ordered by how much each one shortens the path to reading, which is the stated
+priority.
+
+- [x] SV-1060 Show content-shaped placeholders while a shelf is loading.
+  Evidence: `v-skeleton-loader` appears in zero components, and
+  `DashboardView.vue` only renders a section when
+  `section.loader.items.length !== 0`, so every dashboard row is invisible
+  until its request resolves and the page then jumps. `ItemBrowser.vue` has no
+  loading state at all. Close when a cold dashboard load shows card-shaped
+  placeholders in the final layout positions and the content no longer shifts
+  when it arrives.
+
+- [x] SV-1061 Make "carry on where I left off" the first thing on the home
+  screen. Evidence: the `KEEP_READING` section already exists
+  (`types/tales-clientsettings.ts`, `DashboardView.vue`), and `ItemCard.vue`
+  already renders a continuation chip, but reaching either still costs
+  dashboard load, scroll, card hover and then the read action. Close when a
+  returning reader can resume the most recent book from the first screen
+  without scrolling, and when having nothing in progress degrades cleanly.
+
+- [x] SV-1062 Return the reader to wherever the reader came from.
+  Evidence: `closeBook()` in `ShelfViewReaderShell.vue` always pushes
+  `browse-book` / `browse-oneshot`, so leaving a book opened from a library
+  grid or a search result lands on the book detail page and costs another
+  click to get back to the list. Close when leaving the reader returns to the
+  originating list with its scroll position, while a direct URL visit still
+  falls back to the book page.
+
+- [x] SV-1063 Give the reader a thumb-reachable paging control on phones.
+  Evidence: paging lives only in the top toolbar, which auto-hides after
+  `CHROME_AUTO_HIDE_DELAY_MS`. Side-tap zones exist, so this is comfort rather
+  than a blocker, and it must not cover the page. Close when paging and the
+  page counter are reachable one-handed on a phone-sized viewport without
+  reaching the top of the screen, and when the control hides with the rest of
+  the chrome.
+
+- [x] SV-1064 Add the few keyboard shortcuts that browsing lacks.
+  Evidence: shortcut handling exists only in the readers
+  (`DivinaReader`, `EpubReader`, `ShelfViewReaderShell`, `PagedReader`) and
+  `ShortcutHelpDialog` is only opened from readers. Browsing has no focus-search
+  or close-panel key. Close when `/` focuses search and `Esc` closes the open
+  panel from any browse screen, the existing help dialog lists them, and no
+  shortcut fires while typing in an input.
+
+- [x] SV-1065 Fill the empty sections of `Rule_UIUX.txt` (1-1, 1-2, 1-6, 1-7,
+  1-8, 3 and 7). Evidence: those headings have no body, so screen-level
+  decisions have no written standard; SV-1050/SV-1051 had to write 1-9 and
+  1-10 while working. This is a decision-capture ticket, not a code ticket, and
+  it needs owner input rather than implementation.
+
+### Deliberately not planned
+
+- Reworking navigation into a bottom bar on mobile. The drawer plus
+  `LibraryNavigation`'s existing `v-bottom-navigation` already covers the
+  common paths, and a second bottom surface would collide with SV-1063.
+- Any Vue 3 / Vuetify 3 dependent behaviour. Still forbidden without explicit
+  owner approval.

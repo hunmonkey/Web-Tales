@@ -481,6 +481,7 @@
 
         <item-browser :items="books"
                       :item-context="itemContext"
+                      :loading="totalElements === null"
                       :selected.sync="selectedBooks"
                       :edit-function="isAdmin ? editSingleBook : undefined"
         />

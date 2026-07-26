@@ -3,6 +3,7 @@
     <v-autocomplete
       v-model="selectedItem"
       :placeholder="$t('search.search')"
+      :title="$t('searchbox.shortcut_hint')"
       :no-data-text="$t('searchbox.no_results')"
       :loading="loading"
       :items="results"
@@ -202,6 +203,11 @@ export default Vue.extend({
     },
   },
   methods: {
+    // Lets the shell hand keyboard focus to the search field.
+    focusSearch() {
+      const searchbox = this.$refs.searchbox as any
+      searchbox?.focus?.()
+    },
     getLibraryName(item: BookDto | SeriesDto): string {
       return this.$store.getters.getLibraryById(item.libraryId).name
     },
