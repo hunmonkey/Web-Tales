@@ -1075,13 +1075,21 @@ export default Vue.extend({
         }
       })
 
-      const booksPage = await this.$talesBooks.getBooksList({
-        condition: new SearchConditionAllOfBook(conditions),
-      }, pageRequest)
+      try {
+        const booksPage = await this.$talesBooks.getBooksList({
+          condition: new SearchConditionAllOfBook(conditions),
+        }, pageRequest)
 
-      this.totalPages = booksPage.totalPages
-      this.totalElements = booksPage.totalElements
-      this.books = booksPage.content
+        this.totalPages = booksPage.totalPages
+        this.totalElements = booksPage.totalElements
+        this.books = booksPage.content
+      } catch (e) {
+        // A null `totalElements` is what draws the loading skeletons, so a failed
+        // page has to leave that state or the grid keeps them with nothing left
+        // to clear them. Falling back to what is on screen means a first load
+        // shows the empty slot and a failed refresh keeps the books it had.
+        this.totalElements = this.books.length
+      }
     },
     analyze() {
       this.$talesSeries.analyzeSeries(this.series)

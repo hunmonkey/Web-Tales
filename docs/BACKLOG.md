@@ -407,3 +407,47 @@ priority.
   common paths, and a second bottom surface would collide with SV-1063.
 - Any Vue 3 / Vuetify 3 dependent behaviour. Still forbidden without explicit
   owner approval.
+
+## Loading-state defect sweep from 2026-07-27
+
+Owner asked for a bug fix and chose a codebase sweep over a reported symptom.
+The sweep read the SV-1060..SV-1069 diff and found four defects, all in the
+loading states those tickets introduced. The owner approved fixing all four.
+
+- [x] SV-1070 Stop the dashboard from getting stuck in its loading state, and
+  stop the resume banner from flickering and from showing a stale poster.
+  Evidence, three defects in one file:
+  1. `loadAll()` in `DashboardView.vue` runs
+     `Promise.all([...]).then(() => this.loading = false)` with no `catch`.
+     `PageLoader.loadNext()` rethrows whatever the API service threw, and
+     `tales-books.service.ts` turns any failure into `throw new Error`. One
+     failing loader out of seven leaves `loading` true forever, which pins the
+     SV-1060 skeletons on screen, hides the SV-1061 resume banner permanently
+     (`resumeBook` returns undefined while loading) and suppresses the
+     `allEmpty && !loading` empty state. It also leaves an unhandled rejection.
+     This only became visible when SV-1060/SV-1061 made `loading` drive the
+     whole screen; before that it only gated the empty state.
+  2. Reading a book and returning to the dashboard fires a read-progress SSE
+     event, which calls the throttled `reload()` → `loadAll(true)` →
+     `loading = true`. The shelves survive because they are gated on
+     `items.length !== 0`, but the banner unmounts and remounts, so the page
+     jumps up and back down. SV-1060 exists to remove exactly that shift.
+  3. The banner builds its poster with `bookThumbnailUrl(id)` and no
+     cache-busting query, unlike `ItemCard.vue`, which appends
+     `thumbnailCacheBust` on every thumbnail SSE event. SV-1068 now serves
+     posters `max-age=86400, private`, so a replaced cover stays stale in the
+     banner for up to a day. The `WebMvcConfiguration` comment that justifies
+     the poster cache assumes the web UI always cache-busts; the banner is the
+     one place that does not.
+  Close when a failing dashboard request still resolves the loading state and
+  shows whatever loaded, when reloading an already-loaded dashboard leaves the
+  banner in place, and when a thumbnail event refreshes the banner poster.
+
+- [x] SV-1071 Stop the browse screens from getting stuck in their loading
+  state. Evidence: `BrowseBooks.vue`, `BrowseSeries.vue` and
+  `BrowseLibraries.vue` pass `:loading="totalElements === null"` to
+  `ItemBrowser`, and `totalElements` is only ever assigned on the success path,
+  so a failed load holds the skeletons on screen with no way out. Lower impact
+  than SV-1070 because the pre-SV-1060 behaviour was an empty grid rather than
+  a stuck one. Close when a failed load leaves the skeleton state and shows the
+  existing empty slot.

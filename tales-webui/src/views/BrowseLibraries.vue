@@ -819,9 +819,21 @@ export default Vue.extend({
       const groupConditions = this.$_.cloneDeep(conditions)
       if (symbolCondition) conditions.push(symbolCondition)
 
-      const seriesPage = await this.$talesSeries.getSeriesList({
-        condition: new SearchConditionAllOfSeries(conditions),
-      } as SeriesSearch, pageRequest)
+      let seriesPage: Page<SeriesDto>
+      try {
+        seriesPage = await this.$talesSeries.getSeriesList({
+          condition: new SearchConditionAllOfSeries(conditions),
+        } as SeriesSearch, pageRequest)
+      } catch (e) {
+        // A null `totalElements` is what draws the loading skeletons, so a failed
+        // page has to leave that state or the grid keeps them with nothing left
+        // to clear them. Falling back to what is on screen means a first load
+        // shows the empty slot and a failed refresh keeps the series it had. The
+        // alphabetical group request below is skipped, since it would only fail
+        // the same way.
+        this.totalElements = this.series.length
+        return
+      }
 
       this.totalPages = seriesPage.totalPages
       this.totalElements = seriesPage.totalElements

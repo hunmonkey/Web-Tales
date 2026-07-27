@@ -209,13 +209,21 @@ import {
   SERIES_ADDED,
   SERIES_CHANGED,
   SERIES_DELETED,
+  THUMBNAILBOOK_ADDED,
+  THUMBNAILBOOK_DELETED,
 } from '@/types/events'
 import Vue from 'vue'
 import {Oneshot, SeriesDto} from '@/types/tales-series'
 import {LIBRARIES_ALL, LIBRARY_ROUTE} from '@/types/library'
-import {throttle} from 'lodash'
+import {random, throttle} from 'lodash'
 import {subMonths} from 'date-fns'
-import {BookSseDto, ReadProgressSeriesSseDto, ReadProgressSseDto, SeriesSseDto} from '@/types/tales-sse'
+import {
+  BookSseDto,
+  ReadProgressSeriesSseDto,
+  ReadProgressSseDto,
+  SeriesSseDto,
+  ThumbnailBookSseDto,
+} from '@/types/tales-sse'
 import {LibraryDto} from '@/types/tales-libraries'
 import {PageLoader} from '@/types/pageLoader'
 import {ItemContext} from '@/types/items'
@@ -286,6 +294,10 @@ export default Vue.extend({
       loaderRecentlyReadBooks: undefined as PageLoader<BookDto> | undefined,
       selectedSeries: [] as SeriesDto[],
       selectedBooks: [] as BookDto[],
+      // The banner poster is cached for a day like every other image, so a
+      // replaced cover only reaches it through a new URL. ItemCard does the
+      // same for the cards.
+      resumeThumbnailCacheBust: '',
     }
   },
   created() {
@@ -299,6 +311,8 @@ export default Vue.extend({
     this.$eventHub.$on(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$on(READPROGRESS_SERIES_CHANGED, this.readProgressSeriesChanged)
     this.$eventHub.$on(READPROGRESS_SERIES_DELETED, this.readProgressSeriesChanged)
+    this.$eventHub.$on(THUMBNAILBOOK_ADDED, this.thumbnailBookChanged)
+    this.$eventHub.$on(THUMBNAILBOOK_DELETED, this.thumbnailBookChanged)
   },
   beforeDestroy() {
     this.$eventHub.$off(SERIES_ADDED, this.seriesChanged)
@@ -311,6 +325,8 @@ export default Vue.extend({
     this.$eventHub.$off(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$off(READPROGRESS_SERIES_CHANGED, this.readProgressSeriesChanged)
     this.$eventHub.$off(READPROGRESS_SERIES_DELETED, this.readProgressSeriesChanged)
+    this.$eventHub.$off(THUMBNAILBOOK_ADDED, this.thumbnailBookChanged)
+    this.$eventHub.$off(THUMBNAILBOOK_DELETED, this.thumbnailBookChanged)
   },
   mounted() {
     if (this.individualLibrary) this.$store.commit('setLibraryRoute', {
@@ -401,11 +417,16 @@ export default Vue.extend({
     individualLibrary(): boolean {
       return this.libraryId !== LIBRARIES_ALL
     },
-    // The most recently read book still in progress. Absent while loading, when
-    // the Keep Reading section is switched off, or when nothing is in progress,
-    // in which case the dashboard simply starts with its shelves as before.
+    // The most recently read book still in progress. Absent until the loader has
+    // returned something, when the Keep Reading section is switched off, or when
+    // nothing is in progress, in which case the dashboard simply starts with its
+    // shelves as before.
+    //
+    // Deliberately not gated on `loading`. A reload keeps the previous items
+    // until the new page replaces them, so gating here would unmount the banner
+    // on every read-progress event and shift the page up and back down - the
+    // exact movement SV-1060 exists to remove.
     resumeBook(): BookDto | undefined {
-      if (this.loading) return undefined
       return this.loaderKeepReadingBooks?.items[0]
     },
     resumeBookTitle(): string {
@@ -415,7 +436,7 @@ export default Vue.extend({
       return series && !book.oneshot ? `${series} · ${book.metadata.title}` : book.metadata.title
     },
     resumeBookThumbnailUrl(): string {
-      return this.resumeBook ? bookThumbnailUrl(this.resumeBook.id) : ''
+      return this.resumeBook ? bookThumbnailUrl(this.resumeBook.id) + this.resumeThumbnailCacheBust : ''
     },
     resumeBookPercentage(): number {
       return this.resumeBook ? getReadProgressPercentage(this.resumeBook) : 0
@@ -533,6 +554,13 @@ export default Vue.extend({
       if (this.loaderRecentlyUpdatedSeries?.items.some(s => s.id === event.seriesId)) this.reload()
       else if (this.loaderRecentlyAddedSeries?.items.some(s => s.id === event.seriesId)) this.reload()
     },
+    // Only the banner needs this. The cards below it are ItemCard instances,
+    // which already bust their own poster cache on the same event.
+    thumbnailBookChanged(event: ThumbnailBookSseDto) {
+      if (event.selected && event.bookId === this.resumeBook?.id) {
+        this.resumeThumbnailCacheBust = '?' + random(1000)
+      }
+    },
     reload: throttle(function (this: any) {
       this.loadAll(true)
     }, 5000),
@@ -588,31 +616,27 @@ export default Vue.extend({
       this.selectedSeries = []
       this.selectedBooks = []
 
-      if (reload) {
-        Promise.all([
-          this.loaderKeepReadingBooks?.reload(),
-          this.loaderOnDeckBooks?.reload(),
-          this.loaderRecentlyReleasedBooks?.reload(),
-          this.loaderRecentlyAddedBooks?.reload(),
-          this.loaderRecentlyAddedSeries?.reload(),
-          this.loaderRecentlyUpdatedSeries?.reload(),
-          this.loaderRecentlyReadBooks?.reload(),
-        ]).then(() => {
-          this.loading = false
-        })
-      } else {
-        Promise.all([
-          this.loaderKeepReadingBooks?.loadNext(),
-          this.loaderOnDeckBooks?.loadNext(),
-          this.loaderRecentlyReleasedBooks?.loadNext(),
-          this.loaderRecentlyAddedBooks?.loadNext(),
-          this.loaderRecentlyAddedSeries?.loadNext(),
-          this.loaderRecentlyUpdatedSeries?.loadNext(),
-          this.loaderRecentlyReadBooks?.loadNext(),
-        ]).then(() => {
-          this.loading = false
-        })
-      }
+      const loaders = [
+        this.loaderKeepReadingBooks,
+        this.loaderOnDeckBooks,
+        this.loaderRecentlyReleasedBooks,
+        this.loaderRecentlyAddedBooks,
+        this.loaderRecentlyAddedSeries,
+        this.loaderRecentlyUpdatedSeries,
+        this.loaderRecentlyReadBooks,
+      ]
+
+      // Each loader is settled on its own rather than through a shared
+      // Promise.all rejection. A single failing section must not leave `loading`
+      // true, because that pins the skeletons on screen, hides the resume banner
+      // and suppresses the empty state, with no way back other than a reload.
+      // The sections that did load are shown; the ones that failed stay empty.
+      Promise.all(loaders.map(loader => {
+        const request = reload ? loader?.reload() : loader?.loadNext()
+        return request?.catch(() => undefined)
+      })).then(() => {
+        this.loading = false
+      })
     },
     async singleEditSeries(series: SeriesDto) {
       if (series.oneshot) {
