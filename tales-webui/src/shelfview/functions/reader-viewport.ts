@@ -34,11 +34,14 @@ export function shelfViewAnchoredZoomScroll({
   }
 }
 
+// A mouse pointer drifts by a few pixels during an ordinary click, so the
+// threshold has to clear the tap threshold in reader-input; below it the drag
+// is still a click and must keep working as one.
 export function shelfViewShouldStartPanning(
   start: ShelfViewPanStart,
   x: number,
   y: number,
-  threshold = 3,
+  threshold = 10,
 ): boolean {
   const delta = shelfViewPanDelta(start, x, y)
   return Math.abs(delta.x) + Math.abs(delta.y) > threshold

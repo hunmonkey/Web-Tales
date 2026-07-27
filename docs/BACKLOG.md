@@ -354,6 +354,23 @@ priority.
   1-10 while working. This is a decision-capture ticket, not a code ticket, and
   it needs owner input rather than implementation.
 
+## Reader chrome recovery, reported 2026-07-27
+
+- [x] SV-1066 Make the auto-hidden reader chrome reachable again on a computer.
+  Evidence: owner reported that the toolbar, the settings and the back button
+  all disappear in `/read-v2` and nothing brings them back. `chromeVisible`
+  starts `false` and `CHROME_AUTO_HIDE_DELAY_MS` was 2500, while the only two
+  ways back were the 35–65% centre tap zone (`reader-input.ts`) and `Escape`;
+  mouse movement did nothing, because `noteChromeActivity()` only extends the
+  timer for chrome that is already visible. The centre click was also unreliable
+  on fixed-page books: `onReaderPointerDown` opened a pan candidate even when the
+  page already fitted the stage, and `shelfViewShouldStartPanning` treated 3px of
+  ordinary click drift as a pan, which made `onReaderPointerUp` drop the tap.
+  Owner chose to keep the auto-hide and strengthen recovery rather than pin the
+  toolbar on desktop. Close when moving the mouse brings the chrome back and
+  keeps it up while the pointer keeps moving, and when a centre click with
+  normal hand drift always toggles the chrome on a page that fits.
+
 ### Deliberately not planned
 
 - Reworking navigation into a bottom bar on mobile. The drawer plus

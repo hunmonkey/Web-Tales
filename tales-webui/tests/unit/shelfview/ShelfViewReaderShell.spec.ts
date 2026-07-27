@@ -411,6 +411,46 @@ describe('ShelfViewReaderShell', () => {
     expect(vm.chromeVisible).toBe(false)
   })
 
+  it('brings the reader chrome back when the mouse moves', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(false)
+
+    vm.onShellPointerMove({pointerType: 'mouse', clientX: 400, clientY: 300})
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(false)
+
+    vm.onShellPointerMove({pointerType: 'mouse', clientX: 460, clientY: 320})
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(true)
+  })
+
+  it('leaves the reader chrome hidden for a stationary mouse or a moving finger', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    vm.onShellPointerMove({pointerType: 'mouse', clientX: 400, clientY: 300})
+    vm.onShellPointerMove({pointerType: 'mouse', clientX: 401, clientY: 300})
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(false)
+
+    vm.onShellPointerMove({pointerType: 'touch', clientX: 100, clientY: 300})
+    vm.onShellPointerMove({pointerType: 'touch', clientX: 400, clientY: 300})
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(false)
+  })
+
   it('does not expose a legacy-reader fallback from ShelfView', async () => {
     const wrapper = mountShell({
       getManifest: jest.fn().mockResolvedValue(manifest),
@@ -2162,6 +2202,9 @@ describe('ShelfViewReaderShell', () => {
     const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
     Object.defineProperty(stage, 'scrollLeft', {value: 70, writable: true, configurable: true})
     Object.defineProperty(stage, 'scrollTop', {value: 25, writable: true, configurable: true})
+    // Panning only starts on a page that overflows the stage.
+    Object.defineProperty(stage, 'clientWidth', {value: 1000, configurable: true})
+    Object.defineProperty(stage, 'scrollWidth', {value: 2400, configurable: true})
     stage.setPointerCapture = jest.fn()
     stage.releasePointerCapture = jest.fn()
     const downPreventDefault = jest.fn()
@@ -2522,6 +2565,88 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect((wrapper.vm as any).chromeVisible).toBe(true)
+  })
+
+  it('still shows reader chrome when the mouse drifts during a center click', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = setReaderStageRect(wrapper)
+
+    await vm.onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 21,
+      clientX: 500,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    vm.onReaderPointerMove({
+      pointerId: 21,
+      buttons: 1,
+      clientX: 505,
+      clientY: 123,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await vm.onReaderPointerUp({
+      pointerId: 21,
+      clientX: 505,
+      clientY: 123,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await Vue.nextTick()
+
+    expect(vm.fixedPagePanning).toBe(false)
+    expect(vm.chromeVisible).toBe(true)
+  })
+
+  it('pans instead of tapping when the page is larger than the stage', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = setReaderStageRect(wrapper)
+    Object.defineProperty(stage.element, 'clientWidth', {value: 1000, configurable: true})
+    Object.defineProperty(stage.element, 'scrollWidth', {value: 2400, configurable: true})
+
+    await vm.onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 22,
+      clientX: 500,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    vm.onReaderPointerMove({
+      pointerId: 22,
+      buttons: 1,
+      clientX: 460,
+      clientY: 120,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await vm.onReaderPointerUp({
+      pointerId: 22,
+      clientX: 460,
+      clientY: 120,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await Vue.nextTick()
+
+    expect(stage.element.scrollLeft).toBe(40)
+    expect(vm.chromeVisible).toBe(false)
   })
 
   it('shows reader chrome with a touch center tap without moving pages', async () => {

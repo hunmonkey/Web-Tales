@@ -10,6 +10,7 @@
     dark
     fluid
     data-testid="shelfview-reader-shell"
+    @pointermove="onShellPointerMove"
   >
     <v-toolbar
       v-show="chromeVisible"
@@ -1793,7 +1794,10 @@ const TEXT_CONTENTS_LABEL_MAX_LENGTH = 80
 const TEXT_CONTENTS_HEADING_MAX_LENGTH = 96
 const TEXT_HIGHLIGHT_QUOTE_MAX_LENGTH = 500
 const CHROME_HINT_TIMEOUT_MS = 3000
-const CHROME_AUTO_HIDE_DELAY_MS = 2500
+const CHROME_AUTO_HIDE_DELAY_MS = 5000
+// Filters the pointermove events a browser emits for a stationary mouse when
+// the layout shifts under it, so showing the chrome cannot re-trigger itself.
+const MOUSE_ACTIVITY_THRESHOLD_PX = 2
 const TEXT_TO_SPEECH_RATE_DEFAULT = 1
 const TEXT_TO_SPEECH_RATE_MIN = 0.7
 const TEXT_TO_SPEECH_RATE_MAX = 1.4
@@ -1863,6 +1867,7 @@ export default Vue.extend({
     chromeHintTimeoutMs: CHROME_HINT_TIMEOUT_MS,
     chromeAutoHideDelayMs: CHROME_AUTO_HIDE_DELAY_MS,
     chromeIdleTimer: undefined as number | undefined,
+    lastMousePoint: undefined as ShelfViewTouchPoint | undefined,
     textSearchOpen: false,
     textSearchQuery: '',
     textSearchMatchIndex: 0,
@@ -4392,6 +4397,9 @@ export default Vue.extend({
 
       const readerStage = this.$refs.readerStage as HTMLElement | undefined
       if (!readerStage) return
+      // A page that already fits has nothing to pan, and treating the drag as a
+      // pan there would swallow the centre tap that brings the chrome back.
+      if (!this.readerStageCanPan(readerStage)) return
 
       this.fixedPagePanStart = {
         pointerId: e.pointerId,
@@ -4404,8 +4412,33 @@ export default Vue.extend({
       readerStage.setPointerCapture?.(e.pointerId)
       if (e.cancelable) e.preventDefault()
     },
+    // Sits on the shell rather than the stage so that once the toolbar appears
+    // under the cursor, moving over the toolbar itself keeps it alive.
+    onShellPointerMove(e: PointerEvent) {
+      if (e.pointerType !== 'mouse') {
+        this.noteChromeActivity()
+        return
+      }
+
+      const moved = this.mousePointerMoved(e)
+      if (!moved || this.fixedPagePanning) return
+
+      // A mouse has no tap target to aim at, so moving it is how a reader on a
+      // computer asks for the chrome back.
+      this.showChromeFromReaderTap()
+    },
+    mousePointerMoved(e: PointerEvent): boolean {
+      const previous = this.lastMousePoint
+      this.lastMousePoint = {x: e.clientX, y: e.clientY}
+      if (!previous) return false
+
+      return Math.abs(e.clientX - previous.x) + Math.abs(e.clientY - previous.y) > MOUSE_ACTIVITY_THRESHOLD_PX
+    },
+    readerStageCanPan(readerStage: HTMLElement): boolean {
+      return readerStage.scrollWidth > readerStage.clientWidth ||
+        readerStage.scrollHeight > readerStage.clientHeight
+    },
     onReaderPointerMove(e: PointerEvent) {
-      this.noteChromeActivity()
       if (!this.fixedPagePanStart || e.pointerId !== this.fixedPagePanStart.pointerId) return
 
       const readerStage = this.$refs.readerStage as HTMLElement | undefined

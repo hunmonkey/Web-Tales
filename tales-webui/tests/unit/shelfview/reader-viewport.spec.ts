@@ -46,6 +46,8 @@ describe('ShelfView reader viewport helpers', () => {
     }
 
     expect(shelfViewShouldStartPanning(start, 118, 89)).toBe(false)
+    // Click-sized drift stays a click; the tap zones need it to.
+    expect(shelfViewShouldStartPanning(start, 125, 95)).toBe(false)
     expect(shelfViewShouldStartPanning(start, 90, 70)).toBe(true)
     expect(shelfViewPanScroll(start, 90, 70)).toEqual({
       scrollLeft: 100,
