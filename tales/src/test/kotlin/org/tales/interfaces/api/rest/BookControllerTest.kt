@@ -812,6 +812,59 @@ class BookControllerTest(
   inner class HttpCache {
     @Test
     @WithMockCustomUser
+    fun `given book poster when getting thumbnail then it can be reused without revalidation`() {
+      makeSeries(name = "series", libraryId = library.id).let { series ->
+        seriesLifecycle.createSeries(series).also { created ->
+          val books = listOf(makeBook("1.cbr", libraryId = library.id))
+          seriesLifecycle.addBooks(created, books)
+        }
+      }
+
+      val book = bookRepository.findAll().first()
+      bookLifecycle.addThumbnailForBook(
+        ThumbnailBook(
+          thumbnail = Random.nextBytes(100),
+          bookId = book.id,
+          type = ThumbnailBook.Type.GENERATED,
+          fileSize = 0,
+          mediaType = "",
+          dimension = Dimension(0, 0),
+        ),
+        MarkSelectedPreference.YES,
+      )
+
+      mockMvc
+        .get("/api/v1/books/${book.id}/thumbnail")
+        .andExpect {
+          status { isOk() }
+          header { string(HttpHeaders.CACHE_CONTROL, "max-age=86400, private") }
+        }
+    }
+
+    @Test
+    @WithMockCustomUser
+    fun `given book metadata when getting book then it must still be revalidated`() {
+      makeSeries(name = "series", libraryId = library.id).let { series ->
+        seriesLifecycle.createSeries(series).also { created ->
+          val books = listOf(makeBook("1.cbr", libraryId = library.id))
+          seriesLifecycle.addBooks(created, books)
+        }
+      }
+
+      val book = bookRepository.findAll().first()
+
+      // The longer poster cache must not leak onto the rest of the API, which returns data the
+      // client has to see the current version of.
+      mockMvc
+        .get("/api/v1/books/${book.id}")
+        .andExpect {
+          status { isOk() }
+          header { string(HttpHeaders.CACHE_CONTROL, "max-age=0, must-revalidate, private") }
+        }
+    }
+
+    @Test
+    @WithMockCustomUser
     fun `given request with cache headers when getting thumbnail then returns 304 not modified`() {
       makeSeries(name = "series", libraryId = library.id).let { series ->
         seriesLifecycle.createSeries(series).also { created ->
@@ -868,7 +921,11 @@ class BookControllerTest(
       val lastModified =
         mockMvc
           .get(url)
-          .andReturn()
+          .andExpect {
+            // Page images carry the longer image cache, so a page already fetched is reused
+            // instead of revalidated on every turn.
+            header { string(HttpHeaders.CACHE_CONTROL, "max-age=86400, private") }
+          }.andReturn()
           .response
           .getHeader(HttpHeaders.LAST_MODIFIED)
 

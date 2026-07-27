@@ -90,7 +90,7 @@ class ShelfViewImageDirectoryPageControllerTest(
           status { isOk() }
           header { string(HttpHeaders.CONTENT_TYPE, "image/jpeg") }
           header { exists(HttpHeaders.LAST_MODIFIED) }
-          header { string(HttpHeaders.CACHE_CONTROL, "max-age=0, must-revalidate, private") }
+          header { string(HttpHeaders.CACHE_CONTROL, "max-age=86400, private") }
           content { bytes(imageBytes) }
         }.andReturn()
 

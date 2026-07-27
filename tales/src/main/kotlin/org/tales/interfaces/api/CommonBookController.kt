@@ -142,7 +142,7 @@ class CommonBookController(
     if (request.checkNotModified(getBookLastModified(media))) {
       return@let ResponseEntity
         .status(HttpStatus.NOT_MODIFIED)
-        .setNotModified(media)
+        .setImageLastModified(media)
         .body(ByteArray(0))
     }
 
@@ -180,7 +180,7 @@ class CommonBookController(
                 .build()
           },
         ).contentType(getMediaTypeOrDefault(pageContent.mediaType))
-        .setNotModified(media)
+        .setImageLastModified(media)
         .body(pageContent.bytes)
     } catch (_: IndexOutOfBoundsException) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number does not exist")
@@ -214,7 +214,7 @@ class CommonBookController(
       if (request.checkNotModified(getBookLastModified(media))) {
         return@let ResponseEntity
           .status(HttpStatus.NOT_MODIFIED)
-          .setNotModified(media)
+          .setImageLastModified(media)
           .body(ByteArray(0))
       }
 
@@ -244,7 +244,7 @@ class CommonBookController(
                 .build()
           },
         ).contentType(getMediaTypeOrDefault(pageContent.mediaType))
-        .setNotModified(media)
+        .setImageLastModified(media)
         .body(pageContent.bytes)
     } catch (_: IndexOutOfBoundsException) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number does not exist")

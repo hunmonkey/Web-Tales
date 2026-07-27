@@ -24,6 +24,22 @@ val cachePrivate =
     .cachePrivate()
     .mustRevalidate()
 
+/**
+ * For binary image content: posters and page images.
+ *
+ * Both only change when their source changes, and both give the client a new URL when that
+ * happens: the web UI cache-busts a poster URL from the thumbnail SSE events, and a replaced book
+ * file is re-analyzed. Revalidating them on every render costs one round trip per image and
+ * returns 304 nearly every time, which is what makes browsing feel slow on a remote connection.
+ *
+ * Stays `private` so only the browser stores it, never a shared proxy or CDN, because the content
+ * is behind authentication.
+ */
+val cacheImageContent =
+  CacheControl
+    .maxAge(1, TimeUnit.DAYS)
+    .cachePrivate()
+
 fun getMediaTypeOrDefault(mediaTypeString: String?): MediaType {
   mediaTypeString?.let {
     try {

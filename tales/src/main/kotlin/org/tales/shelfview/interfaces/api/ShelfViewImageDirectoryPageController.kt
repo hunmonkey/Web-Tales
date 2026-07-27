@@ -26,7 +26,7 @@ import org.tales.infrastructure.web.getMediaTypeOrDefault
 import org.tales.interfaces.api.ContentRestrictionChecker
 import org.tales.interfaces.api.getBookLastModified
 import org.tales.interfaces.api.persistence.BookDtoRepository
-import org.tales.interfaces.api.setNotModified
+import org.tales.interfaces.api.setImageLastModified
 import java.nio.charset.StandardCharsets
 import org.tales.domain.model.MediaType as TalesMediaType
 
@@ -61,7 +61,7 @@ class ShelfViewImageDirectoryPageController(
     if (request.checkNotModified(getBookLastModified(media))) {
       return ResponseEntity
         .status(HttpStatus.NOT_MODIFIED)
-        .setNotModified(media)
+        .setImageLastModified(media)
         .body(ByteArray(0))
     }
 
@@ -86,7 +86,7 @@ class ShelfViewImageDirectoryPageController(
               .build()
         },
       ).contentType(getMediaTypeOrDefault(page.mediaType))
-      .setNotModified(media)
+      .setImageLastModified(media)
       .body(page.bytes)
   }
 

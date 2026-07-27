@@ -32,6 +32,39 @@ class WebMvcConfiguration : WebMvcConfigurer {
         "/manifest.json",
         "/shelfview-service-worker.js",
       )
+
+    /**
+     * Endpoints returning an image the browser may reuse without asking first, served with
+     * [cacheImageContent] instead of the API-wide [cachePrivate].
+     *
+     * This is the single place the image cache policy is decided. Setting `Cache-Control` on the
+     * `ResponseEntity` in a handler would not work: response entity headers are added to the
+     * servlet response rather than set on it, so both values would be sent and the one written
+     * here would still be the one that counts.
+     *
+     * A poster is safe to keep because the web UI appends a cache-busting query to its URL when
+     * the matching thumbnail SSE event arrives. A page image is safe because its content only
+     * changes when the book file is replaced, which re-analyzes the media.
+     *
+     * Deliberately excluded, because the reader has to see their current version: the page list
+     * (`/pages`, no trailing segment), `/positions`, manifests, and EPUB resources.
+     */
+    val imageResources =
+      listOf(
+        "/api/v1/books/*/thumbnail",
+        "/api/v1/books/*/thumbnails/*",
+        "/api/v1/series/*/thumbnail",
+        "/api/v1/series/*/thumbnails/*",
+        "/api/v1/collections/*/thumbnail",
+        "/api/v1/collections/*/thumbnails/*",
+        "/api/v1/readlists/*/thumbnail",
+        "/api/v1/readlists/*/thumbnails/*",
+        "/api/v1/books/*/pages/*",
+        "/api/v1/books/*/pages/*/thumbnail",
+        "/api/v1/books/*/pages/*/raw",
+        "/api/shelfview/v1/books/*/image-directory/pages/*",
+        "/api/shelfview/v1/books/*/mixed/*/pages/*",
+      )
   }
 
   override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
@@ -71,6 +104,17 @@ class WebMvcConfiguration : WebMvcConfigurer {
         )
       },
     )
+
+    // Images override the API-wide policy above. This is a second interceptor rather than a
+    // second mapping on the same one, because WebContentInterceptor holds its mappings in a
+    // HashMap and returns the first pattern that matches, which is not deterministic once two
+    // patterns overlap. Registered afterwards, so its Cache-Control replaces the one already set.
+    registry
+      .addInterceptor(
+        WebContentInterceptor().apply {
+          addCacheMapping(cacheImageContent, "/**")
+        },
+      ).addPathPatterns(imageResources)
   }
 
   override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {

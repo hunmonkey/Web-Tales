@@ -44,11 +44,11 @@ describe('FixedPageAdapter', () => {
     expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2'])
   })
 
-  it('prefetches a full double page spread ahead and stops at the last page', async () => {
+  it('prefetches two double page spreads ahead and stops at the last page', async () => {
     const {adapter, preloads} = createAdapter()
 
     await adapter.open({...manifest, pageCount: 6})
-    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2'])
+    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2', 'page-3', 'page-4'])
 
     await adapter.goTo({
       schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -57,7 +57,7 @@ describe('FixedPageAdapter', () => {
       offset: 0,
       contentFingerprint: manifest.contentFingerprint,
     })
-    expect(preloads.slice(2).map(x => x.url)).toEqual(['page-3', 'page-4'])
+    expect(preloads.slice(4).map(x => x.url)).toEqual(['page-3', 'page-4', 'page-5'])
 
     await adapter.goTo({
       schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -66,7 +66,7 @@ describe('FixedPageAdapter', () => {
       offset: 0,
       contentFingerprint: manifest.contentFingerprint,
     })
-    expect(preloads.slice(4).map(x => x.url)).toEqual([])
+    expect(preloads.slice(7).map(x => x.url)).toEqual([])
   })
 
   it('moves next, previous and clamps locator page boundaries', async () => {

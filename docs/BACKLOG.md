@@ -371,6 +371,35 @@ priority.
   keeps it up while the pointer keeps moving, and when a centre click with
   normal hand drift always toggles the chrome on a page that fits.
 
+## Duplicated Keep Reading on the dashboard, reported 2026-07-27
+
+- [x] SV-1067 Show "Keep Reading" once on the dashboard. Evidence: owner
+  reported the same book appearing twice on `/dashboard`, above and below each
+  other. The SV-1061 resume banner and the `KEEP_READING` shelf are both driven
+  by `loaderKeepReadingBooks`, and the banner is just `items[0]` of that shelf,
+  so with one book in progress the dashboard showed it twice under the same
+  title. Owner chose to keep the banner and drop the shelf, accepting that only
+  the most recently read book is reachable from the dashboard. Close when the
+  dashboard renders exactly one Keep Reading surface and the section switch in
+  the recommended-view dialog still turns it off.
+
+## Perceived slowness, reported 2026-07-27
+
+- [x] SV-1068 Stop revalidating every image on every view. Evidence: owner
+  reported the whole site feels slow, equally from inside and outside the
+  house. Measured on the production host: container CPU 0.09%, 675MB of a 2GB
+  heap, SQLite on the SSD pool reading at 1.2GB/s, a cold 20MB read from the
+  book array in 20ms, a ZIP page extracted in 40ms, HTTP `/` answered inside
+  the container in 2ms, and JS/CSS already Brotli-compressed and edge-cached by
+  Cloudflare. The server is not the bottleneck. What remained is that every
+  poster and page image was served `max-age=0, must-revalidate`, so each one
+  costs a round trip on every render even when the browser already holds it.
+  Two earlier suspicions were checked and dismissed: Vuetify's `v-img` already
+  defers off-screen images, and `EtagFilterConfiguration` already gives `/api/*`
+  an ETag, so nothing was being re-downloaded in full. Close when posters and
+  page images are reused from the browser cache without a revalidation request,
+  while the rest of the API still revalidates.
+
 ### Deliberately not planned
 
 - Reworking navigation into a bottom bar on mobile. The drawer plus

@@ -458,12 +458,10 @@ export default Vue.extend({
     getSectionConfig(section: RecommendedViewSection): SectionConfig | undefined {
       switch (section) {
         case RecommendedViewSection.KEEP_READING:
-          return {
-            loader: this.loaderKeepReadingBooks,
-            type: SectionType.BOOK,
-            value: section,
-            itemContext: [ItemContext.SHOW_SERIES],
-          }
+          // Drawn as the resume banner above the shelves. A shelf here would
+          // repeat the same books under the same title, so the section is
+          // enabled only to decide whether the banner is loaded at all.
+          return undefined
         case RecommendedViewSection.ON_DECK:
           return {
             loader: this.loaderOnDeckBooks,

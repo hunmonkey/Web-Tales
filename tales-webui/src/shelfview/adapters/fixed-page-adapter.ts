@@ -15,8 +15,9 @@ export type ShelfViewPageUrlResolver = (manifest: ShelfViewManifest, pageIndex: 
 export type ShelfViewPagePreloader = (url: string) => ShelfViewPagePreload
 
 // Double page shows two pages per turn, so prefetching only one page leaves the
-// second half of the next spread unfetched. Two pages covers both layouts.
-export const SHELFVIEW_PREFETCH_PAGE_COUNT = 2
+// second half of the next spread unfetched. Four covers the next spread and the
+// one after it, which keeps a reader who turns quickly ahead of the network.
+export const SHELFVIEW_PREFETCH_PAGE_COUNT = 4
 
 export class FixedPageAdapter implements ReaderAdapter {
   private manifest: ShelfViewManifest | undefined

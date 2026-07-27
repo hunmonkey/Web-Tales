@@ -90,6 +90,7 @@ import org.tales.interfaces.api.rest.dto.ThumbnailBookDto
 import org.tales.interfaces.api.rest.dto.patch
 import org.tales.interfaces.api.rest.dto.restrictUrl
 import org.tales.interfaces.api.rest.dto.toDto
+import org.tales.interfaces.api.setImageLastModified
 import org.tales.interfaces.api.setNotModified
 import java.nio.file.NoSuchFileException
 import java.time.LocalDate
@@ -552,7 +553,7 @@ class BookController(
       if (request.checkNotModified(getBookLastModified(media))) {
         return@let ResponseEntity
           .status(HttpStatus.NOT_MODIFIED)
-          .setNotModified(media)
+          .setImageLastModified(media)
           .body(ByteArray(0))
       }
 
@@ -564,7 +565,7 @@ class BookController(
         ResponseEntity
           .ok()
           .contentType(getMediaTypeOrDefault(pageContent.mediaType))
-          .setNotModified(media)
+          .setImageLastModified(media)
           .body(pageContent.bytes)
       } catch (ex: IndexOutOfBoundsException) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Page number does not exist")

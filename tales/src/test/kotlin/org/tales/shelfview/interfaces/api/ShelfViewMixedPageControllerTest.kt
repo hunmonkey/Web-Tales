@@ -117,7 +117,7 @@ class ShelfViewMixedPageControllerTest(
         .andExpect {
           status { isOk() }
           header { exists(HttpHeaders.LAST_MODIFIED) }
-          header { string(HttpHeaders.CACHE_CONTROL, "max-age=0, must-revalidate, private") }
+          header { string(HttpHeaders.CACHE_CONTROL, "max-age=86400, private") }
         }.andReturn()
 
     val lastModified = response.response.getHeader(HttpHeaders.LAST_MODIFIED)
