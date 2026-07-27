@@ -5329,7 +5329,7 @@ function isFiniteNumber(value: unknown): value is number {
 .shelfview-reader-shell__text {
   color: var(--sv-chrome-text);
   filter: brightness(var(--sv-text-brightness, 1));
-  font-family: var(--sv-text-font-family, Roboto, Arial, sans-serif);
+  font-family: var(--sv-text-font-family, Pretendard, Arial, sans-serif);
   font-size: var(--sv-text-font-size, 20px);
   font-weight: var(--sv-text-font-weight, 400);
   letter-spacing: var(--sv-text-letter-spacing, 0);

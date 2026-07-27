@@ -44,7 +44,7 @@ const FIXED_PAGE_SCALE_MAX = 300
 
 export const SHELFVIEW_TEXT_DISPLAY_DEFAULTS: ShelfViewTextDisplaySettings = {
   textTheme: 'PAPER',
-  textFontFamily: 'SYSTEM',
+  textFontFamily: 'PRETENDARD',
   textFontSize: 20,
   textLineHeight: 1.75,
   textLetterSpacing: 0,

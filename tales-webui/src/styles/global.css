@@ -2,6 +2,32 @@ html {
     overflow-y: auto !important;
 }
 
+/* Pretendard is bundled locally so the application keeps the same UI typeface
+   without reaching out to a font CDN. See OFL-Pretendard.txt next to the files. */
+@font-face {
+    font-display: swap;
+    font-family: Pretendard;
+    font-style: normal;
+    font-weight: 400;
+    src: url("~@/assets/fonts/Pretendard-Regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-display: swap;
+    font-family: Pretendard;
+    font-style: normal;
+    font-weight: 500;
+    src: url("~@/assets/fonts/Pretendard-Medium.woff2") format("woff2");
+}
+
+@font-face {
+    font-display: swap;
+    font-family: Pretendard;
+    font-style: normal;
+    font-weight: 700;
+    src: url("~@/assets/fonts/Pretendard-Bold.woff2") format("woff2");
+}
+
 :root {
     --tales-radius-sm: 10px;
     --tales-radius-md: 16px;
@@ -64,7 +90,7 @@ html {
 .v-application {
     background: var(--tales-app-background) !important;
     color: var(--tales-text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Roboto, sans-serif !important;
+    font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Roboto, sans-serif !important;
 }
 
 .link-none {

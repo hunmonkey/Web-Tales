@@ -4,6 +4,7 @@ export type ShelfViewTextTheme =
   | 'OLED'
 
 export type ShelfViewTextFontFamily =
+  | 'PRETENDARD'
   | 'SYSTEM'
   | 'GOWUN_DODUM'
   | 'GOWUN_BATANG'
@@ -36,7 +37,7 @@ export interface ShelfViewTextAlignDefinition {
 }
 
 export const SHELFVIEW_TEXT_THEMES: ShelfViewTextTheme[] = ['PAPER', 'DARK', 'OLED']
-export const SHELFVIEW_TEXT_FONT_FAMILIES: ShelfViewTextFontFamily[] = ['SYSTEM', 'GOWUN_DODUM', 'GOWUN_BATANG', 'READABLE_KR', 'SERIF', 'SANS', 'MONO']
+export const SHELFVIEW_TEXT_FONT_FAMILIES: ShelfViewTextFontFamily[] = ['PRETENDARD', 'SYSTEM', 'GOWUN_DODUM', 'GOWUN_BATANG', 'READABLE_KR', 'SERIF', 'SANS', 'MONO']
 export const SHELFVIEW_TEXT_ALIGNS: ShelfViewTextAlign[] = ['LEFT', 'JUSTIFY']
 
 const TEXT_THEME_DEFINITIONS: Record<ShelfViewTextTheme, ShelfViewTextThemeDefinition> = {
@@ -61,6 +62,11 @@ const TEXT_THEME_DEFINITIONS: Record<ShelfViewTextTheme, ShelfViewTextThemeDefin
 }
 
 const TEXT_FONT_FAMILY_DEFINITIONS: Record<ShelfViewTextFontFamily, ShelfViewTextFontFamilyDefinition> = {
+  PRETENDARD: {
+    value: 'PRETENDARD',
+    label: 'Pretendard',
+    cssValue: 'Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+  },
   SYSTEM: {
     value: 'SYSTEM',
     label: 'System',
