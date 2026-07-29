@@ -3,14 +3,13 @@
     class="ma-0 pa-0 shelfview-reader-shell"
     :class="{
       'shelfview-reader-shell--search-open': textSearchOpen && textSearchAvailable,
-      'shelfview-reader-shell--thumbnails': thumbnailStripVisible,
-      'shelfview-reader-shell--page-dock': pageDockVisible,
+      'shelfview-reader-shell--thumbnails': thumbnailStripReserved,
+      'shelfview-reader-shell--page-dock': pageDockReserved,
       'shelfview-reader-shell--chrome-visible': chromeVisible,
     }"
     dark
     fluid
     data-testid="shelfview-reader-shell"
-    @pointermove="onShellPointerMove"
   >
     <v-toolbar
       v-show="chromeVisible"
@@ -18,7 +17,6 @@
       dense
       flat
       class="shelfview-reader-shell__toolbar full-width"
-      :class="{'shelfview-reader-shell__toolbar--visible': chromeVisible}"
       data-testid="shelfview-reader-toolbar"
     >
       <v-btn
@@ -480,19 +478,6 @@
     >
       {{ readerLiveStatus }}
     </p>
-
-    <v-snackbar
-      v-model="chromeHintVisible"
-      content-class="tales-reader-snackbar"
-      top
-      centered
-      :timeout="chromeHintTimeoutMs"
-      data-testid="shelfview-reader-chrome-hint"
-    >
-      <p class="shelfview-reader-shell__chrome-hint-text">
-        {{ $t('shelfview_reader.chrome_hint') }}
-      </p>
-    </v-snackbar>
 
     <main
       ref="readerStage"
@@ -1793,16 +1778,10 @@ const FIXED_PAGE_WHEEL_SCALE_STEP = 10
 const TEXT_CONTENTS_LABEL_MAX_LENGTH = 80
 const TEXT_CONTENTS_HEADING_MAX_LENGTH = 96
 const TEXT_HIGHLIGHT_QUOTE_MAX_LENGTH = 500
-const CHROME_HINT_TIMEOUT_MS = 3000
-const CHROME_AUTO_HIDE_DELAY_MS = 5000
-// Filters the pointermove events a browser emits for a stationary mouse when
-// the layout shifts under it, so showing the chrome cannot re-trigger itself.
-const MOUSE_ACTIVITY_THRESHOLD_PX = 2
 const TEXT_TO_SPEECH_RATE_DEFAULT = 1
 const TEXT_TO_SPEECH_RATE_MIN = 0.7
 const TEXT_TO_SPEECH_RATE_MAX = 1.4
 const DICTIONARY_PACK_STORAGE_KEY = 'shelfview.dictionaryPack.v1'
-const CHROME_HINT_STORAGE_KEY = 'shelfview.chromeHintSeen.v1'
 
 export default Vue.extend({
   name: 'ShelfViewReaderShell',
@@ -1860,14 +1839,11 @@ export default Vue.extend({
     openControlMenu: null as string | null,
     controlMenuLeft: 0,
     controlMenuTop: 50,
-    chromeVisible: false,
+    // The toolbar is the reader's only way in to every control, so it stays up
+    // until the reader deliberately hides it.
+    chromeVisible: true,
     overflowMenuOpen: false,
     thumbnailStripOpen: false,
-    chromeHintVisible: false,
-    chromeHintTimeoutMs: CHROME_HINT_TIMEOUT_MS,
-    chromeAutoHideDelayMs: CHROME_AUTO_HIDE_DELAY_MS,
-    chromeIdleTimer: undefined as number | undefined,
-    lastMousePoint: undefined as ShelfViewTouchPoint | undefined,
     textSearchOpen: false,
     textSearchQuery: '',
     textSearchMatchIndex: 0,
@@ -1967,20 +1943,6 @@ export default Vue.extend({
     next()
   },
   watch: {
-    chromeVisible(visible: boolean) {
-      if (visible) {
-        this.scheduleChromeAutoHide()
-      } else {
-        this.clearChromeAutoHide()
-      }
-    },
-    anyChromePanelOpen(open: boolean) {
-      if (open) {
-        this.clearChromeAutoHide()
-      } else {
-        this.scheduleChromeAutoHide()
-      }
-    },
     dictionaryQuery() {
       void this.refreshDictionaryServerLookup()
     },
@@ -2249,6 +2211,14 @@ export default Vue.extend({
     },
     pageDockVisible(): boolean {
       return this.chromeVisible && this.pageControlsVisible && this.$vuetify.breakpoint.smAndDown
+    },
+    // The bottom chrome hides along with the toolbar, but the space it occupies
+    // stays reserved either way, so toggling the toolbar cannot resize the page.
+    thumbnailStripReserved(): boolean {
+      return this.thumbnailStripOpen && this.thumbnailStripAvailable
+    },
+    pageDockReserved(): boolean {
+      return this.pageControlsVisible && this.$vuetify.breakpoint.smAndDown
     },
     visibleTextParagraphs(): ShelfViewTextParagraph[] {
       return this.textAdapter?.getVisibleParagraphs(this.readerLayout) ?? this.mixedContentAdapter?.getVisibleParagraphs(this.readerLayout) ?? []
@@ -2619,10 +2589,9 @@ export default Vue.extend({
       this.textSearchOpen = false
       this.textSearchQuery = ''
       this.textSearchMatchIndex = 0
-      this.chromeVisible = false
+      this.chromeVisible = true
       this.overflowMenuOpen = false
       this.thumbnailStripOpen = false
-      this.maybeShowChromeHint()
       this.siblingNext = undefined
       this.endOfBookPromptOpen = false
       this.stopSlideshow()
@@ -2863,7 +2832,7 @@ export default Vue.extend({
       if (!stage) return
 
       const stageWidth = stage.clientWidth
-      const stageHeight = stage.clientHeight
+      const stageHeight = stage.clientHeight - this.readerStageVerticalPadding(stage)
       if (stageWidth <= 0 || stageHeight <= 0) return
 
       this.textAdapter.setPagination(shelfViewEstimateCharsPerPage({
@@ -2874,6 +2843,17 @@ export default Vue.extend({
         marginX: this.textPageMargin,
         marginY: Math.max(18, Math.round(this.textPageMargin * 0.75)),
       }))
+    },
+    // clientHeight counts the stage padding, and the toolbar reservation makes
+    // that padding big enough to matter, so the page budget is measured against
+    // the height the text can actually use rather than the whole stage.
+    readerStageVerticalPadding(stage: HTMLElement): number {
+      const styles = window.getComputedStyle?.(stage)
+      if (!styles) return 0
+
+      const top = Number.parseFloat(styles.paddingTop)
+      const bottom = Number.parseFloat(styles.paddingBottom)
+      return (Number.isFinite(top) ? top : 0) + (Number.isFinite(bottom) ? bottom : 0)
     },
     async previousPage() {
       if (!this.adapter) return
@@ -3410,31 +3390,6 @@ export default Vue.extend({
         window.clearTimeout(this.preferenceSaveTimer)
         this.preferenceSaveTimer = undefined
       }
-      this.clearChromeAutoHide()
-    },
-    clearChromeAutoHide() {
-      if (this.chromeIdleTimer !== undefined) {
-        window.clearTimeout(this.chromeIdleTimer)
-        this.chromeIdleTimer = undefined
-      }
-    },
-    scheduleChromeAutoHide() {
-      this.clearChromeAutoHide()
-      if (!this.chromeVisible || this.anyChromePanelOpen) return
-
-      this.chromeIdleTimer = window.setTimeout(() => {
-        this.hideChromeAfterIdle()
-      }, this.chromeAutoHideDelayMs)
-    },
-    hideChromeAfterIdle() {
-      this.clearChromeAutoHide()
-      if (this.anyChromePanelOpen) return
-
-      this.chromeVisible = false
-      this.closeOverflowMenu()
-    },
-    noteChromeActivity() {
-      if (this.chromeVisible) this.scheduleChromeAutoHide()
     },
     setReaderStateStatus(
       status: ShelfViewReaderStateStatus,
@@ -3813,14 +3768,6 @@ export default Vue.extend({
       this.chromeVisible = !this.chromeVisible
       if (!this.chromeVisible) this.closeOverflowMenu()
     },
-    showChromeFromReaderTap() {
-      if (!this.chromeVisible) {
-        this.chromeVisible = true
-        return
-      }
-
-      this.scheduleChromeAutoHide()
-    },
     toggleOverflowMenu() {
       this.overflowMenuOpen = !this.overflowMenuOpen
     },
@@ -3829,17 +3776,6 @@ export default Vue.extend({
     },
     toggleThumbnailStrip() {
       this.thumbnailStripOpen = !this.thumbnailStripOpen
-      this.noteChromeActivity()
-    },
-    maybeShowChromeHint() {
-      const storage = this.browserStorage()
-      try {
-        if (storage?.getItem(CHROME_HINT_STORAGE_KEY)) return
-        storage?.setItem(CHROME_HINT_STORAGE_KEY, 'true')
-      } catch (e) {
-        // Ignore private-mode storage failures; the hint is only a first-run aid.
-      }
-      this.chromeHintVisible = true
     },
     toggleFullscreen() {
       if (!screenfull.isEnabled) return
@@ -3851,7 +3787,6 @@ export default Vue.extend({
     },
     onFullscreenChange() {
       this.isFullscreen = screenfull.isEnabled && screenfull.isFullscreen
-      if (this.isFullscreen) this.chromeVisible = false
     },
     closeBookmarksDrawer() {
       this.bookmarksDrawerOpen = false
@@ -4319,7 +4254,6 @@ export default Vue.extend({
     async onReaderKeydown(e: KeyboardEvent) {
       if (e.ctrlKey || e.altKey || e.metaKey) return
       if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
-      this.noteChromeActivity()
 
       if (this.endOfBookPromptOpen) {
         if (e.key === 'Escape') {
@@ -4411,28 +4345,6 @@ export default Vue.extend({
       this.fixedPagePanning = false
       readerStage.setPointerCapture?.(e.pointerId)
       if (e.cancelable) e.preventDefault()
-    },
-    // Sits on the shell rather than the stage so that once the toolbar appears
-    // under the cursor, moving over the toolbar itself keeps it alive.
-    onShellPointerMove(e: PointerEvent) {
-      if (e.pointerType !== 'mouse') {
-        this.noteChromeActivity()
-        return
-      }
-
-      const moved = this.mousePointerMoved(e)
-      if (!moved || this.fixedPagePanning) return
-
-      // A mouse has no tap target to aim at, so moving it is how a reader on a
-      // computer asks for the chrome back.
-      this.showChromeFromReaderTap()
-    },
-    mousePointerMoved(e: PointerEvent): boolean {
-      const previous = this.lastMousePoint
-      this.lastMousePoint = {x: e.clientX, y: e.clientY}
-      if (!previous) return false
-
-      return Math.abs(e.clientX - previous.x) + Math.abs(e.clientY - previous.y) > MOUSE_ACTIVITY_THRESHOLD_PX
     },
     readerStageCanPan(readerStage: HTMLElement): boolean {
       return readerStage.scrollWidth > readerStage.clientWidth ||
@@ -4781,7 +4693,7 @@ export default Vue.extend({
           this.toggleFullscreen()
           break
         case 'TOGGLE_CHROME':
-          this.showChromeFromReaderTap()
+          this.toggleChrome()
           break
         case 'SHOW_SHORTCUTS':
           this.showShortcutHelp = true
@@ -4858,24 +4770,17 @@ function isFiniteNumber(value: unknown): value is number {
 
 /* The toolbar stays dark in both application themes so the chrome never glows
    next to the page, and it is painted from the shared tokens rather than the
-   Vuetify theme surface. */
+   Vuetify theme surface. It floats over the page instead of reserving space, so
+   showing or hiding it never resizes the page underneath. */
 .shelfview-reader-shell__toolbar.v-toolbar {
   backdrop-filter: blur(18px);
   background-color: var(--sv-chrome-elevated) !important;
   border-bottom: 1px solid var(--sv-chrome-border);
   color: var(--sv-chrome-text);
   min-width: 0;
-  opacity: 0;
   position: fixed;
   top: 0;
-  transform: translateY(-100%);
-  transition: opacity 160ms ease, transform 160ms ease;
   z-index: 2;
-}
-
-.shelfview-reader-shell__toolbar--visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .shelfview-reader-shell__title {
@@ -5102,12 +5007,6 @@ function isFiniteNumber(value: unknown): value is number {
   outline-offset: 1px;
 }
 
-.shelfview-reader-shell__chrome-hint-text {
-  font-size: 16px;
-  margin: 0;
-  text-align: center;
-}
-
 .shelfview-reader-shell__search-bar {
   align-items: center;
   background: var(--sv-chrome-surface);
@@ -5167,18 +5066,6 @@ function isFiniteNumber(value: unknown): value is number {
   width: 100%;
 }
 
-.shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage {
-  padding-top: 56px;
-}
-
-.shelfview-reader-shell--search-open.shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage {
-  padding-top: 104px;
-}
-
-.shelfview-reader-shell--search-open:not(.shelfview-reader-shell--chrome-visible) .shelfview-reader-shell__stage {
-  padding-top: 56px;
-}
-
 .shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage {
   padding-bottom: 104px;
 }
@@ -5212,18 +5099,6 @@ function isFiniteNumber(value: unknown): value is number {
   padding: var(--sv-fixed-page-margin, 16px);
 }
 
-.shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage--fixed {
-  padding-top: 56px;
-}
-
-.shelfview-reader-shell--search-open.shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage--fixed {
-  padding-top: 104px;
-}
-
-.shelfview-reader-shell--search-open:not(.shelfview-reader-shell--chrome-visible) .shelfview-reader-shell__stage--fixed {
-  padding-top: 56px;
-}
-
 .shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage--fixed {
   padding-bottom: 104px;
 }
@@ -5238,6 +5113,24 @@ function isFiniteNumber(value: unknown): value is number {
   overflow-y: auto;
   padding-left: 0;
   padding-right: 0;
+}
+
+/* A page that fits the screen may sit under the toolbar, but content that
+   scrolls cannot be pulled back out from under it, so the scrolling layouts
+   always reserve the toolbar height. The reservation never depends on the
+   toolbar being up, so hiding it does not move the page. Both classes are
+   repeated to outrank the shorthand padding these layouts inherit. */
+.shelfview-reader-shell__stage.shelfview-reader-shell__stage--continuous,
+.shelfview-reader-shell__stage.shelfview-reader-shell__stage--text {
+  padding-top: 48px;
+}
+
+/* The search bar is another fixed strip below the toolbar, and it covers
+   scrolling content the same way, so opening it extends the same reservation.
+   Opening search is a deliberate action, unlike the old idle auto-hide, so the
+   one-off shift it causes is expected rather than jitter. */
+.shelfview-reader-shell--search-open .shelfview-reader-shell__stage--text {
+  padding-top: 104px;
 }
 
 .shelfview-reader-shell__pages {
@@ -5985,21 +5878,6 @@ function isFiniteNumber(value: unknown): value is number {
 
   .shelfview-reader-shell__stage--fixed {
     padding: var(--sv-fixed-page-margin, 8px);
-  }
-
-  .shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage,
-  .shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage--fixed {
-    padding-top: 56px;
-  }
-
-  .shelfview-reader-shell--search-open.shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage,
-  .shelfview-reader-shell--search-open.shelfview-reader-shell--chrome-visible .shelfview-reader-shell__stage--fixed {
-    padding-top: 104px;
-  }
-
-  .shelfview-reader-shell--search-open:not(.shelfview-reader-shell--chrome-visible) .shelfview-reader-shell__stage,
-  .shelfview-reader-shell--search-open:not(.shelfview-reader-shell--chrome-visible) .shelfview-reader-shell__stage--fixed {
-    padding-top: 56px;
   }
 
   .shelfview-reader-shell__pages {

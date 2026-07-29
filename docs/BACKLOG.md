@@ -451,3 +451,25 @@ loading states those tickets introduced. The owner approved fixing all four.
   than SV-1070 because the pre-SV-1060 behaviour was an empty grid rather than
   a stuck one. Close when a failed load leaves the skeleton state and shows the
   existing empty slot.
+
+## Reader toolbar and page stability, reported 2026-07-29
+
+- [x] SV-1072 Pin the reader toolbar and stop the page from moving under it.
+  Evidence: owner reported that the top menu never appears in the reader and
+  that the page shifts up and down while reading. Two findings, one cause.
+  First, `chromeVisible` started `false` on every `setup()`, the only ways in
+  were the 35–65% centre tap, mouse movement and `Escape`, and
+  `CHROME_AUTO_HIDE_DELAY_MS` took the toolbar away again after five seconds;
+  the `shelfview_reader.chrome_hint` snackbar that taught the centre tap only
+  ever showed once per browser (`shelfview.chromeHintSeen.v1`), so a reader who
+  missed it had no way to learn the gesture. Second, the toolbar is already a
+  `position: fixed` overlay, yet `.shelfview-reader-shell--chrome-visible` also
+  pushed `.shelfview-reader-shell__stage` from `padding: 16px` to
+  `padding-top: 56px` (and to `104px` with the search bar open, in both the
+  desktop rules and the narrow-screen media query), so every auto show/hide
+  cycle resized the stage by 40px and re-fitted the page. Owner chose a pinned
+  toolbar over the auto-hide, and chose to let it overlay the page rather than
+  reserve space for it, accepting that the top ~48px of a page sits under the
+  translucent toolbar. Close when the toolbar is up as soon as a book opens and
+  stays up until the reader hides it with `Escape` or a centre tap, and when
+  showing or hiding it never changes the size or position of the page.

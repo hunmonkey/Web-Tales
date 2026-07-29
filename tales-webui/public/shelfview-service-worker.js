@@ -55,8 +55,13 @@ function isCacheableStaticRequest(request, url) {
 async function networkFirstAppShell(request) {
   try {
     const response = await fetch(request)
-    const cache = await caches.open(CACHE_NAME)
-    await cache.put('./', response.clone())
+    // Only a good response may become the offline shell. Caching an error page
+    // reached during a server restart would keep serving that error to every
+    // later offline visit, which is exactly when the shell has to work.
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME)
+      await cache.put('./', response.clone())
+    }
     return response
   } catch (e) {
     return await caches.match('./') || new Response('Tales is offline.', {

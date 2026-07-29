@@ -296,7 +296,6 @@ describe('ShelfViewReaderShell', () => {
   afterEach(() => {
     mountedWrappers.splice(0).forEach(wrapper => wrapper.destroy())
     jest.useRealTimers()
-    window.localStorage.removeItem('shelfview.chromeHintSeen.v1')
     process.env.VUE_APP_SHELFVIEW_READER = originalReaderFlag
     mockScreenfull.isEnabled = false
     mockScreenfull.isFullscreen = false
@@ -326,25 +325,23 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text()).toBe('Page 1 of 2')
   })
 
-  it('starts with reader chrome hidden and shows the center-tap hint once', async () => {
-    window.localStorage.removeItem('shelfview.chromeHintSeen.v1')
-
-    const firstWrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+  it('starts with the reader toolbar visible and keeps it up while reading', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
 
     await flushPromises()
     await Vue.nextTick()
 
-    expect((firstWrapper.vm as any).chromeVisible).toBe(false)
-    expect(firstWrapper.find('[data-testid="shelfview-reader-toolbar"]').attributes('style')).toContain('display: none')
-    expect(firstWrapper.find('[data-testid="shelfview-reader-chrome-hint"]').exists()).toBe(true)
-    expect(window.localStorage.getItem('shelfview.chromeHintSeen.v1')).toBe('true')
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').attributes('style') ?? '').not.toContain('display: none')
 
-    const secondWrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
-
-    await flushPromises()
+    // flushPromises runs on a real timer, so the clock is only faked once the
+    // reader is up, and nothing may hide the toolbar however long it sits idle.
+    jest.useFakeTimers()
+    jest.advanceTimersByTime(60000)
     await Vue.nextTick()
 
-    expect((secondWrapper.vm as any).chromeHintVisible).toBe(false)
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').attributes('style') ?? '').not.toContain('display: none')
   })
 
   it('keeps only primary controls on the toolbar surface and moves the rest to overflow', async () => {
@@ -378,77 +375,47 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').find('[data-testid="shelfview-reader-bookmarks-toggle"]').exists()).toBe(true)
   })
 
-  it('auto-hides reader chrome after idle and pauses while overflow is open', async () => {
+  it('keeps the reader toolbar up after a chrome panel closes', async () => {
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
     const vm = wrapper.vm as any
 
     await flushPromises()
     await Vue.nextTick()
 
-    await wrapper.setData({chromeAutoHideDelayMs: 20, chromeVisible: true})
-    await wait(10)
-    vm.noteChromeActivity()
-    await wait(14)
-    await Vue.nextTick()
-
-    expect(vm.chromeVisible).toBe(true)
-
-    await wait(18)
-    await Vue.nextTick()
-
-    expect(vm.chromeVisible).toBe(false)
-
-    await wrapper.setData({chromeVisible: true, overflowMenuOpen: true})
-    await wait(28)
-    await Vue.nextTick()
-
-    expect(vm.chromeVisible).toBe(true)
-
+    await wrapper.setData({overflowMenuOpen: true})
     vm.closeOverflowMenu()
-    await wait(28)
     await Vue.nextTick()
 
-    expect(vm.chromeVisible).toBe(false)
-  })
-
-  it('brings the reader chrome back when the mouse moves', async () => {
-    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
-    const vm = wrapper.vm as any
-
-    await flushPromises()
-    await Vue.nextTick()
-
-    expect(vm.chromeVisible).toBe(false)
-
-    vm.onShellPointerMove({pointerType: 'mouse', clientX: 400, clientY: 300})
-    await Vue.nextTick()
-
-    expect(vm.chromeVisible).toBe(false)
-
-    vm.onShellPointerMove({pointerType: 'mouse', clientX: 460, clientY: 320})
+    jest.useFakeTimers()
+    jest.advanceTimersByTime(60000)
     await Vue.nextTick()
 
     expect(vm.chromeVisible).toBe(true)
   })
 
-  it('leaves the reader chrome hidden for a stationary mouse or a moving finger', async () => {
+  it('hides the reader toolbar only when the reader asks and restores it the same way', async () => {
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
     const vm = wrapper.vm as any
 
     await flushPromises()
     await Vue.nextTick()
 
-    vm.onShellPointerMove({pointerType: 'mouse', clientX: 400, clientY: 300})
-    vm.onShellPointerMove({pointerType: 'mouse', clientX: 401, clientY: 300})
+    vm.toggleChrome()
+    await Vue.nextTick()
+
+    expect(vm.chromeVisible).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').attributes('style')).toContain('display: none')
+
+    jest.useFakeTimers()
+    jest.advanceTimersByTime(60000)
     await Vue.nextTick()
 
     expect(vm.chromeVisible).toBe(false)
 
-    vm.onShellPointerMove({pointerType: 'touch', clientX: 100, clientY: 300})
-    vm.onShellPointerMove({pointerType: 'touch', clientX: 400, clientY: 300})
+    vm.toggleChrome()
     await Vue.nextTick()
 
-    expect(vm.chromeVisible).toBe(false)
+    expect(vm.chromeVisible).toBe(true)
   })
 
   it('does not expose a legacy-reader fallback from ShelfView', async () => {
@@ -2373,9 +2340,10 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(preventDefault).toHaveBeenCalled()
-    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
 
     const vm = wrapper.vm as any
+    vm.chromeVisible = true
     vm.openControlMenu = 'layout'
     await Vue.nextTick()
 
@@ -2408,14 +2376,14 @@ describe('ShelfViewReaderShell', () => {
     await toggle.trigger('click')
     expect(mockScreenfull.request).toHaveBeenCalled()
 
-    await wrapper.setData({chromeVisible: true})
     const changeHandler = mockScreenfull.on.mock.calls.find((call: any[]) => call[0] === 'change')![1]
     mockScreenfull.isFullscreen = true
     changeHandler()
     await Vue.nextTick()
 
     expect((wrapper.vm as any).isFullscreen).toBe(true)
-    expect((wrapper.vm as any).chromeVisible).toBe(false)
+    // Going fullscreen must not take the toolbar away with it.
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
 
     await wrapper.find('[data-testid="shelfview-reader-fullscreen-toggle"]').trigger('click')
     expect(mockScreenfull.exit).toHaveBeenCalled()
@@ -2512,7 +2480,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 2')
   })
 
-  it('shows reader chrome with fixed-page center mouse taps without hiding it again', async () => {
+  it('toggles reader chrome with fixed-page center mouse taps', async () => {
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
 
     await flushPromises()
@@ -2543,7 +2511,7 @@ describe('ShelfViewReaderShell', () => {
     })
     await Vue.nextTick()
 
-    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
 
     await (wrapper.vm as any).onReaderPointerDown({
       pointerType: 'mouse',
@@ -2567,7 +2535,7 @@ describe('ShelfViewReaderShell', () => {
     expect((wrapper.vm as any).chromeVisible).toBe(true)
   })
 
-  it('still shows reader chrome when the mouse drifts during a center click', async () => {
+  it('still treats a drifting center click as a chrome toggle', async () => {
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
     const vm = wrapper.vm as any
 
@@ -2604,7 +2572,7 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(vm.fixedPagePanning).toBe(false)
-    expect(vm.chromeVisible).toBe(true)
+    expect(vm.chromeVisible).toBe(false)
   })
 
   it('pans instead of tapping when the page is larger than the stage', async () => {
@@ -2646,10 +2614,11 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(stage.element.scrollLeft).toBe(40)
-    expect(vm.chromeVisible).toBe(false)
+    // Panning must leave the toolbar exactly as it was rather than count as a tap.
+    expect(vm.chromeVisible).toBe(true)
   })
 
-  it('shows reader chrome with a touch center tap without moving pages', async () => {
+  it('toggles reader chrome with a touch center tap without moving pages', async () => {
     const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
 
     await flushPromises()
@@ -2672,7 +2641,7 @@ describe('ShelfViewReaderShell', () => {
     })
     await Vue.nextTick()
 
-    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 2')
   })
 
@@ -2761,7 +2730,7 @@ describe('ShelfViewReaderShell', () => {
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
   })
 
-  it('shows reader chrome from text mouse center taps without side paging', async () => {
+  it('toggles reader chrome from text mouse center taps without side paging', async () => {
     const wrapper = mountShell({
       getManifest: jest.fn().mockResolvedValue(textManifest),
       shelfViewState: {
@@ -2801,7 +2770,8 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
-    expect((wrapper.vm as any).chromeVisible).toBe(false)
+    // A side tap in text is not a paging zone, so it leaves the toolbar alone.
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
 
     await (wrapper.vm as any).onReaderPointerDown({
       pointerType: 'mouse',
@@ -2822,7 +2792,7 @@ describe('ShelfViewReaderShell', () => {
     })
     await Vue.nextTick()
 
-    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
   })
 
   it('debounces position saving and flushes pending saves', async () => {
@@ -3375,6 +3345,25 @@ describe('ShelfViewReaderShell', () => {
     await desktop.setData({chromeVisible: true})
 
     expect(desktop.find('[data-testid="shelfview-reader-page-dock"]').exists()).toBe(false)
+  })
+
+  it('keeps the bottom chrome space reserved while the toolbar is hidden', async () => {
+    const phone = mountShell({getManifest: jest.fn().mockResolvedValue(manifest), smAndDown: true})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(phone.find('[data-testid="shelfview-reader-shell"]').classes())
+      .toContain('shelfview-reader-shell--page-dock')
+
+    await phone.setData({chromeVisible: false})
+    await Vue.nextTick()
+
+    // The dock itself goes away with the toolbar, but the reservation that keeps
+    // the page clear of it must not, or hiding the toolbar would resize the page.
+    expect(phone.find('[data-testid="shelfview-reader-page-dock"]').exists()).toBe(false)
+    expect(phone.find('[data-testid="shelfview-reader-shell"]').classes())
+      .toContain('shelfview-reader-shell--page-dock')
   })
 
   it('stops offering the back exit after moving to another book inside the reader', async () => {
