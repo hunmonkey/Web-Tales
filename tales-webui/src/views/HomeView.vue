@@ -345,6 +345,7 @@ import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
 import SearchBox from '@/components/SearchBox.vue'
 import {resolveShellShortcut} from '@/functions/shell-shortcuts'
 import {Theme} from '@/types/themes'
+import {CLIENT_SETTING} from '@/types/tales-clientsettings'
 import Vue from 'vue'
 import {LIBRARIES_ALL} from '@/types/library'
 import ToasterNotification from '@/components/ToasterNotification.vue'
@@ -457,6 +458,7 @@ export default Vue.extend({
       set: function (theme: Theme): void {
         if (Object.values(Theme).includes(theme)) {
           this.$store.commit('setTheme', theme)
+          this.saveUserPreference(CLIENT_SETTING.WEBUI_THEME, theme)
         }
       },
     },
@@ -467,11 +469,18 @@ export default Vue.extend({
       set: function (locale: string): void {
         if (this.$i18n.availableLocales.includes(locale)) {
           this.$store.commit('setLocale', locale)
+          this.saveUserPreference(CLIENT_SETTING.WEBUI_LOCALE, locale)
         }
       },
     },
   },
   methods: {
+    // The setting is applied locally first; persisting it is what makes it follow
+    // the account to the next sign-in, so a failure here is not worth blocking on.
+    saveUserPreference(key: CLIENT_SETTING, value: string) {
+      this.$store.dispatch('saveUserPreference', {key: key, value: value})
+        .catch(e => this.$debug(e.message))
+    },
     // Browsing had no shortcuts at all; these two cover the moves people repeat
     // most. The decision itself lives in functions/shell-shortcuts.ts.
     onShellShortcut(event: KeyboardEvent) {

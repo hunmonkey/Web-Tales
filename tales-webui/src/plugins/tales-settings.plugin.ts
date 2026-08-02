@@ -9,10 +9,12 @@ import {
   ClientSettingLibraryUpdate,
   ClientSettingUserUpdateDto,
 } from '@/types/tales-clientsettings'
+import {Theme} from '@/types/themes'
+import i18n from '@/i18n'
 
 let service: TalesSettingsService
 
-const vuexModule: Module<any, any> = {
+export const vuexModule: Module<any, any> = {
   state: {
     clientSettingsGlobal: {} as Record<string, ClientSettingDto>,
     clientSettingsUser: {} as Record<string, ClientSettingDto>,
@@ -44,6 +46,21 @@ const vuexModule: Module<any, any> = {
     },
     async getClientSettingsUser({commit}) {
       commit('setClientSettingsUser', await service.getClientSettingsUser())
+    },
+    // Theme and locale are stored per account on the server, so signing in restores
+    // the preferences of that account instead of whatever the browser last used.
+    applyUserPreferences({state, commit}) {
+      const theme = state.clientSettingsUser[CLIENT_SETTING.WEBUI_THEME]?.value
+      if (Object.values(Theme).includes(theme)) commit('setTheme', theme)
+
+      const locale = state.clientSettingsUser[CLIENT_SETTING.WEBUI_LOCALE]?.value
+      if (i18n.availableLocales.includes(locale)) commit('setLocale', locale)
+    },
+    async saveUserPreference({dispatch}, {key, value}: { key: CLIENT_SETTING, value: string }) {
+      const newSettings = {} as Record<string, ClientSettingUserUpdateDto>
+      newSettings[key] = {value: value}
+      await service.updateClientSettingUser(newSettings)
+      await dispatch('getClientSettingsUser')
     },
     async updateLibrarySetting({dispatch, getters}, update: ClientSettingLibraryUpdate) {
       const all = getters.getClientSettingsLibraries

@@ -48,9 +48,8 @@ const getLibraryRoute = (libraryId: string) => {
       return 'browse-libraries'
     case LIBRARY_ROUTE.BOOKS:
       return 'browse-books'
-    case LIBRARY_ROUTE.RECOMMENDED:
     default:
-      return libraryId === LIBRARIES_ALL ? 'browse-libraries' : 'recommended-libraries'
+      return 'browse-libraries'
   }
 }
 
@@ -185,11 +184,13 @@ const router = new Router({
           }),
         },
         {
+          // The per-library Recommended view was removed. Kept as a redirect so
+          // existing bookmarks and stored library routes do not dead-end.
           path: '/libraries/:libraryId/recommended',
-          name: 'recommended-libraries',
-          beforeEnter: noLibraryGuard,
-          component: () => import(/* webpackChunkName: "dashboard" */ './views/DashboardView.vue'),
-          props: (route) => ({libraryId: route.params.libraryId}),
+          redirect: (route) => ({
+            name: 'browse-libraries',
+            params: {libraryId: route.params.libraryId},
+          }),
         },
         {
           path: '/libraries/:libraryId/books',
@@ -322,7 +323,7 @@ const router = new Router({
 router.beforeEach((to, from, next) => {
   // avoid document.title flickering when changing route
   if (!['read-book', 'read-book-v2', 'read-local', 'read-epub', 'browse-book', 'browse-oneshot', 'browse-series', 'browse-libraries', 'browse-books',
-    'recommended-libraries', 'browse-collection', 'browse-collections', 'browse-readlist', 'browse-readlists'].includes(<string>to.name)
+    'browse-collection', 'browse-collections', 'browse-readlist', 'browse-readlists'].includes(<string>to.name)
   ) {
     document.title = 'Tales'
   }

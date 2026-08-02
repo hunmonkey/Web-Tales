@@ -32,6 +32,7 @@ export default Vue.extend({
       await this.$store.dispatch('getLibraries')
       await this.$store.dispatch('getClientSettingsGlobal')
       await this.$store.dispatch('getClientSettingsUser')
+      await this.$store.dispatch('applyUserPreferences')
       const redirect = this.$route.query.redirect?.toString()
       const isSafeRedirect = !!redirect &&
         redirect.startsWith('/') &&

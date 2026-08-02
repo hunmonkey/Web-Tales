@@ -1,7 +1,9 @@
 <template>
   <main class="auth-shell">
     <section class="auth-shell__panel">
-      <logo-mark class="auth-shell__logo" :max-width="220"/>
+      <div class="auth-shell__logo-row">
+        <logo-mark class="auth-shell__logo" :max-width="220"/>
+      </div>
 
       <v-card flat class="auth-card">
         <form novalidate @submit.prevent="performLogin">
@@ -83,28 +85,6 @@
             <v-icon left>mdi-{{ provider.registrationId }}</v-icon>
             Sign in with {{ provider.name }}
           </v-btn>
-
-          <v-row dense class="auth-card__preferences">
-            <v-col cols="6">
-              <v-select
-                v-model="locale"
-                :items="locales"
-                :label="$t('home.translation')"
-                prepend-icon="mdi-translate"
-                hide-details
-              />
-            </v-col>
-
-            <v-col cols="6">
-              <v-select
-                v-model="theme"
-                :items="themes"
-                :label="$t('home.theme')"
-                :prepend-icon="themeIcon"
-                hide-details
-              />
-            </v-col>
-          </v-row>
         </form>
       </v-card>
     </section>
@@ -135,6 +115,8 @@ import {socialButtons} from '@/types/social'
 import {convertErrorCodes} from '@/functions/error-codes'
 import {CLIENT_SETTING} from '@/types/tales-clientsettings'
 
+const LOGIN_LOCALE = 'ko'
+
 export default Vue.extend({
   name: 'LoginView',
   components: {LogoMark},
@@ -150,7 +132,6 @@ export default Vue.extend({
       snackText: '',
       unclaimed: false,
       oauth2Providers: [] as OAuth2ClientDto[],
-      locales: this.$i18n.availableLocales.map((x: any) => ({text: this.$i18n.t('common.locale_name', x), value: x})),
       clientSettings: {} as Record<string, ClientSettingDto>,
     }
   },
@@ -173,17 +154,6 @@ export default Vue.extend({
         && !this.$route.query.error
         && !this.$route.query.logout
     },
-    locale: {
-      get: function (): string {
-        return this.$i18n.locale
-      },
-      set: function (locale: string): void {
-        if (this.$i18n.availableLocales.includes(locale)) {
-          this.$store.commit('setLocale', locale)
-        }
-      },
-    },
-
     rememberMe: {
       get: function (): boolean {
         return this.$store.state.persistedState.rememberMe
@@ -192,38 +162,11 @@ export default Vue.extend({
         this.$store.commit('setRememberMe', value)
       },
     },
-
-    themes(): object[] {
-      return [
-        {text: this.$i18n.t(Theme.LIGHT), value: Theme.LIGHT},
-        {text: this.$i18n.t(Theme.DARK), value: Theme.DARK},
-        {text: this.$i18n.t(Theme.SYSTEM), value: Theme.SYSTEM},
-      ]
-    },
-    themeIcon(): string {
-      switch (this.theme) {
-        case Theme.LIGHT:
-          return 'mdi-brightness-7'
-        case Theme.DARK:
-          return 'mdi-brightness-3'
-        case Theme.SYSTEM:
-          return 'mdi-brightness-auto'
-      }
-      return ''
-    },
-
-    theme: {
-      get: function (): Theme {
-        return this.$store.state.persistedState.theme
-      },
-      set: function (theme: Theme): void {
-        if (Object.values(Theme).includes(theme)) {
-          this.$store.commit('setTheme', theme)
-        }
-      },
-    },
   },
   async mounted() {
+    this.$store.commit('setLocale', LOGIN_LOCALE)
+    this.$store.commit('setTheme', Theme.DARK)
+
     this.getClaimStatus()
     this.clientSettings = await this.$talesSettings.getClientSettingsGlobal()
     this.oauth2Providers = await this.$talesOauth2.getProviders()
@@ -277,6 +220,7 @@ export default Vue.extend({
           await this.$store.dispatch('getLibraries')
           await this.$store.dispatch('getClientSettingsGlobal')
           await this.$store.dispatch('getClientSettingsUser')
+          await this.$store.dispatch('applyUserPreferences')
 
           if (this.$route.query.redirect) {
             await this.$router.push({path: this.$route.query.redirect.toString()})
@@ -315,5 +259,9 @@ export default Vue.extend({
 </script>
 
 <style scoped>
-
+/* LogoMark 루트는 inline-flex라 margin auto가 먹지 않는다. 래퍼로 가운데 정렬한다 */
+.auth-shell__logo-row {
+  display: flex;
+  justify-content: center;
+}
 </style>

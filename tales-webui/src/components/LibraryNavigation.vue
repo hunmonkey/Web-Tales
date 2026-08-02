@@ -6,13 +6,6 @@
       :app="$vuetify.breakpoint.smAndUp"
       :fixed="bottomNavigation"
     >
-      <v-btn v-if="showRecommended"
-             :to="{name: 'recommended-libraries', params: {libraryId: libraryId}}"
-      >
-        <span class="caption">{{ $t('library_navigation.recommended') }}</span>
-        <v-icon>mdi-star</v-icon>
-      </v-btn>
-
       <v-btn :to="{name: 'browse-libraries', params: {libraryId: libraryId}}">
         <span class="caption">{{ $t('library_navigation.browse_series') }}</span>
         <v-icon>mdi-bookshelf</v-icon>
@@ -44,14 +37,6 @@
     <template
       v-if="!bottomNavigation"
     >
-      <v-btn v-if="showRecommended"
-             :to="{name: 'recommended-libraries', params: {libraryId: libraryId}}"
-             text
-             class="mx-1"
-      >
-        {{ $t('library_navigation.recommended') }}
-      </v-btn>
-
       <v-btn :to="{name: 'browse-libraries', params: {libraryId: libraryId}}"
              text
              class="mx-1"
@@ -140,11 +125,6 @@ export default Vue.extend({
     this.$eventHub.$off(COLLECTION_DELETED, this.collectionDeleted)
     this.$eventHub.$off(READLIST_ADDED, this.readListAdded)
     this.$eventHub.$off(READLIST_DELETED, this.readListDeleted)
-  },
-  computed: {
-    showRecommended(): boolean {
-      return this.libraryId !== LIBRARIES_ALL
-    },
   },
   methods: {
     readListAdded() {

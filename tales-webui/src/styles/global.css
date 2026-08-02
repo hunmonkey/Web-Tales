@@ -253,13 +253,6 @@ html {
     min-height: 46px;
 }
 
-.auth-card__preferences {
-    background: var(--tales-surface-soft);
-    border-radius: var(--tales-radius-md);
-    margin-top: 12px;
-    padding: 2px 10px;
-}
-
 .startup-shell {
     flex-direction: column;
     gap: 24px;
@@ -299,7 +292,6 @@ html {
 
 .dashboard__title {
     color: var(--tales-text);
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
     font-size: clamp(2rem, 4vw, 3.5rem);
     letter-spacing: -0.04em;
     line-height: 1.05;

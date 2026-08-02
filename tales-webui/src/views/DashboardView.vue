@@ -1,25 +1,5 @@
 <template>
   <div :style="$vuetify.breakpoint.xs ? 'margin-bottom: 56px' : undefined">
-    <toolbar-sticky v-if="individualLibrary && selectedSeries.length === 0 && selectedBooks.length === 0">
-      <!--   Action menu   -->
-      <library-actions-menu v-if="isAdmin && library"
-                            :library="library"/>
-
-      <v-toolbar-title>
-        <span>{{ library ? library.name : $t('common.all_libraries') }}</span>
-      </v-toolbar-title>
-
-      <v-spacer/>
-
-      <library-navigation v-if="individualLibrary && $vuetify.breakpoint.mdAndUp" :libraryId="libraryId"/>
-
-      <v-spacer/>
-
-    </toolbar-sticky>
-
-    <library-navigation v-if="individualLibrary && $vuetify.breakpoint.smAndDown" :libraryId="libraryId"
-                        bottom-navigation/>
-
     <multi-select-bar
       v-model="selectedSeries"
       kind="series"
@@ -47,7 +27,7 @@
     />
 
     <v-container fluid class="dashboard">
-      <header v-if="!individualLibrary" class="dashboard__heading">
+      <header class="dashboard__heading">
         <div>
           <div class="dashboard__eyebrow">Tales</div>
           <h1 class="dashboard__title">{{ $t('common.all_libraries') }}</h1>
@@ -167,10 +147,7 @@
           bottom
           right
           fixed
-          :class="[
-            'dashboard__edit-view',
-            individualLibrary && $vuetify.breakpoint.smAndDown ? 'mb-12' : undefined
-          ]"
+          class="dashboard__edit-view"
           @click="modalEditRecommended = true"
         >
           <v-icon left>mdi-tune-variant</v-icon>
@@ -193,9 +170,6 @@ import EmptyState from '@/components/EmptyState.vue'
 import HorizontalScroller from '@/components/HorizontalScroller.vue'
 import ItemBrowser from '@/components/ItemBrowser.vue'
 import ItemCardSkeleton from '@/components/ItemCardSkeleton.vue'
-import ToolbarSticky from '@/components/bars/ToolbarSticky.vue'
-import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
-import LibraryNavigation from '@/components/LibraryNavigation.vue'
 import {ReadStatus} from '@/types/enum-books'
 import {BookDto} from '@/types/tales-books'
 import {
@@ -214,7 +188,7 @@ import {
 } from '@/types/events'
 import Vue from 'vue'
 import {Oneshot, SeriesDto} from '@/types/tales-series'
-import {LIBRARIES_ALL, LIBRARY_ROUTE} from '@/types/library'
+import {LIBRARIES_ALL} from '@/types/library'
 import {random, throttle} from 'lodash'
 import {subMonths} from 'date-fns'
 import {
@@ -273,11 +247,8 @@ export default Vue.extend({
     HorizontalScroller,
     ItemCardSkeleton,
     EmptyState,
-    ToolbarSticky,
-    LibraryNavigation,
     ItemBrowser,
     MultiSelectBar,
-    LibraryActionsMenu,
   },
   data: () => {
     return {
@@ -329,10 +300,6 @@ export default Vue.extend({
     this.$eventHub.$off(THUMBNAILBOOK_DELETED, this.thumbnailBookChanged)
   },
   mounted() {
-    if (this.individualLibrary) this.$store.commit('setLibraryRoute', {
-      id: this.libraryId,
-      route: LIBRARY_ROUTE.RECOMMENDED,
-    })
     this.setupLoaders(this.libraryId)
     this.loadAll()
   },
@@ -413,9 +380,6 @@ export default Vue.extend({
         (this.loaderOnDeckBooks == undefined || this.loaderOnDeckBooks?.items.length === 0) &&
         (this.loaderRecentlyReleasedBooks == undefined || this.loaderRecentlyReleasedBooks?.items.length === 0) &&
         (this.loaderRecentlyReadBooks == undefined || this.loaderRecentlyReadBooks?.items.length === 0)
-    },
-    individualLibrary(): boolean {
-      return this.libraryId !== LIBRARIES_ALL
     },
     // The most recently read book still in progress. Absent until the loader has
     // returned something, when the Keep Reading section is switched off, or when

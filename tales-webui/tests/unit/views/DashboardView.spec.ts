@@ -157,18 +157,13 @@ function mountDashboard(services: {
       'horizontal-scroller',
       'item-browser',
       'item-card-skeleton',
-      'library-actions-menu',
-      'library-navigation',
       'multi-select-bar',
       'router-link',
-      'toolbar-sticky',
       'v-btn',
       'v-container',
       'v-fab-transition',
       'v-icon',
       'v-progress-linear',
-      'v-spacer',
-      'v-toolbar-title',
     ],
   })
 }
