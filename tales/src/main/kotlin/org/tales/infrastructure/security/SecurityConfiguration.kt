@@ -12,7 +12,6 @@ import org.springframework.security.authentication.ProviderManager
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.session.SessionRegistry
 import org.springframework.security.core.userdetails.UserDetailsService
@@ -24,7 +23,6 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.SecurityFilterChain
-import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices
@@ -36,7 +34,6 @@ import org.tales.infrastructure.hash.Hasher
 import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationFilter
 import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationProvider
 import org.tales.infrastructure.security.apikey.HeaderApiKeyAuthenticationConverter
-import org.tales.infrastructure.security.apikey.UriRegexApiKeyAuthenticationConverter
 
 @Configuration
 @EnableWebSecurity
@@ -95,8 +92,6 @@ class SecurityConfiguration(
             "/api/v1/fonts/resource/**",
             // OPDS authentication document
             "/opds/v2/auth",
-            // KOReader user creation
-            "/koreader/users/create",
           ).permitAll()
 
         // all other endpoints are restricted to authenticated users
@@ -165,91 +160,6 @@ class SecurityConfiguration(
 
     return http.build()
   }
-
-  @Bean
-  fun koboFilterChain(
-    http: HttpSecurity,
-  ): SecurityFilterChain {
-    http {
-      cors {}
-
-      csrf { disable() }
-      formLogin { disable() }
-      httpBasic { disable() }
-      logout { disable() }
-
-      securityMatcher("/kobo/**")
-      authorizeHttpRequests {
-        authorize(anyRequest, hasRole(UserRoles.KOBO_SYNC.name))
-      }
-
-      headers {
-        cacheControl { disable() }
-      }
-
-      // somehow the Kobo gets a Json issue when receiving the session ID in a cookie header
-      // this happens when requesting /v1/user/profile
-      // Kobo error: packetdump.warning) Invalid JSON script: QVariant(Invalid) "illegal value"
-//      sessionManagement {
-//        sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
-//        sessionConcurrency {
-//          sessionRegistry = theSessionRegistry
-//          maximumSessions = -1
-//        }
-//      }
-
-      addFilterBefore<AnonymousAuthenticationFilter>(koboAuthenticationFilter())
-    }
-
-    return http.build()
-  }
-
-  @Bean
-  fun kosyncFilterChain(
-    http: HttpSecurity,
-  ): SecurityFilterChain {
-    http {
-      cors {}
-
-      csrf { disable() }
-      formLogin { disable() }
-      httpBasic { disable() }
-      logout { disable() }
-
-      securityMatcher("/koreader/**")
-      authorizeHttpRequests {
-        authorize(anyRequest, hasRole(UserRoles.KOREADER_SYNC.name))
-      }
-
-      headers {
-        cacheControl { disable() }
-      }
-
-      sessionManagement {
-        sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
-        sessionConcurrency {
-          sessionRegistry = theSessionRegistry
-          maximumSessions = -1
-        }
-      }
-
-      addFilterBefore<AnonymousAuthenticationFilter>(kosyncAuthenticationFilter())
-    }
-
-    return http.build()
-  }
-
-  fun koboAuthenticationFilter(): Filter =
-    ApiKeyAuthenticationFilter(
-      apiKeyAuthenticationProvider(),
-      UriRegexApiKeyAuthenticationConverter(Regex("""/kobo/([\w-]+)"""), hasher, tokenEncoder, userAgentWebAuthenticationDetailsSource),
-    )
-
-  fun kosyncAuthenticationFilter(): Filter =
-    ApiKeyAuthenticationFilter(
-      apiKeyAuthenticationProvider(),
-      HeaderApiKeyAuthenticationConverter("X-Auth-User", hasher, tokenEncoder, userAgentWebAuthenticationDetailsSource),
-    )
 
   fun restAuthenticationFilter(): Filter =
     ApiKeyAuthenticationFilter(

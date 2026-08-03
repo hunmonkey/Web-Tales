@@ -46,7 +46,6 @@ const book = {
     pagesCount: 2,
     comment: '',
     epubDivinaCompatible: false,
-    epubIsKepub: false,
   },
   metadata: {
     title: 'Book One',

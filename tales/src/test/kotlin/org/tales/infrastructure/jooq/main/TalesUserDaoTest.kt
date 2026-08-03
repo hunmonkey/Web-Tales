@@ -99,7 +99,7 @@ class TalesUserDaoTest(
       created.copy(
         email = "user2@example.org",
         password = "password2",
-        roles = setOf(UserRoles.ADMIN, UserRoles.FILE_DOWNLOAD, UserRoles.PAGE_STREAMING, UserRoles.KOBO_SYNC),
+        roles = setOf(UserRoles.ADMIN, UserRoles.FILE_DOWNLOAD, UserRoles.PAGE_STREAMING),
         sharedLibrariesIds = emptySet(),
         sharedAllLibraries = true,
         restrictions =
@@ -121,7 +121,7 @@ class TalesUserDaoTest(
         .isNotEqualTo(modified.createdDate)
       assertThat(email).isEqualTo("user2@example.org")
       assertThat(password).isEqualTo("password2")
-      assertThat(roles).containsExactlyInAnyOrder(UserRoles.ADMIN, UserRoles.FILE_DOWNLOAD, UserRoles.PAGE_STREAMING, UserRoles.KOBO_SYNC)
+      assertThat(roles).containsExactlyInAnyOrder(UserRoles.ADMIN, UserRoles.FILE_DOWNLOAD, UserRoles.PAGE_STREAMING)
       assertThat(sharedLibrariesIds).isEmpty()
       assertThat(sharedAllLibraries).isTrue
       assertThat(restrictions.ageRestriction).isNotNull

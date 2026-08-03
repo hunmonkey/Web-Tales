@@ -36,12 +36,10 @@ import org.tales.domain.persistence.ReadProgressRepository
 import org.tales.domain.persistence.ThumbnailBookRepository
 import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.tales.infrastructure.hash.Hasher
-import org.tales.infrastructure.hash.KoreaderHasher
 import org.tales.infrastructure.image.ImageConverter
 import org.tales.infrastructure.image.ImageType
 import java.io.File
 import java.net.URLDecoder
-import java.nio.file.Files
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.io.path.deleteIfExists
@@ -68,7 +66,6 @@ class BookLifecycle(
   private val eventPublisher: ApplicationEventPublisher,
   private val transactionTemplate: TransactionTemplate,
   private val hasher: Hasher,
-  private val hasherKoreader: KoreaderHasher,
   private val historicalEventRepository: HistoricalEventRepository,
   private val talesSettingsProvider: TalesSettingsProvider,
   @Qualifier("pdfImageType")
@@ -113,22 +110,6 @@ class BookLifecycle(
       bookRepository.update(book.copy(fileHash = hash))
     } else {
       logger.info { "Book already has a hash, skipping" }
-    }
-  }
-
-  fun hashKoreaderAndPersist(book: Book) {
-    if (!libraryRepository.findById(book.libraryId).hashKoreader)
-      return logger.info { "File hashing for Koreader is disabled for the library, it may have changed since the task was submitted, skipping" }
-
-    logger.info { "Hash Koreader and persist book: $book" }
-    if (Files.isDirectory(book.path))
-      return logger.info { "KOReader hashing is not supported for directory books, skipping" }
-
-    if (book.fileHashKoreader.isBlank()) {
-      val hash = hasherKoreader.computeHash(book.path)
-      bookRepository.update(book.copy(fileHashKoreader = hash))
-    } else {
-      logger.info { "Book already has a Koreader hash, skipping" }
     }
   }
 
@@ -531,9 +512,7 @@ class BookLifecycle(
             newProgression.locator.copy(
               // use the type we have instead of the one provided
               type = matchedPosition.type,
-              // if no koboSpan is provided, use the one we matched
-              koboSpan = newProgression.locator.koboSpan ?: matchedPosition.koboSpan,
-              // don't trust the provided total progression, the one from Kobo can be wrong
+              // don't trust the provided total progression, the one from the client can be wrong
               locations = newProgression.locator.locations?.copy(totalProgression = totalProgression),
             ),
           )

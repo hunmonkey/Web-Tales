@@ -21,7 +21,6 @@
     "account_settings": "Impostazioni Profilo",
     "api_key": {
       "created_date": "Data di creazione: {date}",
-      "force_kobo_sync": "Forza sync Kobo",
       "generate_api_key": "Genera chiave API",
       "no_keys": "Nessuna Chiave API creata ancora"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Genera",
-      "context": "Le Chiavi API possono essere utilizzate per l'autenticazione tramite il protocollo Kobo Sync.",
       "dialog_title": "Genera nuova Chiave API",
       "field_comment": "Commento",
       "field_comment_hint": "A cosa serve questa chiave API?",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "Modifica Libreria",
       "field_analysis_analyze_dimensions": "Analizza le dimensioni delle pagine",
       "field_analysis_hash_files": "Calcola hash per i file",
-      "field_analysis_hash_koreader": "Calcola l'hash dei file per KOReader",
       "field_analysis_hash_pages": "Calcola gli hash per le pagine",
       "field_convert_to_cbz": "Converti automaticamente in CBZ",
       "field_import_barcode_isbn": "Codice a barre ISBN",
@@ -588,10 +585,6 @@
         "order": "Ordine"
       },
       "title": "Nome del file di destinazione"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Forza sync Kobo",
-      "warning_html": "Questo eliminerà tutta la cronologia di sincronizzazione per questa chiave API. Il tuo Kobo sincronizzerà tutto alla prossima sincronizzazione."
     },
     "password_change": {
       "button_cancel": "Annulla",
@@ -989,12 +982,8 @@
       "btn_confirm": "Si, ma solo sono se sono più grandi",
       "title": "Rigenera le miniature"
     },
-    "hint_kobo_port": "Imposta solo in caso di problemi di sincronizzazione con copertine e download",
     "label_delete_empty_collections": "Cancella le collezioni vuote dopo la scansione",
     "label_delete_empty_readlists": "Cancella le liste di lettura vuote dopo la scansione",
-    "label_kepubify_path": "Percorso alla kepubify",
-    "label_kobo_port": "Porta esterna di Kobo Sync",
-    "label_kobo_proxy": "Delega le richieste di Kobo Sync allo Store Kobo",
     "label_rememberme_duration": "Durata Remember me (in giorni)",
     "label_server_context_path": "URL Base",
     "label_server_port": "Porta del server",
@@ -1068,8 +1057,6 @@
   "user_roles": {
     "ADMIN": "Amministratore",
     "FILE_DOWNLOAD": "Scaricamento file",
-    "KOBO_SYNC": "Kobo Sync",
-    "KOREADER_SYNC": "KOReader Sync",
     "PAGE_STREAMING": "Streaming della pagina",
     "USER": "Utente"
   },

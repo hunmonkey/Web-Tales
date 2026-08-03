@@ -21,7 +21,6 @@
     "account_settings": "Accountinstellingen",
     "api_key": {
       "created_date": "Aanmaakdatum: {date}",
-      "force_kobo_sync": "Kobo synchronisatie forceren",
       "generate_api_key": "Genereer API-sleutel",
       "no_keys": "Nog geen API-sleutels aangemaakt"
     },
@@ -318,7 +317,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Genereer",
-      "context": "API-sleutels kunnen worden gebruikt voor authenticatie via het Kobo Sync-protocol.",
       "dialog_title": "Genereer nieuwe API-sleutel",
       "field_comment": "Opmerking",
       "field_comment_hint": "Waar dient deze API-sleutel voor?",
@@ -461,7 +459,6 @@
       "dialot_title_edit": "Bibliotheek bewerken",
       "field_analysis_analyze_dimensions": "Analyseer pagina dimensies",
       "field_analysis_hash_files": "Bereken hash voor bestanden",
-      "field_analysis_hash_koreader": "Bereken hash voor bestanden voor KOReader",
       "field_analysis_hash_pages": "Bereken hash voor pagina's",
       "field_convert_to_cbz": "Automatisch converteren naar CBZ",
       "field_import_barcode_isbn": "ISBN streepjescode",
@@ -586,10 +583,6 @@
         "order": "Volgorde"
       },
       "title": "Doelbestandsnaam"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Kobo-synchronisatie forceren",
-      "warning_html": "Dit verwijdert alle synchronisatiegeschiedenis voor deze API-sleutel. Je Kobo zal bij de volgende synchronisatie alles synchroniseren."
     },
     "password_change": {
       "button_cancel": "Annuleren",
@@ -975,7 +968,6 @@
     },
     "label_delete_empty_collections": "Lege verzamelingen verwijderen na scannen",
     "label_delete_empty_readlists": "Lege leeslijsten verwijderen na scannen",
-    "label_kobo_port": "Kobo Sync externe poort",
     "label_server_context_path": "Basis-URL",
     "requires_restart": "Opnieuw opstarten vereist om effect te hebben",
     "server_settings": "Serverinstellingen"

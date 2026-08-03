@@ -21,7 +21,6 @@
     "account_settings": "Tilin asetukset",
     "api_key": {
       "created_date": "Luomispäivä:{date}",
-      "force_kobo_sync": "Pakota Kobo synkronointi",
       "generate_api_key": "Luo API-avain",
       "no_keys": "API-avaimia ei ole vielä luotu"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Luo",
-      "context": "API-avaimia voidaan käyttää todentamiseen Kobo Sync-protokollan kautta.",
       "dialog_title": "Luo uusi API-avain",
       "field_comment": "Kommentti",
       "field_comment_hint": "Mihin API-avainta käytetään?",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "Muokkaa kirjastoa",
       "field_analysis_analyze_dimensions": "Analysoi sivujen mitat",
       "field_analysis_hash_files": "Laske tiedostojen tarkisteet",
-      "field_analysis_hash_koreader": "Laske tiivisteet tiedostoille KOReaderia varten",
       "field_analysis_hash_pages": "Laske sivujen tarkisteet",
       "field_convert_to_cbz": "Muunna CBZ-muotoon automaattisesti",
       "field_import_barcode_isbn": "ISBN-viivakoodi",
@@ -588,10 +585,6 @@
         "order": "Järjestys"
       },
       "title": "Kohdetiedoston nimi"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Pakota Kobo synkronointi",
-      "warning_html": "Tämä poistaa tämän API-avaimen synkronointihistorian kokonaan. Kobosi synkronoi kaiken seuraavalla kerralla."
     },
     "password_change": {
       "button_cancel": "Peruuta",
@@ -989,12 +982,8 @@
       "btn_confirm": "Kyllä, mutta vain jos suurempi",
       "title": "Luo pikkukuvat uudestaan"
     },
-    "hint_kobo_port": "Aseta vain, jos kansien ja latausten synkronoinnissa on ongelmia",
     "label_delete_empty_collections": "Poista tyhjät kokoelmat skannauksen jälkeen",
     "label_delete_empty_readlists": "Poista tyhjät lukulistat skannauksen jälkeen",
-    "label_kepubify_path": "Kepubifyn polku",
-    "label_kobo_port": "Kobo Syncin ulkoinen portti",
-    "label_kobo_proxy": "Lähetä Kobo Syncin pyynnöt välityspalvelimen yli Kobo Storeen",
     "label_rememberme_duration": "Muista minut ajan pituus (päivää)",
     "label_server_context_path": "Perusosoite",
     "label_server_port": "Palvelimen portti",
@@ -1068,8 +1057,6 @@
   "user_roles": {
     "ADMIN": "Järjestelmänvalvoja",
     "FILE_DOWNLOAD": "Tiedostojen lataus",
-    "KOBO_SYNC": "Kobo synkronointi",
-    "KOREADER_SYNC": "KOReaderin synkronointi",
     "PAGE_STREAMING": "Sivujen suoratoisto",
     "USER": "Käyttäjä"
   },

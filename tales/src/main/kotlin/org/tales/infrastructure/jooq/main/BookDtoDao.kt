@@ -513,7 +513,6 @@ class BookDtoDao(
       pagesCount = pageCount.toInt(),
       comment = comment ?: "",
       epubDivinaCompatible = epubDivinaCompatible,
-      epubIsKepub = epubIsKepub,
     )
 
   private fun BookMetadataRecord.toDto(

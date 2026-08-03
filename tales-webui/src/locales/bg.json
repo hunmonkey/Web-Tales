@@ -21,7 +21,6 @@
     "account_settings": "Настройки на акаунта",
     "api_key": {
       "created_date": "Създадено на: {date}",
-      "force_kobo_sync": "Принудително синхронизиране на Kobo",
       "generate_api_key": "Генерирай API ключ",
       "no_keys": "Все още няма създадени API ключове"
     },
@@ -319,7 +318,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Генерирай",
-      "context": "API Ключовете могат да се ползват за да се аутентикират чрез Kobo Sync протокола.",
       "dialog_title": "Генерирай нов API ключ",
       "field_comment": "Коментар",
       "field_comment_hint": "За какво е този API ключ?",
@@ -462,7 +460,6 @@
       "dialot_title_edit": "Редактиране на библиотеката",
       "field_analysis_analyze_dimensions": "Анализирайте размерите на страниците",
       "field_analysis_hash_files": "Изчисляване на хеш за файлове",
-      "field_analysis_hash_koreader": "Изчисли хеш за файлове за KOReader",
       "field_analysis_hash_pages": "Изчисляване на хеш за страници",
       "field_convert_to_cbz": "Автоматично конвертиране в CBZ",
       "field_import_barcode_isbn": "ISBN баркод",
@@ -587,10 +584,6 @@
         "order": "Ред"
       },
       "title": "Име на Целевия Файл"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Принудително синхронизиране на Kobo",
-      "warning_html": "Това ще изтрие цялата история на синхронизация за този API ключ. Тоят Kobo ще синхронизира всичко на следващата синхронизациая."
     },
     "password_change": {
       "button_cancel": "Отмени",
@@ -988,12 +981,8 @@
       "btn_confirm": "Да, но само за по-големите",
       "title": "Регенерирай тъмбнейловете"
     },
-    "hint_kobo_port": "Задайте само в случай на проблеми със синхронизирането на кориците и изтеглянията",
     "label_delete_empty_collections": "Изтрий празни колекций след сканиране",
     "label_delete_empty_readlists": "Изтрий празни листове след сканиране",
-    "label_kepubify_path": "Път към kepubify",
-    "label_kobo_port": "Kobo Sync външен порт",
-    "label_kobo_proxy": "Прокси Kobo Sync заявки към Kobo Store",
     "label_rememberme_duration": "Запомни ме за период (в дни)",
     "label_server_context_path": "Базов URL",
     "label_server_port": "Прот на сървъра",
@@ -1067,8 +1056,6 @@
   "user_roles": {
     "ADMIN": "Администратор",
     "FILE_DOWNLOAD": "Изтегляне на файлове",
-    "KOBO_SYNC": "Kobo Sync",
-    "KOREADER_SYNC": "KOReader Sync",
     "PAGE_STREAMING": "Стриймване на страници",
     "USER": "Потребител"
   },

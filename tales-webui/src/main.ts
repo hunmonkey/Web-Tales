@@ -23,7 +23,6 @@ import talesUsers from './plugins/tales-users.plugin'
 import talesTransientBooks from './plugins/tales-transientbooks.plugin'
 import talesSse from './plugins/tales-sse.plugin'
 import talesTasks from './plugins/tales-tasks.plugin'
-import talesSyncPoints from './plugins/tales-syncpoints.plugin'
 import talesOauth2 from './plugins/tales-oauth2.plugin'
 import talesLogin from './plugins/tales-login.plugin'
 import talesPageHashes from './plugins/tales-pagehashes.plugin'
@@ -77,7 +76,6 @@ Vue.use(talesLibraries, {store: store, http: Vue.prototype.$http})
 Vue.use(talesSse, {eventHub: Vue.prototype.$eventHub, store: store})
 Vue.use(actuator, {http: Vue.prototype.$http})
 Vue.use(talesTasks, {http: Vue.prototype.$http})
-Vue.use(talesSyncPoints, {http: Vue.prototype.$http})
 Vue.use(talesOauth2, {http: Vue.prototype.$http})
 Vue.use(talesLogin, {http: Vue.prototype.$http})
 Vue.use(talesPageHashes, {http: Vue.prototype.$http})

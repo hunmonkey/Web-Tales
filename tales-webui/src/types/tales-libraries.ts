@@ -29,7 +29,6 @@ export interface LibraryDto {
   seriesCover: SeriesCoverDto,
   hashFiles: boolean,
   hashPages: boolean,
-  hashKoreader: boolean,
   analyzeDimensions: boolean,
   oneshotsDirectory: string,
   unavailable: boolean,
@@ -67,7 +66,6 @@ export interface LibraryCreationDto {
   seriesCover: SeriesCoverDto,
   hashFiles: boolean,
   hashPages: boolean,
-  hashKoreader: boolean,
   analyzeDimensions: boolean,
   oneshotsDirectory: string,
 }
@@ -100,7 +98,6 @@ export interface LibraryUpdateDto {
   seriesCover: SeriesCoverDto,
   hashFiles: boolean,
   hashPages: boolean,
-  hashKoreader: boolean,
   analyzeDimensions: boolean,
   oneshotsDirectory: string,
 }

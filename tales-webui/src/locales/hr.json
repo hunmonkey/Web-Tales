@@ -21,7 +21,6 @@
     "account_settings": "Postavke računa",
     "api_key": {
       "created_date": "Datum kreiranja: {date}",
-      "force_kobo_sync": "Koristi Kobo sinkronizaciju",
       "generate_api_key": "Generiraj API ključ",
       "no_keys": "Još nije stvoren nijedan API ključ"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Generiraj",
-      "context": "API ključevi se mogu koristiti za autentifikaciju putem protokola Kobo sinkronizacije.",
       "dialog_title": "Generiraj novi API ključ",
       "field_comment": "Komentar",
       "field_comment_hint": "Čemu služi ovaj API ključ?",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "Uredi biblioteku",
       "field_analysis_analyze_dimensions": "Analiziraj dimenzije stranica",
       "field_analysis_hash_files": "Izračunaj šifre za datoteke",
-      "field_analysis_hash_koreader": "Izračunaj šifre za datoteke za KOReader",
       "field_analysis_hash_pages": "Izračunaj šifre za stranice",
       "field_convert_to_cbz": "Automatski konvertiraj u CBZ",
       "field_import_barcode_isbn": "ISBN barkod",
@@ -588,10 +585,6 @@
         "order": "Redoslijed"
       },
       "title": "Odredišno ime datoteke"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Koristi Kobo sinkronizaciju",
-      "warning_html": "Ovo će izbrisati svu povijest sinkronizacije za ovaj API ključ. Tvoj Kobo će sinkronizirati sve pri sljedećoj sinkronizaciji."
     },
     "password_change": {
       "button_cancel": "Odustani",
@@ -989,12 +982,8 @@
       "btn_confirm": "Da, ali samo ako su veće",
       "title": "Nanovo generiraj minijature"
     },
-    "hint_kobo_port": "Postavi samo u slučaju problema sa sinkronizacijom naslovnica i preuzimanja",
     "label_delete_empty_collections": "Izbriši prazne zbirke nakon pretraživanja",
     "label_delete_empty_readlists": "Izbriši prazne liste čitanja nakon pretraživanja",
-    "label_kepubify_path": "Staza do kepubify",
-    "label_kobo_port": "Eksterni priključak Kobo sinkronizacije",
-    "label_kobo_proxy": "Zahtjevi servera Kobo sinkronizacije za Kobo trgovinu",
     "label_rememberme_duration": "„Zapamti me” trajanje (u danima)",
     "label_server_context_path": "Osnovni URL",
     "label_server_port": "Priključak servera",
@@ -1068,8 +1057,6 @@
   "user_roles": {
     "ADMIN": "Administrator",
     "FILE_DOWNLOAD": "Preuzimanje datoteke",
-    "KOBO_SYNC": "Kobo sinkronizacija",
-    "KOREADER_SYNC": "KOReader sinkronizacija",
     "PAGE_STREAMING": "Internetski prijenos stranica",
     "USER": "Korisnik"
   },

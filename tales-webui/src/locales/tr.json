@@ -21,7 +21,6 @@
     "account_settings": "Hesap Ayarları",
     "api_key": {
       "created_date": "Oluşturulma tarihi: {date}",
-      "force_kobo_sync": "Kobo ile eşleşmeye zorla",
       "generate_api_key": "API anahtarı oluştur",
       "no_keys": "Henüz API anahtarı oluşturulmamış"
     },
@@ -313,7 +312,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Oluştur",
-      "context": "API Anahtarları Kobo Sync protokolüyle kimlik doğrulamak için kullanılabilir.",
       "dialog_title": "Yeni API anahtarı oluştur",
       "field_comment": "Yorum",
       "field_comment_hint": "Bu API anahtarı ne için kullanılıyor ?",
@@ -575,10 +573,6 @@
         "order": "Sıralama"
       },
       "title": "Hedef Dosya Adı"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Kobo ile eşleşmeye zorla",
-      "warning_html": "Bu işlem bu API anahtarı ile bağlantılı bütün eşleşme geçmişini temizleyecek. Kobo'nuz bir sonraki eşleşmede her şeyi tekrardan eşleştirecek."
     },
     "password_change": {
       "button_cancel": "İptal",
@@ -949,12 +943,8 @@
       "btn_confirm": "Evet, ama sadece daha büyükse",
       "title": "Önizlemeleri tekrar oluştur"
     },
-    "hint_kobo_port": "Sadece kapak ve indirmelerde eşleşme hatası oluşuyorsa işaretleyin",
     "label_delete_empty_collections": "Boş koleksiyonları taramadan sonra sil",
     "label_delete_empty_readlists": "Boş okuma listelerini taramadan sonra sil",
-    "label_kepubify_path": "Kepubify yolu",
-    "label_kobo_port": "Kobo Sync portu",
-    "label_kobo_proxy": "Kobo Sync isteklerini Kobo Store'a yönlendir",
     "label_rememberme_duration": "Beni hatırla süresi (gün)",
     "label_server_context_path": "Esas URL",
     "label_server_port": "Sunucu Portu",
@@ -1013,7 +1003,6 @@
   "user_roles": {
     "ADMIN": "Yönetici",
     "FILE_DOWNLOAD": "Dosya indirme",
-    "KOBO_SYNC": "Kobo Sync",
     "PAGE_STREAMING": "Sayfa yayınlama",
     "USER": "Kullanıcı"
   },

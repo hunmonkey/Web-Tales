@@ -46,8 +46,6 @@ class TalesProperties {
 
   var configDir: String? = null
 
-  var kobo = Kobo()
-
   val fonts = Fonts()
 
   class Cors {
@@ -100,12 +98,5 @@ class TalesProperties {
 
       var preserveOriginal: Boolean = true
     }
-  }
-
-  class Kobo {
-    @get:Positive
-    var syncItemLimit: Int = 100
-
-    var kepubifyPath: String? = null
   }
 }

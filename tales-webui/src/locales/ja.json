@@ -21,7 +21,6 @@
     "account_settings": "アカウント設定",
     "api_key": {
       "created_date": "作成日: {date}",
-      "force_kobo_sync": "Kobo syncを強制",
       "generate_api_key": "APIキーを生成",
       "no_keys": "まだAPIキーが作成されていません"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "生成",
-      "context": "APIキーは、Kobo Syncプロトコルによる認証に使用できます。",
       "dialog_title": "新しいAPIキーを生成",
       "field_comment": "コメント",
       "field_comment_hint": "このAPIキーは何のためにありますか？",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "ライブラリを編集",
       "field_analysis_analyze_dimensions": "ページ寸法の分析",
       "field_analysis_hash_files": "ファイルのハッシュを計算する",
-      "field_analysis_hash_koreader": "KOReader 用にファイルのハッシュを計算する",
       "field_analysis_hash_pages": "ページのハッシュを計算する",
       "field_convert_to_cbz": "自動的にCBZに変換",
       "field_import_barcode_isbn": "ISBN バーコード",
@@ -588,10 +585,6 @@
         "order": "オーダー"
       },
       "title": "出力先のファイル名"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Kobo syncを強制",
-      "warning_html": "これにより、このAPIキーのすべての同期履歴が削除されます。koboは次回の同期時にすべてを同期します。"
     },
     "password_change": {
       "button_cancel": "キャンセル",
@@ -989,12 +982,8 @@
       "btn_confirm": "はい(大きい場合のみ)",
       "title": "サムネイルを再生成"
     },
-    "hint_kobo_port": "カバーとダウンロードで同期の問題が発生した場合にのみ設定します",
     "label_delete_empty_collections": "スキャン後に空のコレクションを削除する",
     "label_delete_empty_readlists": "スキャン後に空の読書リストを削除する",
-    "label_kepubify_path": "kepubifyへのパス",
-    "label_kobo_port": "Kobo sync外部ポート",
-    "label_kobo_proxy": "Kobo StoreへのKobo Syncリクエストをプロキシ",
     "label_rememberme_duration": "「ログイン状態を保持」の時間 (日)",
     "label_server_context_path": "ベースURL",
     "label_server_port": "サーバーのポート",
@@ -1068,8 +1057,6 @@
   "user_roles": {
     "ADMIN": "管理者",
     "FILE_DOWNLOAD": "ファイルのダウンロード",
-    "KOBO_SYNC": "Kobo 同期",
-    "KOREADER_SYNC": "KOReader 同期",
     "PAGE_STREAMING": "ページのストリーミング",
     "USER": "ユーザ"
   },

@@ -21,7 +21,6 @@
     "account_settings": "계정 설정",
     "api_key": {
       "created_date": "생성된 날짜: {date}",
-      "force_kobo_sync": "강제 Kobo 동기화",
       "generate_api_key": "API 키 생성하기",
       "no_keys": "아직 생성된 API 키 없음"
     },
@@ -570,7 +569,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "생성하기",
-      "context": "API 키는 Kobo Sync 프로토콜을 이용해 인증하는 데 사용할 수 있습니다.",
       "dialog_title": "새로운 API 키 생성하기",
       "field_comment": "주석",
       "field_comment_hint": "API 키의 사용 목적이 무엇인가요?",
@@ -719,7 +717,6 @@
       "dialot_title_edit": "서재 편집",
       "field_analysis_analyze_dimensions": "페이지 크기 분석",
       "field_analysis_hash_files": "파일 해시 계산",
-      "field_analysis_hash_koreader": "KOReader를 위한 파일 해시 계산",
       "field_analysis_hash_pages": "페이지 해시 계산",
       "field_convert_to_cbz": "CBZ로 자동 변환",
       "field_import_barcode_isbn": "ISBN 바코드",
@@ -844,10 +841,6 @@
         "order": "순서"
       },
       "title": "대상 파일"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "강제 Kobo 동기화",
-      "warning_html": "이 동작은 이 API 키의 모든 동기화 기록을 삭제합니다. 당신의 Kobo는 다음 동기화 때 모든 것을 동기화할 것입니다."
     },
     "logout": {
       "body": "정말 Tales에서 로그아웃하시겠습니까?",
@@ -1261,12 +1254,8 @@
       "btn_confirm": "예 (더 큰 경우에만)",
       "title": "썸네일 재생성"
     },
-    "hint_kobo_port": "표지와 다운로드 동기화 문제가 있을 시에만 설정하세요",
     "label_delete_empty_collections": "스캔 후 빈 모음집 삭제",
     "label_delete_empty_readlists": "스캔 후 빈 읽기 목록 삭제",
-    "label_kepubify_path": "kepubify 경로",
-    "label_kobo_port": "Kobo Sync 외부 포트",
-    "label_kobo_proxy": "Kobo Sync 요청을 Kobo Store로 프록시하기",
     "label_rememberme_duration": "로그인 상태 유지 시간 (일)",
     "label_server_context_path": "기본 URL",
     "label_server_port": "서버 포트",
@@ -1340,8 +1329,6 @@
   "user_roles": {
     "ADMIN": "관리자",
     "FILE_DOWNLOAD": "파일 다운로드",
-    "KOBO_SYNC": "Kobo Sync",
-    "KOREADER_SYNC": "KOReader Sync",
     "PAGE_STREAMING": "페이지 스트리밍",
     "USER": "사용자"
   },

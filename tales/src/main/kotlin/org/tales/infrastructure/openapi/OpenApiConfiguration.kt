@@ -55,7 +55,6 @@ import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.RELEASES
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.SERIES
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.SERIES_POSTER
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.SERVER_SETTINGS
-import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.SYNCPOINTS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.TASKS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.USERS
 import org.tales.infrastructure.openapi.OpenApiConfiguration.TagNames.USER_SESSION
@@ -328,7 +327,6 @@ class OpenApiConfiguration(
           API_KEYS,
           USER_SESSION,
           OAUTH2,
-          SYNCPOINTS,
         ),
       ),
       TagGroup(
@@ -390,7 +388,6 @@ class OpenApiConfiguration(
     const val USER_SESSION = "User session"
     const val OAUTH2 = "OAuth2"
 
-    const val SYNCPOINTS = "Sync points"
     const val CLAIM = "Claim"
     const val TASKS = "Tasks"
     const val HISTORY = "History"
@@ -431,7 +428,6 @@ class OpenApiConfiguration(
       Tag().name(API_KEYS).description("Manage API Keys"),
       Tag().name(USER_SESSION),
       Tag().name(OAUTH2).description("List registered OAuth2 providers"),
-      Tag().name(SYNCPOINTS).description("Sync points are automatically created during a Kobo sync."),
       Tag().name(CLAIM).description("Claim a freshly installed Tales server."),
       Tag().name(TASKS).description("Manage server tasks"),
       Tag().name(HISTORY).description("Server events history"),

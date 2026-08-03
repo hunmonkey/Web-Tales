@@ -21,7 +21,6 @@
     "account_settings": "Kontoindstillinger",
     "api_key": {
       "created_date": "Oprettelsesdato: {date}",
-      "force_kobo_sync": "Gennemtving Kobo-synkronisering",
       "generate_api_key": "Generér API-nøgle",
       "no_keys": "Ingen API-nøgler er oprettet endnu"
     },
@@ -298,7 +297,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Generer",
-      "context": "API nøgler kan blive brugt til godkendelse igennem Kobo Sync protocol.",
       "dialog_title": "Generer ny API nøgle",
       "field_comment": "Kommentér",
       "field_comment_hint": "Hvad er denne API nøgle for?",
@@ -560,10 +558,6 @@
         "order": "Rækkefølge"
       },
       "title": "Destination filnavn"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Gennemtving Kobo-synkronisering",
-      "warning_html": "Dette vil slette alle synkroniseringshistorik for denne API-nøgle. Din Kobo synkroniserer alt på den næste synkronisering."
     },
     "password_change": {
       "button_cancel": "Annuller",

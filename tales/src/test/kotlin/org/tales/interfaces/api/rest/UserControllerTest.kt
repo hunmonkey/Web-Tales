@@ -211,7 +211,7 @@ class UserControllerTest(
       val jsonString =
         """
         {
-          "roles": ["${UserRoles.FILE_DOWNLOAD.name}","${UserRoles.PAGE_STREAMING.name}","${UserRoles.KOBO_SYNC.name}"]
+          "roles": ["${UserRoles.FILE_DOWNLOAD.name}","${UserRoles.PAGE_STREAMING.name}"]
         }
         """.trimIndent()
 
@@ -225,7 +225,7 @@ class UserControllerTest(
 
       with(userRepository.findByIdOrNull(user.id)) {
         assertThat(this).isNotNull
-        assertThat(this!!.roles).containsExactlyInAnyOrder(UserRoles.KOBO_SYNC, UserRoles.PAGE_STREAMING, UserRoles.FILE_DOWNLOAD)
+        assertThat(this!!.roles).containsExactlyInAnyOrder(UserRoles.PAGE_STREAMING, UserRoles.FILE_DOWNLOAD)
       }
     }
 

@@ -473,3 +473,29 @@ loading states those tickets introduced. The owner approved fixing all four.
   translucent toolbar. Close when the toolbar is up as soon as a book opens and
   stays up until the reader hides it with `Escape` or a centre tap, and when
   showing or hiding it never changes the size or position of the page.
+
+## Remove Kobo Sync and KOReader Sync, requested 2026-08-03
+
+- [x] SV-1076 Delete both external device-sync integrations completely, with no
+  leftover traces. Owner statement: neither feature is used, the server has no
+  reason to reach anything outside itself, and the removal should leave nothing
+  behind. See `docs/ADR/ADR-0017-remove-kobo-and-koreader-sync.md`.
+  Scope covered: the `/kobo/**` and `/koreader/**` HTTP surfaces and their DTOs;
+  the two extra security filter chains and the anonymous `/koreader/users/create`
+  exception; the Kobo store reverse proxy and sync-token generator; sync points
+  end to end (domain model, repository, lifecycle, jOOQ DAO, the
+  `DELETE /api/v1/syncpoints/me` endpoint, and the frontend service and plugin);
+  the `KOBO_SYNC` and `KOREADER_SYNC` roles; the KOReader partial-MD5 hash and
+  its library option, book column and task; `koboSpan`, `isKepub`,
+  `Media.epubIsKepub`, `KepubConverter` and the `kepubify` path setting together
+  with the binary's Docker and Conveyor downloads; the `tales.kobo.*` properties;
+  and the matching keys across all 38 locale files.
+  One correction worth recording: `koboSpan` looked like shared reader
+  infrastructure because it is produced inside `EpubExtractor.computePositions`,
+  but position count and progression are always the Readium 1024-byte
+  approximation and the span value is read only by the Kobo controller. Removing
+  it changes no reader behaviour; keeping it would have meant running a full
+  external EPUB conversion on every analysis to populate a field nothing reads.
+  Closed when the sync endpoints no longer exist, the schema no longer carries
+  the sync tables and columns, and a repository-wide search finds only the
+  documented historical mentions.

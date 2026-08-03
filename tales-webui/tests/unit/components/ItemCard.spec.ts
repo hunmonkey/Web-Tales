@@ -32,7 +32,6 @@ const readyBook = (overrides: Partial<BookDto> = {}): BookDto => ({
     pagesCount: 12,
     comment: '',
     epubDivinaCompatible: false,
-    epubIsKepub: false,
   },
   metadata: {
     title: 'Book One',

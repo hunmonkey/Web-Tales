@@ -21,7 +21,6 @@
     "account_settings": "Ustawienia konta",
     "api_key": {
       "created_date": "Data stworzenia: {date}",
-      "force_kobo_sync": "Wymuś synchronizację z Kobo",
       "generate_api_key": "Wygeneruj klucz API",
       "no_keys": "Brak kluczy API"
     },
@@ -314,7 +313,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Wygeneruj",
-      "context": "Klucze API mogą być użyte do uwierzytelnienia się poprzez protokół Kobo Sync.",
       "dialog_title": "Wygeneruj nowy klucz API",
       "field_comment": "Komentarz",
       "field_comment_hint": "Jakie jest przeznaczenie tego klucza API?",
@@ -576,9 +574,6 @@
         "order": "Kolejność"
       },
       "title": "Nazwa pliku docelowego"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Wymuś synchronizację z Kobo"
     },
     "password_change": {
       "button_cancel": "Anuluj",
@@ -959,8 +954,6 @@
     },
     "label_delete_empty_collections": "Usuń puste kolekcje po skanowaniu",
     "label_delete_empty_readlists": "Usuń puste listy po skanowaniu",
-    "label_kepubify_path": "Ścieżka do kepubify",
-    "label_kobo_port": "Zewnętrzny port Kobo Sync",
     "label_server_context_path": "Bazowy adres URL",
     "label_server_port": "Port serwera",
     "label_task_pool_size": "Wątki dla zadań",

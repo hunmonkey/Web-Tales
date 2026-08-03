@@ -219,7 +219,6 @@ class BookAnalyzer(
   ): Media {
     book.path.epub { epub ->
       val (resources, missingResources) = epubExtractor.getResources(epub).partition { it.fileSize != null }
-      val isKepub = epubExtractor.isKepub(epub, resources)
 
       val errors = mutableListOf<String>()
 
@@ -263,7 +262,7 @@ class BookAnalyzer(
 
       val positions =
         try {
-          epubExtractor.computePositions(epub, book.path, resources, isFixedLayout, isKepub)
+          epubExtractor.computePositions(resources, isFixedLayout)
         } catch (e: Exception) {
           logger.error(e) { "Error while getting EPUB positions" }
           errors.add("ERR_1039")
@@ -288,7 +287,6 @@ class BookAnalyzer(
         files = resources,
         pageCount = if (divinaPages.isNotEmpty()) divinaPages.size else epubExtractor.computePageCount(epub),
         epubDivinaCompatible = divinaPages.isNotEmpty(),
-        epubIsKepub = isKepub,
         extension =
           MediaExtensionEpub(
             toc = toc,

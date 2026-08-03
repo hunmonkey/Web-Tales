@@ -1,6 +1,5 @@
 tales:
   config-dir: ${LOCALAPPDATA}/Tales
-  kobo.kepubify-path: kepubify.exe
 spring:
   config:
     import:

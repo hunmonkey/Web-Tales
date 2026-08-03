@@ -13,7 +13,6 @@ import org.tales.domain.model.TalesUser
 import org.tales.domain.model.UserEmailAlreadyExistsException
 import org.tales.domain.persistence.AuthenticationActivityRepository
 import org.tales.domain.persistence.ReadProgressRepository
-import org.tales.domain.persistence.SyncPointRepository
 import org.tales.domain.persistence.TalesUserRepository
 import org.tales.infrastructure.jooq.main.ClientSettingsDtoDao
 import org.tales.infrastructure.security.TalesPrincipal
@@ -27,7 +26,6 @@ class TalesUserLifecycle(
   private val userRepository: TalesUserRepository,
   private val readProgressRepository: ReadProgressRepository,
   private val authenticationActivityRepository: AuthenticationActivityRepository,
-  private val syncPointRepository: SyncPointRepository,
   private val passwordEncoder: PasswordEncoder,
   private val tokenEncoder: TokenEncoder,
   private val sessionRegistry: SessionRegistry,
@@ -89,7 +87,6 @@ class TalesUserLifecycle(
       clientSettingsDtoDao.deleteByUserId(user.id)
       readProgressRepository.deleteByUserId(user.id)
       authenticationActivityRepository.deleteByUser(user)
-      syncPointRepository.deleteByUserId(user.id)
       userRepository.delete(user.id)
     }
 

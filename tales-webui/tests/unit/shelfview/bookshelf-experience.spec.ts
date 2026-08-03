@@ -10,7 +10,6 @@ const media = (mediaProfile: string, status = 'READY'): MediaDto => ({
   comment: '',
   mediaProfile,
   epubDivinaCompatible: false,
-  epubIsKepub: false,
 })
 
 const series = (overrides: Partial<SeriesDto> = {}): SeriesDto => ({

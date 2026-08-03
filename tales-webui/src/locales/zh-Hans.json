@@ -21,7 +21,6 @@
     "account_settings": "账户设置",
     "api_key": {
       "created_date": "创建日期：{date}",
-      "force_kobo_sync": "强制 Kobo 同步",
       "generate_api_key": "生成 API 密钥",
       "no_keys": "尚未创建 API 密钥"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "生成",
-      "context": "API 密钥可用于通过 Kobo 同步协议进行身份验证。",
       "dialog_title": "生成新的 API 密钥",
       "field_comment": "注释",
       "field_comment_hint": "此 API 密钥有何用途？",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "编辑库",
       "field_analysis_analyze_dimensions": "分析页面尺寸",
       "field_analysis_hash_files": "计算文件的哈希值",
-      "field_analysis_hash_koreader": "计算 KOReader 文件的哈希值",
       "field_analysis_hash_pages": "计算页面的哈希值",
       "field_convert_to_cbz": "自动转换为 CBZ 格式",
       "field_import_barcode_isbn": "ISBN 条形码",
@@ -588,10 +585,6 @@
         "order": "命令"
       },
       "title": "目标文件名"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "强制 Kobo 同步",
-      "warning_html": "这将删除此 API 密钥的所有同步历史记录。您的 Kobo 将在下次同步时同步所有内容。"
     },
     "password_change": {
       "button_cancel": "取消",
@@ -989,12 +982,8 @@
       "btn_confirm": "是，但前提是更大",
       "title": "重新生成缩略图"
     },
-    "hint_kobo_port": "仅在封面和下载同步出现问题时设置",
     "label_delete_empty_collections": "扫描后删除空的收藏",
     "label_delete_empty_readlists": "扫描后删除空的阅读列表",
-    "label_kepubify_path": "kepubify 的路径",
-    "label_kobo_port": "Kobo 同步外部端口",
-    "label_kobo_proxy": "代理 Kobo 同步请求至 Kobo 商店",
     "label_rememberme_duration": "保持登录状态的时间（天数）",
     "label_server_context_path": "基本网址",
     "label_server_port": "服务器端口",
@@ -1068,8 +1057,6 @@
   "user_roles": {
     "ADMIN": "管理员",
     "FILE_DOWNLOAD": "允许下载",
-    "KOBO_SYNC": "Kobo 同步",
-    "KOREADER_SYNC": "KOReader 同步",
     "PAGE_STREAMING": "允许浏览",
     "USER": "用户"
   },

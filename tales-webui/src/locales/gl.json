@@ -21,7 +21,6 @@
     "account_settings": "Configuración da conta",
     "api_key": {
       "created_date": "Data de creación: {date}",
-      "force_kobo_sync": "Forzar a sincronización con Kobo",
       "generate_api_key": "Xerar clave API",
       "no_keys": "Aínda non se xerou clave API ningunha"
     },

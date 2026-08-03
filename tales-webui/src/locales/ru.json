@@ -21,7 +21,6 @@
     "account_settings": "Настройки аккаунта",
     "api_key": {
       "created_date": "Дата создания: {date}",
-      "force_kobo_sync": "Принудительная синхронизация с Kobo",
       "generate_api_key": "Сгенерировать ключ API",
       "no_keys": "Ни одного ключа API еще не создано"
     },
@@ -426,7 +425,6 @@
       "dialot_title_edit": "Редактировать библиотеку",
       "field_analysis_analyze_dimensions": "Анализировать размеры страниц",
       "field_analysis_hash_files": "Вычислять хеш-суммы файлов",
-      "field_analysis_hash_koreader": "Вычислять хеш-суммы файлов для KOReader",
       "field_analysis_hash_pages": "Вычислять хеш-суммы страниц",
       "field_convert_to_cbz": "Автоматическая конвертация в CBZ",
       "field_import_barcode_isbn": "ISBN штрих-код",
@@ -875,12 +873,8 @@
       "btn_confirm": "Да, но только если размер стал больше",
       "title": "Пересоздать миниатюры"
     },
-    "hint_kobo_port": "Устанавливайте только в случае проблем с синхронизацией обложек и загрузок",
     "label_delete_empty_collections": "Удалять пустые коллекции после сканирования",
     "label_delete_empty_readlists": "Удалять пустые списки чтения после сканирования",
-    "label_kepubify_path": "Путь к kepubify",
-    "label_kobo_port": "Внешний порт синхронизации Kobo",
-    "label_kobo_proxy": "Проксировать запросы синхронизации Kobo в магазин Kobo",
     "label_rememberme_duration": "Длительность сессии (в днях)",
     "label_server_context_path": "Базовый URL",
     "label_server_port": "Порт сервера",
@@ -954,8 +948,6 @@
   "user_roles": {
     "ADMIN": "Администратор",
     "FILE_DOWNLOAD": "Скачивание файлов",
-    "KOBO_SYNC": "Синхронизация с Kobo",
-    "KOREADER_SYNC": "Синхронизация с KOReader",
     "PAGE_STREAMING": "Потоковый просмотр страниц",
     "USER": "Пользователь"
   },

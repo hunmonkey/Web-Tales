@@ -110,7 +110,6 @@ class LibraryDao(
       .set(l.SERIES_COVER, library.seriesCover.toString())
       .set(l.HASH_FILES, library.hashFiles)
       .set(l.HASH_PAGES, library.hashPages)
-      .set(l.HASH_KOREADER, library.hashKoreader)
       .set(l.ANALYZE_DIMENSIONS, library.analyzeDimensions)
       .set(l.ONESHOTS_DIRECTORY, library.oneshotsDirectory)
       .set(l.UNAVAILABLE_DATE, library.unavailableDate)
@@ -149,7 +148,6 @@ class LibraryDao(
       .set(l.SERIES_COVER, library.seriesCover.toString())
       .set(l.HASH_FILES, library.hashFiles)
       .set(l.HASH_PAGES, library.hashPages)
-      .set(l.HASH_KOREADER, library.hashKoreader)
       .set(l.ANALYZE_DIMENSIONS, library.analyzeDimensions)
       .set(l.ONESHOTS_DIRECTORY, library.oneshotsDirectory)
       .set(l.UNAVAILABLE_DATE, library.unavailableDate)
@@ -207,7 +205,6 @@ class LibraryDao(
       seriesCover = Library.SeriesCover.valueOf(seriesCover),
       hashFiles = hashFiles,
       hashPages = hashPages,
-      hashKoreader = hashKoreader,
       analyzeDimensions = analyzeDimensions,
       oneshotsDirectory = oneshotsDirectory,
       unavailableDate = unavailableDate,

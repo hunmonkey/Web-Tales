@@ -26,7 +26,6 @@ const divinaMedia: MediaDto = {
   comment: '',
   mediaProfile: 'DIVINA',
   epubDivinaCompatible: false,
-  epubIsKepub: false,
 }
 
 const epubMedia: MediaDto = {
@@ -36,7 +35,6 @@ const epubMedia: MediaDto = {
   comment: '',
   mediaProfile: 'EPUB',
   epubDivinaCompatible: false,
-  epubIsKepub: false,
 }
 
 describe('DivinaReader ShelfView redirect', () => {

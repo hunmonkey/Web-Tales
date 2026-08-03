@@ -21,7 +21,6 @@
     "account_settings": "Kontoinställningar",
     "api_key": {
       "created_date": "Skapades datum: {date}",
-      "force_kobo_sync": "Tvinga Kobo synk",
       "generate_api_key": "Skapa API-nyckel",
       "no_keys": "Inga API-nycklar skapade ännu"
     },
@@ -316,7 +315,6 @@
   },
   "dialog": {
     "add_api_key": {
-      "context": "API-nycklar kan användas för autentisering via Kobo Synkprotokoll.",
       "dialog_title": "Skapa ny API-nyckel",
       "field_comment": "Kommentar"
     },
@@ -575,10 +573,6 @@
         "order": "Ordning"
       },
       "title": "Namn på målfil"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Tvinga Kobo synk",
-      "warning_html": "Detta raderar all synkhistorik för denna API-nyckel. Din Kobo kommer synka allt vid nästa synktillfälle."
     },
     "password_change": {
       "button_cancel": "Avbryt",

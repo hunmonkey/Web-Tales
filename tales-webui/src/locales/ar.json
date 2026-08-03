@@ -21,7 +21,6 @@
     "account_settings": "إعدادات الحساب",
     "api_key": {
       "created_date": "تاريخ الصنع: {date}",
-      "force_kobo_sync": "إجبار مزامنة Kobo",
       "generate_api_key": "توليد مفتاح API",
       "no_keys": "لم يخلق مفتاح API بعد"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "توليد",
-      "context": "يمكن استعمال مفاتيح الAPI للتوثيق عبر بروتوكول Kobo Sync.",
       "dialog_title": "توليد مفتاح API جديد",
       "field_comment": "تعليق",
       "field_comment_hint": "ما الغرض من مفتاح الAPI هذا؟",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "تحرير المكتبة",
       "field_analysis_analyze_dimensions": "تحليل أبعاد الصفحات",
       "field_analysis_hash_files": "حساب تجزئة للملفات",
-      "field_analysis_hash_koreader": "حسابة التلبيد لملفات KOReader",
       "field_analysis_hash_pages": "حساب تجزئة الصفحات",
       "field_convert_to_cbz": "تحويل تلقائيا إلى CBZ",
       "field_import_barcode_isbn": "الباركود ردمك",
@@ -586,9 +583,6 @@
         "order": "ترتيب"
       },
       "title": "اسم الوجهة"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "إجبار مزامنة Kobo"
     },
     "password_change": {
       "button_cancel": "إلغاء",
@@ -936,7 +930,6 @@
       "btn_cancel": "لا",
       "btn_confirm": "نعم، لكن فقط إن كانت اكبر"
     },
-    "label_kobo_port": "باب مزامنة Kobo الخارجي",
     "label_server_port": "باب الخادم",
     "server_settings": "إعدادات الخادم"
   },
@@ -996,8 +989,6 @@
   "user_roles": {
     "ADMIN": "مدير",
     "FILE_DOWNLOAD": "تحميل الملف",
-    "KOBO_SYNC": "مزامنة Kobo",
-    "KOREADER_SYNC": "مزامنة KOReader",
     "PAGE_STREAMING": "بث الصفحات",
     "USER": "مستخدم"
   },

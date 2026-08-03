@@ -21,7 +21,6 @@
     "account_settings": "Налаштування профілю",
     "api_key": {
       "created_date": "Дата створення: {date}",
-      "force_kobo_sync": "Примусова синхронізація Kobo",
       "generate_api_key": "Згенерувати API ключ",
       "no_keys": "Ключі API ще не створено"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Згенерувати",
-      "context": "Ключі API можна використовувати для автентифікації через протокол Kobo Sync.",
       "dialog_title": "Згенерувати новий ключ API",
       "field_comment": "Коментар",
       "field_comment_hint": "Для чого цей ключ API?",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "Редагувати бібліотеку",
       "field_analysis_analyze_dimensions": "Аналіз розмірів сторінок",
       "field_analysis_hash_files": "Обчислити хеш для файлів",
-      "field_analysis_hash_koreader": "Обчислити хеш файлів для KOReader",
       "field_analysis_hash_pages": "Обчислити хеш для сторінок",
       "field_convert_to_cbz": "Автоматично конвертувати в CBZ",
       "field_import_barcode_isbn": "Штрих-код ISBN",
@@ -588,10 +585,6 @@
         "order": "Замовлення"
       },
       "title": "Ім'я файлу призначення'"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Примусова синхронізація Kobo",
-      "warning_html": "Це видалить всю історію синхронізації для цього ключа API. Ваш Kobo синхронізує все під час наступної синхронізації."
     },
     "password_change": {
       "button_cancel": "Скасувати",
@@ -989,12 +982,8 @@
       "btn_confirm": "Так, але тільки якщо більший",
       "title": "Згенерувати мініатюри знову"
     },
-    "hint_kobo_port": "Встановлювати лише у разі проблем із синхронізацією обкладинок та завантажень",
     "label_delete_empty_collections": "Видалити порожні колекції після сканування",
     "label_delete_empty_readlists": "Видалити порожні списки прочитання після сканування",
-    "label_kepubify_path": "Шлях до kepubify",
-    "label_kobo_port": "Зовнішній порт Kobo Sync",
-    "label_kobo_proxy": "Запити синхронізації проксі-сервера Kobo до магазину Kobo",
     "label_rememberme_duration": "Тривалість дії функції «Запам’ятати мене» (у днях)",
     "label_server_context_path": "Базова URL-адреса",
     "label_server_port": "Порт сервера",
@@ -1068,8 +1057,6 @@
   "user_roles": {
     "ADMIN": "Адміністратор",
     "FILE_DOWNLOAD": "Завантаження файлу",
-    "KOBO_SYNC": "Синхронізація Kobo",
-    "KOREADER_SYNC": "Синхронізація KOReader",
     "PAGE_STREAMING": "Потокове передавання сторінок",
     "USER": "Користувач"
   },

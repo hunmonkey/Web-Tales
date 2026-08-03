@@ -3,7 +3,6 @@ logging:
     name: ${user.home}/Library/Logs/Tales/tales.log
 tales:
   config-dir: ${user.home}/Library/Application Support/Tales
-  kobo.kepubify-path: kepubify
 spring:
   config:
     import:

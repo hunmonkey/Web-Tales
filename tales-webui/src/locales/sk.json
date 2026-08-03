@@ -21,7 +21,6 @@
     "account_settings": "Nastavenie účtu",
     "api_key": {
       "created_date": "Dátum vytvorenia: {date}",
-      "force_kobo_sync": "Vynútiť synchronizáciu Kobo",
       "generate_api_key": "Generovať API kľúč",
       "no_keys": "Zatiaľ neboli vytvorené žiadne kľúče API"
     },
@@ -320,7 +319,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Generovať",
-      "context": "Kľúče API možno používať na overenie prostredníctvom protokolu Kobo Sync.",
       "dialog_title": "Generovať nový API kľúč",
       "field_comment": "Poznámka",
       "field_comment_hint": "Na čo slúži tento API kľúč?",
@@ -463,7 +461,6 @@
       "dialot_title_edit": "Upraviť knižnicu",
       "field_analysis_analyze_dimensions": "Analyzovať rozmery strán",
       "field_analysis_hash_files": "Vypočítať hash pre súbory",
-      "field_analysis_hash_koreader": "Vypočítať hash súborov pre KOReader",
       "field_analysis_hash_pages": "Vypočítať hash pre strany",
       "field_convert_to_cbz": "Automaticky konvertovať na CBZ",
       "field_import_barcode_isbn": "ISBN čiarový kód",
@@ -588,10 +585,6 @@
         "order": "Poradie"
       },
       "title": "Názov cieľového súboru"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Vynútiť synchronizáciu Kobo",
-      "warning_html": "Týmto sa vymaže celá história synchronizácie pre tento kľúč API. Váš Kobo synchronizuje všetko pri najbližšej synchronizácii."
     },
     "password_change": {
       "button_cancel": "Zrušiť",
@@ -989,12 +982,8 @@
       "btn_confirm": "Áno, ale len ak je väčší",
       "title": "Regenerovať náhľady"
     },
-    "hint_kobo_port": "Nastavte len v prípade problémov so synchronizáciou obálok a sťahovaním",
     "label_delete_empty_collections": "Po skenovaní odstrániť prázdne zbierky",
     "label_delete_empty_readlists": "Po skenovaní odstrániť prázdne zoznamy čítania",
-    "label_kepubify_path": "Cesta ku kepubify",
-    "label_kobo_port": "Externý port Kobo Sync",
-    "label_kobo_proxy": "Presmerovať požiadavky Kobo Sync na Kobo Store",
     "label_rememberme_duration": "Doba trvania \"Zapamätať si ma\" (v dňoch)",
     "label_server_context_path": "Základná URL adresa",
     "label_server_port": "Port servera",
@@ -1068,8 +1057,6 @@
   "user_roles": {
     "ADMIN": "Administrátor",
     "FILE_DOWNLOAD": "Stiahnutie súboru",
-    "KOBO_SYNC": "Kobo Sync",
-    "KOREADER_SYNC": "Synchronizácia KOReader",
     "PAGE_STREAMING": "Streamovanie strán",
     "USER": "Používateľ"
   },

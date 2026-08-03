@@ -18,7 +18,7 @@ import org.tales.infrastructure.security.apikey.ApiKeyAuthenticationToken
 @WithSecurityContext(factory = WithMockCustomUserSecurityContextFactory::class, setupBefore = TestExecutionEvent.TEST_EXECUTION)
 annotation class WithMockCustomUser(
   val email: String = "user@example.org",
-  val roles: Array<String> = ["PAGE_STREAMING", "FILE_DOWNLOAD", "KOBO_SYNC"],
+  val roles: Array<String> = ["PAGE_STREAMING", "FILE_DOWNLOAD"],
   val sharedAllLibraries: Boolean = true,
   val sharedLibraries: Array<String> = [],
   val id: String = "0",

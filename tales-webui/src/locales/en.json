@@ -21,7 +21,6 @@
     "account_settings": "Account Settings",
     "api_key": {
       "created_date": "Created date: {date}",
-      "force_kobo_sync": "Force Kobo sync",
       "generate_api_key": "Generate API key",
       "no_keys": "No API Keys created yet"
     },
@@ -570,7 +569,6 @@
   "dialog": {
     "add_api_key": {
       "button_confirm": "Generate",
-      "context": "API Keys can be used to authenticate through the Kobo Sync protocol.",
       "dialog_title": "Generate new API key",
       "field_comment": "Comment",
       "field_comment_hint": "What's this API key for?",
@@ -719,7 +717,6 @@
       "dialot_title_edit": "Edit Library",
       "field_analysis_analyze_dimensions": "Analyze pages dimensions",
       "field_analysis_hash_files": "Compute hash for files",
-      "field_analysis_hash_koreader": "Compute hash for files for KOReader",
       "field_analysis_hash_pages": "Compute hash for pages",
       "field_convert_to_cbz": "Automatically convert to CBZ",
       "field_import_barcode_isbn": "ISBN barcode",
@@ -844,10 +841,6 @@
         "order": "Order"
       },
       "title": "Destination File Name"
-    },
-    "force_kobo_sync": {
-      "dialog_title": "Force Kobo sync",
-      "warning_html": "This will delete all sync history for this API key. Your Kobo will sync everything on the next sync."
     },
     "logout": {
       "body": "Are you sure you want to log out of Tales?",
@@ -1261,12 +1254,8 @@
       "btn_confirm": "Yes, but only if bigger",
       "title": "Regenerate thumbnails"
     },
-    "hint_kobo_port": "Set only in case of sync issues with covers and downloads",
     "label_delete_empty_collections": "Delete empty collections after scan",
     "label_delete_empty_readlists": "Delete empty read lists after scan",
-    "label_kepubify_path": "Path to kepubify",
-    "label_kobo_port": "Kobo Sync external port",
-    "label_kobo_proxy": "Proxy Kobo Sync requests to Kobo Store",
     "label_rememberme_duration": "Remember me duration (in days)",
     "label_server_context_path": "Base URL",
     "label_server_port": "Server Port",
@@ -1340,8 +1329,6 @@
   "user_roles": {
     "ADMIN": "Administrator",
     "FILE_DOWNLOAD": "File download",
-    "KOBO_SYNC": "Kobo Sync",
-    "KOREADER_SYNC": "KOReader Sync",
     "PAGE_STREAMING": "Page streaming",
     "USER": "User"
   },

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.tales.infrastructure.configuration.TalesSettingsProvider
-import org.tales.infrastructure.kobo.KepubConverter
 import org.tales.infrastructure.openapi.OpenApiConfiguration
 import org.tales.infrastructure.web.WebServerEffectiveSettings
 import org.tales.interfaces.api.rest.dto.SettingMultiSource
@@ -34,7 +33,6 @@ class SettingsController(
   @param:Value($$"${server.port:#{null}}") private val configServerPort: Int?,
   @param:Value($$"${server.servlet.context-path:#{null}}") private val configServerContextPath: String?,
   private val serverSettings: WebServerEffectiveSettings,
-  private val kepubConverter: KepubConverter,
 ) {
   @GetMapping
   @Operation(summary = "Retrieve server settings")
@@ -47,9 +45,6 @@ class SettingsController(
       talesSettingsProvider.taskPoolSize,
       SettingMultiSource(configServerPort, talesSettingsProvider.serverPort, serverSettings.effectiveServerPort),
       SettingMultiSource(configServerContextPath, talesSettingsProvider.serverContextPath, serverSettings.effectiveServletContextPath),
-      talesSettingsProvider.koboProxy,
-      talesSettingsProvider.koboPort,
-      SettingMultiSource(kepubConverter.kepubifyConfigurationPath, talesSettingsProvider.kepubifyPath, kepubConverter.kepubifyPath?.toString()),
     )
 
   @PatchMapping
@@ -69,9 +64,5 @@ class SettingsController(
 
     if (newSettings.isSet("serverPort")) talesSettingsProvider.serverPort = newSettings.serverPort
     if (newSettings.isSet("serverContextPath")) talesSettingsProvider.serverContextPath = newSettings.serverContextPath
-
-    newSettings.koboProxy?.let { talesSettingsProvider.koboProxy = it }
-    if (newSettings.isSet("koboPort")) talesSettingsProvider.koboPort = newSettings.koboPort
-    if (newSettings.isSet("kepubifyPath")) talesSettingsProvider.kepubifyPath = newSettings.kepubifyPath
   }
 }
