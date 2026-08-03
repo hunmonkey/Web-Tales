@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1.7
+FROM node:18-bookworm AS webui
+WORKDIR /workspace
+RUN git config --global url."https://github.com/".insteadOf "git@github.com:" \
+ && git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+COPY tales-webui/package*.json ./tales-webui/
+WORKDIR /workspace/tales-webui
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV VUE_APP_SHELFVIEW_READER=true
+ENV SHELFVIEW_SKIP_TSCHECK=true
+RUN npm ci
+COPY tales-webui/ ./
+RUN npm run build
+
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /workspace
+COPY . .
+COPY --from=webui /workspace/tales-webui/dist ./tales-webui/dist
+RUN chmod +x ./gradlew \
+ && rm -rf tales/src/main/resources/public \
+ && mkdir -p tales/src/main/resources/public \
+ && cp -a tales-webui/dist/. tales/src/main/resources/public/ \
+ && ./gradlew :tales:bootJar -x test --no-daemon \
+ && cp tales/build/libs/*.jar /workspace/application.jar
+
+FROM eclipse-temurin:23-jre
+ARG IMAGE_REVISION=unknown
+ARG IMAGE_VERSION=dev
+LABEL org.opencontainers.image.title="Tales" \
+      org.opencontainers.image.description="Self-hosted web reader for comics, books and image archives" \
+      org.opencontainers.image.source="https://github.com/hunmonkey/Web-Tales" \
+      org.opencontainers.image.revision="$IMAGE_REVISION" \
+      org.opencontainers.image.version="$IMAGE_VERSION"
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates locales libjxl-dev libheif-dev libwebp-dev libarchive-dev curl \
+ && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+ && locale-gen en_US.UTF-8 \
+ && apt-get -y autoremove \
+ && rm -rf /var/lib/apt/lists/*
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu"
+VOLUME /config
+WORKDIR /app
+COPY --from=build /workspace/application.jar /app/application.jar
+ENV TALES_CONFIG_DIR="/config"
+ENV TALES_CONFIGDIR="/config"
+ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8"
+EXPOSE 25600
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD curl -fsS http://localhost:25600/actuator/health || exit 1
+ENTRYPOINT ["java", "-Dspring.profiles.include=docker", "--enable-native-access=ALL-UNNAMED", "-jar", "/app/application.jar", "--tales.config-dir=/config", "--spring.config.additional-location=file:/config/"]
+
