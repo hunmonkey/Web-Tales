@@ -499,3 +499,101 @@ loading states those tickets introduced. The owner approved fixing all four.
   Closed when the sync endpoints no longer exist, the schema no longer carries
   the sync tables and columns, and a repository-wide search finds only the
   documented historical mentions.
+
+## Reader feature and design sweep from 2026-08-04
+
+Owner request: analyse the reader for feature and design improvements, then
+implement priorities 1 through 4. The analysis ran five of six planned
+dimensions (fixed-page, text reading, design system, input/accessibility,
+performance); the reading-journey dimension and the automated verification pass
+did not run, so twenty of the highest-severity claims were verified by hand
+against the code instead. Six items were not implemented and are recorded in
+`docs/ADR/ADR-0018-reader-sweep-deferred-decisions.md`.
+
+### Defects hit during ordinary reading
+
+- [x] SV-1080 Stop a touch drag on a zoomed page from turning the page, and
+  ignore multi-touch gestures. The mouse path guarded this through
+  `readerStageCanPan`; touch had no pan handler because the stage scrolls
+  natively, so `shelfViewTouchAction` now takes the stage state.
+- [x] SV-1081 Make a failed position save visible in the pinned toolbar instead
+  of only inside the settings panel, and save through a keepalive fetch on
+  `pagehide`/hidden `visibilitychange` so an unload does not cancel it.
+- [x] SV-1082 Let Escape close the innermost open panel before it reaches the
+  chrome (`closeTopmostChromePanel`).
+- [x] SV-1083 Move wheel zoom onto Ctrl/Cmd so a width-fitted page can be
+  scrolled, and decide tap paging from the real horizontal overflow rather than
+  a scale threshold. Correction to the analysis: `fixedPageScale` is stored per
+  book (`scopeType: 'BOOK'`), not globally, so it was left persistent.
+- [x] SV-1084 Subtract the bottom dock and thumbnail strip reservations from the
+  fit calculation via `--sv-stage-bottom-chrome`.
+- [x] SV-1085 Map HTTP 401 to `UNAUTHENTICATED` and offer sign-in instead of a
+  retry that can never succeed.
+- [x] SV-1086 Narrow a page image failure to that page. `pageImageFailed` became
+  a computed over `failedPageIndexes`, so a spread keeps its other half and
+  continuous scroll keeps its place.
+- [x] SV-1087 Give a TXT inside a mixed archive the same page budget as a
+  standalone TXT (the ADR-0009 revisit trigger).
+- [x] SV-1088 Carry read-aloud on to the next paragraph and the next page, and
+  add pause/resume.
+- [x] SV-1089 Add a settings button to the bottom dock and drop the toolbar
+  labels under 600px, so the settings entry cannot scroll out of reach.
+- [x] SV-1090 Drop `role="application"` for prose so a screen reader keeps browse
+  mode, and translate the five hardcoded English screen-reader strings.
+
+### Getting to the page faster
+
+- [x] SV-1091 Fetch the book and the manifest together and load the series and
+  next-book lookups in the background: four serial round trips became two.
+- [x] SV-1092 Convert the reading fonts to woff2: 15.6MB of TTF became 981KB.
+  The TTF sources are still tracked; removing them is the owner's call.
+- [x] SV-1093 Coalesce scroll and resize into one animation frame and skip
+  repagination when the budget is unchanged.
+- [x] SV-1094 Keep prefetches that stay inside the new window instead of
+  cancelling and reissuing them, reach one page backwards, stop cancelling with
+  `src = ''` (which refetches the document URL), and match the canvas path's
+  `crossOrigin`.
+- [x] SV-1095 Reserve a placeholder height for continuous-scroll pages.
+- [x] SV-1096 Give the CPU filters their own 4M pixel budget so a large page
+  shows untouched rather than freezing the page turn.
+- [x] SV-1097 Debounce the TXT search so a 5MB file is not rescanned per
+  keystroke.
+- [x] SV-1099 Add the book's `contentFingerprint` to page and thumbnail URLs so a
+  replaced file is not served from the one-day image cache.
+- [x] SV-1100 Show a placeholder while a page image is still arriving.
+
+### Feature gaps
+
+- [x] SV-1101 Keyboard zoom (`+`/`-`/`0`).
+- [x] SV-1102 Keyboard access to contents, bookmarks, settings and page jump,
+  using the same letters the fallback readers already use.
+- [x] SV-1103 Show a reading percentage, which survives a font-size change in a
+  way the page number does not.
+- [x] SV-1104 Refit the page after a quarter turn.
+- [x] SV-1105 Apply the text brightness filter to the reading surface rather than
+  the glyphs, and widen its floor to 0.5.
+- [x] SV-1106 Show a wide double-spread page on its own instead of pairing it,
+  detected from the loaded image.
+- [x] SV-1107 Highlights drawer with the five colours, notes and delete, all of
+  which the backend already supported and no screen reached.
+- [x] SV-1108 Inline selection toolbar so highlight, dictionary and read-aloud
+  act on the selection instead of losing it.
+- [x] SV-1109 Optional joining of hard-wrapped TXT lines, done at render time
+  one character for one character so stored offsets do not move.
+
+### Design consistency
+
+- [x] SV-1110 Panel transitions, `overscroll-behavior`/`touch-action` on the
+  stage, one name for bookmark-add and for the image filter, outline icon
+  family, `aria-current` and a focus ring on the thumbnail strip, reader tokens
+  on the fallback readers' chrome, and reader tokens in place of Vuetify's
+  primary/secondary/error/grey inside the reader.
+
+### Not implemented, see ADR-0018
+
+- SV-1098 Local CBZ lazy extraction — blocked on the ADR-0016 object-URL
+  lifecycle; enabling zip.js web workers is blocked by the recorded dependency
+  review.
+- Two-device position conflict, EPUB inside the shell, real offline reading,
+  automatic margin trimming, and touch zoom (which collides with the SV-1066 and
+  SV-1072 centre tap) each need an owner decision first.

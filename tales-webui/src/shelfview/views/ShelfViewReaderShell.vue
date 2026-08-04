@@ -28,6 +28,20 @@
       </v-btn>
 
       <v-toolbar-title class="shelfview-reader-shell__title">{{ bookTitle }}</v-toolbar-title>
+
+      <!-- A failed save has to reach the reader without opening anything. The
+           quiet states stay inside the settings panel so the toolbar keeps
+           still while reading. -->
+      <span
+        v-if="readerStateFailureVisible"
+        class="shelfview-reader-shell__sync-status shelfview-reader-shell__sync-status--error shelfview-reader-shell__toolbar-status"
+        role="status"
+        data-testid="shelfview-reader-toolbar-status"
+      >
+        <v-icon small>mdi-alert-circle-outline</v-icon>
+        {{ readerStateMessage }}
+      </span>
+
       <v-spacer/>
 
       <div
@@ -51,6 +65,12 @@
         >
           {{ currentPageLabel }} / {{ pagesCount }}
         </span>
+
+        <span
+          v-if="progressPercentLabel"
+          class="shelfview-reader-shell__progress"
+          data-testid="shelfview-reader-progress"
+        >{{ progressPercentLabel }}</span>
 
         <v-btn
           icon
@@ -146,6 +166,23 @@
       <div class="shelfview-reader-shell__overflow-actions">
         <section class="shelfview-reader-shell__setting-group">
           <h3 class="shelfview-reader-shell__setting-group-title">{{ $t('shelfview_reader.group_view') }}</h3>
+
+          <!-- The toolbar drops its label on a narrow screen, so the current fit
+               value has to be readable here as well (Rule_UIUX 1-8). -->
+          <button
+            v-if="fixedPageControlsVisible"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-expanded="openControlMenu === 'fit' ? 'true' : 'false'"
+            aria-haspopup="menu"
+            data-testid="shelfview-reader-fit-row"
+            @click="toggleControlMenu('fit', $event)"
+          >
+            <v-icon small>{{ pageFitIcon }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.control_fit') }}</span>
+            <span class="shelfview-reader-shell__setting-row-value">{{ pageFitLabel }}</span>
+            <v-icon small>mdi-chevron-down</v-icon>
+          </button>
 
           <button
             type="button"
@@ -322,7 +359,21 @@
           >
             <v-icon small>{{ textToSpeechActive ? 'mdi-volume-off' : 'mdi-volume-high' }}</v-icon>
             <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.read_aloud') }}</span>
-            <span class="shelfview-reader-shell__setting-row-state">{{ textToSpeechActive ? $t('shelfview_reader.state_on') : $t('shelfview_reader.state_off') }}</span>
+            <span class="shelfview-reader-shell__setting-row-state">{{ textToSpeechStateLabel }}</span>
+          </button>
+
+          <button
+            v-if="textToSpeechActive && textToSpeechPauseAvailable"
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            :aria-pressed="textToSpeechPaused ? 'true' : 'false'"
+            data-testid="shelfview-reader-tts-pause"
+            @click="toggleTextToSpeechPause"
+          >
+            <v-icon small>{{ textToSpeechPaused ? 'mdi-play-circle-outline' : 'mdi-pause-circle-outline' }}</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">
+              {{ textToSpeechPaused ? $t('shelfview_reader.resume_read_aloud') : $t('shelfview_reader.pause_read_aloud') }}
+            </span>
           </button>
 
           <button
@@ -334,6 +385,18 @@
           >
             <v-icon small>{{ currentTextParagraphHighlighted ? 'mdi-marker-check' : 'mdi-format-color-highlight' }}</v-icon>
             <span class="shelfview-reader-shell__setting-row-label">{{ textHighlightLabel }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="shelfview-reader-shell__setting-row"
+            data-testid="shelfview-reader-highlights-toggle"
+            @click="highlightsDrawerOpen = true"
+          >
+            <v-icon small>mdi-format-color-highlight</v-icon>
+            <span class="shelfview-reader-shell__setting-row-label">{{ $t('shelfview_reader.highlights') }}</span>
+            <span class="shelfview-reader-shell__setting-row-value">{{ highlights.length }}</span>
+            <v-icon small>mdi-chevron-right</v-icon>
           </button>
 
           <button
@@ -436,7 +499,7 @@
         :label="$t('shelfview_reader.search')"
         data-testid="shelfview-reader-search-input"
         @input="onTextSearchInput"
-        @keyup.enter="goToNextTextSearchMatch"
+        @keyup.enter="applyTextSearchQueryAndGoToNext"
       />
       <span
         class="shelfview-reader-shell__search-status"
@@ -468,7 +531,7 @@
       id="shelfview-reader-shortcut-hint"
       class="shelfview-reader-shell__sr-only"
     >
-      Use arrow keys, Page Up, Page Down, Home, End and touch swipes to navigate. Press question mark for shortcuts.
+      {{ $t('shelfview_reader.shortcut_hint') }}
     </p>
 
     <p
@@ -485,7 +548,7 @@
       :class="[stageClasses, textStageThemeClass]"
       :style="readerStageStyle"
       tabindex="0"
-      role="application"
+      :role="readerStageRole"
       :aria-label="readerAriaLabel"
       aria-describedby="shelfview-reader-shortcut-hint"
       data-testid="shelfview-reader-stage"
@@ -501,7 +564,7 @@
       <v-progress-circular
         v-if="loading"
         indeterminate
-        color="primary"
+        class="shelfview-reader-shell__action shelfview-reader-shell__action--accent"
         data-testid="shelfview-reader-loading"
       />
 
@@ -512,15 +575,26 @@
       >
         <v-icon
           size="36"
-          color="error"
+          class="shelfview-reader-shell__icon--danger"
         >
           mdi-alert-circle-outline
         </v-icon>
         <h2>{{ displayErrorTitle }}</h2>
         <p>{{ displayErrorMessage }}</p>
         <div class="shelfview-reader-shell__status-actions">
+          <!-- Retrying an expired session only repeats the same failure, so the
+               one action offered there is the one that can actually fix it. -->
           <v-btn
-            color="primary"
+            v-if="signInRecoveryVisible"
+            class="shelfview-reader-shell__action shelfview-reader-shell__action--accent"
+            data-testid="shelfview-reader-sign-in"
+            @click="goToSignIn"
+          >
+            {{ $t('shelfview_reader.sign_in_again') }}
+          </v-btn>
+          <v-btn
+            v-else
+            class="shelfview-reader-shell__action shelfview-reader-shell__action--accent"
             data-testid="shelfview-reader-retry"
             @click="retryReader"
           >
@@ -564,19 +638,19 @@
       >
         <v-icon
           size="36"
-          color="grey lighten-1"
+          class="shelfview-reader-shell__icon--muted"
         >
-          mdi-book-open-page-variant
+          mdi-book-open-page-variant-outline
         </v-icon>
         <h2>{{ $t('shelfview_reader.epub_bridge_title') }}</h2>
         <p>{{ $t('shelfview_reader.epub_bridge_message') }}</p>
         <div class="shelfview-reader-shell__status-actions">
           <v-btn
-            color="primary"
+            class="shelfview-reader-shell__action shelfview-reader-shell__action--accent"
             data-testid="shelfview-reader-epub-open"
             @click="openEpubFallbackReader"
           >
-            <v-icon left>mdi-book-open-page-variant</v-icon>
+            <v-icon left>mdi-book-open-page-variant-outline</v-icon>
             {{ $t('shelfview_reader.epub_bridge_open') }}
           </v-btn>
         </div>
@@ -589,9 +663,9 @@
       >
         <v-icon
           size="36"
-          color="grey lighten-1"
+          class="shelfview-reader-shell__icon--muted"
         >
-          mdi-book-open-blank-variant
+          mdi-book-open-page-variant-outline
         </v-icon>
         <h2>Tales</h2>
         <p>{{ emptyMessage }}</p>
@@ -604,33 +678,51 @@
         data-testid="shelfview-reader-pages"
       >
         <template v-for="page in visiblePageSources">
+          <div
+            v-if="pageImageFailedAt(page.pageIndex)"
+            :key="`page-failed-${page.pageIndex}`"
+            class="shelfview-reader-shell__page-failed"
+            data-testid="shelfview-reader-page-failed"
+          >
+            <v-icon>mdi-image-broken-variant</v-icon>
+            <span>{{ $t('shelfview_reader.page_failed_n', {n: page.pageIndex + 1}) }}</span>
+            <v-btn
+              small
+              text
+              data-testid="shelfview-reader-page-retry"
+              @click="retryPageImage"
+            >
+              {{ $t('shelfview_reader.try_again') }}
+            </v-btn>
+          </div>
           <ShelfViewCanvasImagePage
-            v-if="canvasImageProcessingEnabled"
+            v-else-if="canvasImageProcessingEnabled"
             :key="`canvas-page-${page.pageIndex}-${pageImageReloadNonce}`"
             :src="page.url"
-            :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
+            :alt="`${bookTitle} - ${$t('shelfview_reader.page_n', {n: page.pageIndex + 1})}`"
             :page-index="page.pageIndex"
             :reload-nonce="pageImageReloadNonce"
             :page-class="pageImageClass"
             :page-style="imageFilterStyle"
             :mode="canvasImageProcessingMode"
-            @error="onPageImageError"
+            @error="onPageImageError(page.pageIndex)"
           />
           <img
             v-else
             :key="`page-${page.pageIndex}-${pageImageReloadNonce}`"
             class="shelfview-reader-shell__page shelfview-page-content"
-            :class="pageImageClass"
+            :class="[pageImageClass, {'shelfview-reader-shell__page--pending': !pageImageLoadedAt(page.pageIndex)}]"
             :style="imageFilterStyle"
             :src="page.url"
-            :alt="`${bookTitle} - page ${page.pageIndex + 1}`"
+            :alt="`${bookTitle} - ${$t('shelfview_reader.page_n', {n: page.pageIndex + 1})}`"
             draggable="false"
             :loading="pageImageLoading"
             decoding="async"
             :data-page-index="page.pageIndex"
             :data-page-reload="pageImageReloadNonce"
             data-testid="shelfview-reader-page"
-            @error="onPageImageError"
+            @load="onPageImageLoaded(page.pageIndex, $event)"
+            @error="onPageImageError(page.pageIndex)"
             @dragstart.prevent
           />
         </template>
@@ -639,7 +731,7 @@
       <article
         v-else-if="readerTextVisible"
         class="shelfview-reader-shell__text"
-        :class="textThemeClass"
+        :class="[textThemeClass, {'shelfview-reader-shell__text--unwrapped': textUnwrapLines}]"
         :style="textReaderStyle"
         data-testid="shelfview-reader-text"
       >
@@ -660,6 +752,51 @@
         </p>
       </article>
     </main>
+
+    <!-- Highlighting, looking a word up and reading a sentence aloud all read the
+         live selection, but their buttons sat two panels away and the selection
+         was gone by the time the reader got there. This puts them beside the
+         selection, and mousedown.prevent keeps the selection alive. -->
+    <div
+      v-if="selectionActionsVisible"
+      class="shelfview-reader-shell__selection-actions"
+      :style="selectionActionsStyle"
+      role="toolbar"
+      :aria-label="$t('shelfview_reader.selection_actions')"
+      data-testid="shelfview-reader-selection-actions"
+    >
+      <v-btn
+        small
+        text
+        data-testid="shelfview-reader-selection-highlight"
+        @mousedown.prevent
+        @click="addTextHighlightForCurrentSelection"
+      >
+        <v-icon small left>mdi-format-color-highlight</v-icon>
+        {{ $t('shelfview_reader.highlight_selection') }}
+      </v-btn>
+      <v-btn
+        small
+        text
+        data-testid="shelfview-reader-selection-dictionary"
+        @mousedown.prevent
+        @click="openDictionaryLookup"
+      >
+        <v-icon small left>mdi-book-search-outline</v-icon>
+        {{ $t('shelfview_reader.dictionary_lookup') }}
+      </v-btn>
+      <v-btn
+        v-if="textToSpeechAvailable"
+        small
+        text
+        data-testid="shelfview-reader-selection-read-aloud"
+        @mousedown.prevent
+        @click="startTextToSpeech"
+      >
+        <v-icon small left>mdi-volume-high</v-icon>
+        {{ $t('shelfview_reader.read_aloud') }}
+      </v-btn>
+    </div>
 
     <!-- On a phone the toolbar sits out of thumb reach, so paging is mirrored at
          the bottom. It follows the same show/hide rules as the rest of the
@@ -687,6 +824,14 @@
         {{ currentPageLabel }} / {{ pagesCount }}
       </span>
 
+      <!-- The page number changes with the font size on a TXT, so a percentage
+           is the only figure a reader can carry between sessions. -->
+      <span
+        v-if="progressPercentLabel"
+        class="shelfview-reader-shell__progress"
+        data-testid="shelfview-reader-dock-progress"
+      >{{ progressPercentLabel }}</span>
+
       <v-btn
         icon
         :disabled="!canGoNext"
@@ -695,6 +840,21 @@
         @click="nextPage"
       >
         <v-icon>mdi-chevron-right</v-icon>
+      </v-btn>
+
+      <!-- On a narrow screen the toolbar controls scroll sideways behind a
+           hidden scrollbar and the settings button is the one that falls off the
+           end, so the dock carries a second way in. -->
+      <v-btn
+        v-if="pageControlsVisible"
+        icon
+        :aria-label="$t('shelfview_reader.settings')"
+        :aria-expanded="overflowMenuOpen ? 'true' : 'false'"
+        aria-haspopup="dialog"
+        data-testid="shelfview-reader-dock-settings"
+        @click="toggleOverflowMenu"
+      >
+        <v-icon>mdi-tune-variant</v-icon>
       </v-btn>
     </nav>
 
@@ -710,6 +870,7 @@
         class="shelfview-reader-shell__thumbnail-button"
         :class="{'shelfview-reader-shell__thumbnail-button--active': thumbnail.pageIndex === currentPageIndex}"
         :aria-label="$t('shelfview_reader.page_n', {n: thumbnail.pageIndex + 1})"
+        :aria-current="thumbnail.pageIndex === currentPageIndex ? 'true' : undefined"
         :data-page-index="thumbnail.pageIndex"
         data-testid="shelfview-reader-thumbnail"
         @click="goToPageIndex(thumbnail.pageIndex)"
@@ -725,789 +886,950 @@
       </button>
     </section>
 
-    <aside
-      v-if="contentsDrawerOpen && contentsAvailable"
-      class="shelfview-reader-shell__contents-drawer"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="shelfview-contents-title"
-      data-testid="shelfview-contents-drawer"
-    >
-      <header class="shelfview-reader-shell__drawer-header">
-        <h2 id="shelfview-contents-title">{{ $t('shelfview_reader.contents') }}</h2>
-        <v-btn
-          icon
-          :aria-label="$t('shelfview_reader.close')"
-          data-testid="shelfview-contents-close"
-          @click="closeContentsDrawer"
-        >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </header>
-
-      <ul
-        v-if="manifestContentsItems.length > 0"
-        class="shelfview-reader-shell__contents-list"
+    <transition name="shelfview-panel">
+      <aside
+        v-if="contentsDrawerOpen && contentsAvailable"
+        class="shelfview-reader-shell__contents-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shelfview-contents-title"
+        data-testid="shelfview-contents-drawer"
       >
-        <li
-          v-for="(item, index) in manifestContentsItems"
-          :key="`manifest-contents-${index}`"
-          class="shelfview-reader-shell__contents-row"
-        >
-          <button
-            type="button"
-            class="shelfview-reader-shell__contents-link"
-            :class="{'shelfview-reader-shell__contents-link--active': isCurrentManifestContentsItem(item)}"
-            data-testid="shelfview-contents-item"
-            @click="goToManifestContentsItem(item)"
+        <header class="shelfview-reader-shell__drawer-header">
+          <h2 id="shelfview-contents-title">{{ $t('shelfview_reader.contents') }}</h2>
+          <v-btn
+            icon
+            :aria-label="$t('shelfview_reader.close')"
+            data-testid="shelfview-contents-close"
+            @click="closeContentsDrawer"
           >
-            <span class="shelfview-reader-shell__contents-index">{{ index + 1 }}</span>
-            <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
-            <v-icon
-              v-if="isCurrentManifestContentsItem(item)"
-              small
-              class="shelfview-reader-shell__contents-active-icon"
-            >mdi-check</v-icon>
-          </button>
-        </li>
-      </ul>
-      <ul
-        v-else-if="mixedContentsItems.length > 1"
-        class="shelfview-reader-shell__contents-list"
-      >
-        <li
-          v-for="item in mixedContentsItems"
-          :key="item.itemId"
-          class="shelfview-reader-shell__contents-row"
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </header>
+
+        <ul
+          v-if="manifestContentsItems.length > 0"
+          class="shelfview-reader-shell__contents-list"
         >
-          <button
-            type="button"
-            class="shelfview-reader-shell__contents-link"
-            :class="{'shelfview-reader-shell__contents-link--active': isCurrentMixedItem(item)}"
-            data-testid="shelfview-contents-item"
-            @click="goToMixedContentItem(item)"
+          <li
+            v-for="(item, index) in manifestContentsItems"
+            :key="`manifest-contents-${index}`"
+            class="shelfview-reader-shell__contents-row"
           >
-            <span class="shelfview-reader-shell__contents-index">{{ item.index + 1 }}</span>
-            <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
-            <v-icon
-              v-if="isCurrentMixedItem(item)"
-              small
-              class="shelfview-reader-shell__contents-active-icon"
-            >mdi-check</v-icon>
-          </button>
-        </li>
-      </ul>
-      <ul
-        v-else
-        class="shelfview-reader-shell__contents-list"
-      >
-        <li
-          v-for="item in textContentsItems"
-          :key="`text-contents-${item.paragraphIndex}`"
-          class="shelfview-reader-shell__contents-row"
-        >
-          <button
-            type="button"
-            class="shelfview-reader-shell__contents-link"
-            :class="{'shelfview-reader-shell__contents-link--active': isCurrentTextContentsItem(item)}"
-            data-testid="shelfview-contents-item"
-            @click="goToTextContentsItem(item)"
-          >
-            <span class="shelfview-reader-shell__contents-index">{{ item.paragraphIndex + 1 }}</span>
-            <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
-            <v-icon
-              v-if="isCurrentTextContentsItem(item)"
-              small
-              class="shelfview-reader-shell__contents-active-icon"
-            >mdi-check</v-icon>
-          </button>
-        </li>
-      </ul>
-    </aside>
-
-    <aside
-      v-if="dictionaryDrawerOpen"
-      class="shelfview-reader-shell__dictionary-drawer"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="shelfview-dictionary-title"
-      data-testid="shelfview-dictionary-drawer"
-    >
-      <header class="shelfview-reader-shell__drawer-header">
-        <h2 id="shelfview-dictionary-title">{{ $t('shelfview_reader.dictionary') }}</h2>
-        <v-btn
-          icon
-          :aria-label="$t('shelfview_reader.close')"
-          data-testid="shelfview-dictionary-close"
-          @click="closeDictionaryDrawer"
-        >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </header>
-
-      <v-text-field
-        v-model="dictionaryQuery"
-        dense
-        outlined
-        hide-details
-        :label="$t('shelfview_reader.dictionary_query')"
-        data-testid="shelfview-dictionary-query"
-      />
-
-      <div class="shelfview-reader-shell__dictionary-actions">
-        <v-btn
-          small
-          outlined
-          data-testid="shelfview-dictionary-import"
-          @click="openDictionaryPackImport"
-        >
-          <v-icon small>mdi-upload</v-icon>
-          {{ $t('shelfview_reader.dictionary_pack_import') }}
-        </v-btn>
-        <input
-          ref="dictionaryPackInput"
-          class="shelfview-reader-shell__dictionary-file-input"
-          type="file"
-          accept="application/json,.json"
-          data-testid="shelfview-dictionary-import-input"
-          @change="onDictionaryPackFileSelected"
-        />
-        <v-btn
-          v-if="dictionaryLocalEntries.length > 0 || dictionaryServerProviders.length > 0"
-          small
-          outlined
-          data-testid="shelfview-dictionary-clear"
-          @click="clearDictionaryPack"
-        >
-          <v-icon small>mdi-delete-outline</v-icon>
-          {{ $t('shelfview_reader.dictionary_pack_clear') }}
-        </v-btn>
-      </div>
-
-      <p
-        v-if="!dictionaryQueryReady"
-        class="shelfview-reader-shell__dictionary-empty"
-        data-testid="shelfview-dictionary-empty"
-      >
-        {{ $t('shelfview_reader.dictionary_empty') }}
-      </p>
-
-      <ul
-        v-else
-        class="shelfview-reader-shell__dictionary-results"
-        data-testid="shelfview-dictionary-results"
-      >
-        <li
-          v-for="result in dictionaryLookupResults"
-          :key="result.key"
-          class="shelfview-reader-shell__dictionary-result"
-          :data-provider-kind="result.kind"
-          data-testid="shelfview-dictionary-result"
-        >
-          <span class="shelfview-reader-shell__dictionary-provider">{{ result.providerLabel }}</span>
-          <strong
-            v-if="result.term"
-            class="shelfview-reader-shell__dictionary-term"
-            data-testid="shelfview-dictionary-term"
-          >{{ result.term }}</strong>
-          <p
-            v-if="result.definition"
-            class="shelfview-reader-shell__dictionary-definition"
-            data-testid="shelfview-dictionary-definition"
-          >{{ result.definition }}</p>
-          <span
-            v-if="result.sourceName"
-            class="shelfview-reader-shell__dictionary-source"
-            data-testid="shelfview-dictionary-source"
-          >{{ result.sourceName }}</span>
-          <a
-            v-if="result.url"
-            class="shelfview-reader-shell__dictionary-link"
-            :href="result.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="shelfview-dictionary-search"
-          >
-            <v-icon small>mdi-open-in-new</v-icon>
-            {{ result.label }}
-          </a>
-        </li>
-      </ul>
-    </aside>
-
-    <aside
-      v-if="bookmarksDrawerOpen"
-      class="shelfview-reader-shell__bookmarks-drawer"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="shelfview-bookmarks-title"
-      data-testid="shelfview-bookmarks-drawer"
-    >
-      <header class="shelfview-reader-shell__drawer-header">
-        <h2 id="shelfview-bookmarks-title">{{ $t('shelfview_reader.bookmarks') }}</h2>
-        <v-btn
-          icon
-          :aria-label="$t('shelfview_reader.close')"
-          data-testid="shelfview-bookmarks-close"
-          @click="closeBookmarksDrawer"
-        >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </header>
-
-      <v-btn
-        block
-        color="primary"
-        data-testid="shelfview-bookmarks-add"
-        @click="addBookmarkForCurrentPage"
-      >
-        <v-icon left>mdi-bookmark-plus-outline</v-icon>
-        {{ $t('shelfview_reader.save_page') }}
-      </v-btn>
-
-      <p
-        v-if="bookmarks.length === 0"
-        class="shelfview-reader-shell__bookmarks-empty"
-        data-testid="shelfview-bookmarks-empty"
-      >
-        {{ $t('shelfview_reader.no_bookmarks') }}
-      </p>
-
-      <ul
-        v-else
-        class="shelfview-reader-shell__bookmarks-list"
-      >
-        <li
-          v-for="bookmark in bookmarks"
-          :key="bookmark.id"
-          class="shelfview-reader-shell__bookmark-row"
-        >
-          <div class="shelfview-reader-shell__bookmark-main">
             <button
               type="button"
-              class="shelfview-reader-shell__bookmark-link"
-              data-testid="shelfview-bookmark-go"
-              @click="goToBookmark(bookmark)"
+              class="shelfview-reader-shell__contents-link"
+              :class="{'shelfview-reader-shell__contents-link--active': isCurrentManifestContentsItem(item)}"
+              data-testid="shelfview-contents-item"
+              @click="goToManifestContentsItem(item)"
             >
-              {{ bookmarkLabel(bookmark) }}
+              <span class="shelfview-reader-shell__contents-index">{{ index + 1 }}</span>
+              <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
+              <v-icon
+                v-if="isCurrentManifestContentsItem(item)"
+                small
+                class="shelfview-reader-shell__contents-active-icon"
+              >mdi-check</v-icon>
             </button>
-            <p
-              v-if="bookmark.note && editingBookmarkId !== bookmark.id"
-              class="shelfview-reader-shell__bookmark-note"
-              data-testid="shelfview-bookmark-note"
-            >
-              {{ bookmark.note }}
-            </p>
-            <form
-              v-if="editingBookmarkId === bookmark.id"
-              class="shelfview-reader-shell__bookmark-note-editor"
-              data-testid="shelfview-bookmark-note-editor"
-              @submit.prevent="saveBookmarkNote(bookmark)"
-            >
-              <v-text-field
-                v-model="bookmarkNoteDraft"
-                dense
-                outlined
-                hide-details
-                :label="$t('shelfview_reader.bookmark_note')"
-                data-testid="shelfview-bookmark-note-input"
-              />
-              <div class="shelfview-reader-shell__bookmark-note-actions">
-                <v-btn
-                  icon
-                  small
-                  type="button"
-                  :aria-label="$t('shelfview_reader.save_bookmark_note')"
-                  data-testid="shelfview-bookmark-note-save"
-                  @click="saveBookmarkNote(bookmark)"
-                >
-                  <v-icon small>mdi-check</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  small
-                  type="button"
-                  :aria-label="$t('shelfview_reader.cancel_bookmark_note')"
-                  data-testid="shelfview-bookmark-note-cancel"
-                  @click="cancelBookmarkNoteEdit"
-                >
-                  <v-icon small>mdi-close</v-icon>
-                </v-btn>
-              </div>
-            </form>
-          </div>
-          <v-btn
-            icon
-            small
-            :aria-label="$t('shelfview_reader.edit_bookmark_note')"
-            data-testid="shelfview-bookmark-note-edit"
-            @click="startBookmarkNoteEdit(bookmark)"
+          </li>
+        </ul>
+        <ul
+          v-else-if="mixedContentsItems.length > 1"
+          class="shelfview-reader-shell__contents-list"
+        >
+          <li
+            v-for="item in mixedContentsItems"
+            :key="item.itemId"
+            class="shelfview-reader-shell__contents-row"
           >
-            <v-icon small>mdi-note-edit-outline</v-icon>
-          </v-btn>
+            <button
+              type="button"
+              class="shelfview-reader-shell__contents-link"
+              :class="{'shelfview-reader-shell__contents-link--active': isCurrentMixedItem(item)}"
+              data-testid="shelfview-contents-item"
+              @click="goToMixedContentItem(item)"
+            >
+              <span class="shelfview-reader-shell__contents-index">{{ item.index + 1 }}</span>
+              <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
+              <v-icon
+                v-if="isCurrentMixedItem(item)"
+                small
+                class="shelfview-reader-shell__contents-active-icon"
+              >mdi-check</v-icon>
+            </button>
+          </li>
+        </ul>
+        <ul
+          v-else
+          class="shelfview-reader-shell__contents-list"
+        >
+          <li
+            v-for="item in textContentsItems"
+            :key="`text-contents-${item.paragraphIndex}`"
+            class="shelfview-reader-shell__contents-row"
+          >
+            <button
+              type="button"
+              class="shelfview-reader-shell__contents-link"
+              :class="{'shelfview-reader-shell__contents-link--active': isCurrentTextContentsItem(item)}"
+              data-testid="shelfview-contents-item"
+              @click="goToTextContentsItem(item)"
+            >
+              <span class="shelfview-reader-shell__contents-index">{{ item.paragraphIndex + 1 }}</span>
+              <span class="shelfview-reader-shell__contents-label">{{ item.label }}</span>
+              <v-icon
+                v-if="isCurrentTextContentsItem(item)"
+                small
+                class="shelfview-reader-shell__contents-active-icon"
+              >mdi-check</v-icon>
+            </button>
+          </li>
+        </ul>
+      </aside>
+    </transition>
+
+    <transition name="shelfview-panel">
+      <aside
+        v-if="dictionaryDrawerOpen"
+        class="shelfview-reader-shell__dictionary-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shelfview-dictionary-title"
+        data-testid="shelfview-dictionary-drawer"
+      >
+        <header class="shelfview-reader-shell__drawer-header">
+          <h2 id="shelfview-dictionary-title">{{ $t('shelfview_reader.dictionary') }}</h2>
           <v-btn
             icon
+            :aria-label="$t('shelfview_reader.close')"
+            data-testid="shelfview-dictionary-close"
+            @click="closeDictionaryDrawer"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </header>
+
+        <v-text-field
+          v-model="dictionaryQuery"
+          dense
+          outlined
+          hide-details
+          :label="$t('shelfview_reader.dictionary_query')"
+          data-testid="shelfview-dictionary-query"
+        />
+
+        <div class="shelfview-reader-shell__dictionary-actions">
+          <v-btn
             small
-            :aria-label="$t('shelfview_reader.delete_bookmark')"
-            data-testid="shelfview-bookmark-delete"
-            @click="deleteBookmark(bookmark)"
+            outlined
+            data-testid="shelfview-dictionary-import"
+            @click="openDictionaryPackImport"
+          >
+            <v-icon small>mdi-upload</v-icon>
+            {{ $t('shelfview_reader.dictionary_pack_import') }}
+          </v-btn>
+          <input
+            ref="dictionaryPackInput"
+            class="shelfview-reader-shell__dictionary-file-input"
+            type="file"
+            accept="application/json,.json"
+            data-testid="shelfview-dictionary-import-input"
+            @change="onDictionaryPackFileSelected"
+          />
+          <v-btn
+            v-if="dictionaryLocalEntries.length > 0 || dictionaryServerProviders.length > 0"
+            small
+            outlined
+            data-testid="shelfview-dictionary-clear"
+            @click="clearDictionaryPack"
           >
             <v-icon small>mdi-delete-outline</v-icon>
+            {{ $t('shelfview_reader.dictionary_pack_clear') }}
           </v-btn>
-        </li>
-      </ul>
-    </aside>
+        </div>
 
-    <aside
-      v-if="fixedPageSettingsOpen && fixedPageControlsVisible"
-      class="shelfview-reader-shell__text-settings"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="shelfview-fixed-settings-title"
-      data-testid="shelfview-reader-fixed-settings"
-    >
-      <header class="shelfview-reader-shell__text-settings-header">
-        <h2 id="shelfview-fixed-settings-title">{{ $t('shelfview_reader.fixed_settings') }}</h2>
-        <v-btn
-          icon
-          :aria-label="$t('shelfview_reader.fixed_settings_close')"
-          data-testid="shelfview-reader-fixed-settings-close"
-          @click="closeFixedPageSettings"
+        <p
+          v-if="!dictionaryQueryReady"
+          class="shelfview-reader-shell__dictionary-empty"
+          data-testid="shelfview-dictionary-empty"
         >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </header>
+          {{ $t('shelfview_reader.dictionary_empty') }}
+        </p>
 
-      <div class="shelfview-reader-shell__text-settings-body">
-        <v-select
-          v-model="fixedPageBackground"
-          :items="fixedPageBackgroundOptions"
-          item-text="text"
-          item-value="value"
-          dense
-          outlined
-          hide-details
-          :label="$t('shelfview_reader.background')"
-          data-testid="shelfview-reader-fixed-background"
-          @change="onFixedPageDisplaySettingChanged"
-        />
+        <ul
+          v-else
+          class="shelfview-reader-shell__dictionary-results"
+          data-testid="shelfview-dictionary-results"
+        >
+          <li
+            v-for="result in dictionaryLookupResults"
+            :key="result.key"
+            class="shelfview-reader-shell__dictionary-result"
+            :data-provider-kind="result.kind"
+            data-testid="shelfview-dictionary-result"
+          >
+            <span class="shelfview-reader-shell__dictionary-provider">{{ result.providerLabel }}</span>
+            <strong
+              v-if="result.term"
+              class="shelfview-reader-shell__dictionary-term"
+              data-testid="shelfview-dictionary-term"
+            >{{ result.term }}</strong>
+            <p
+              v-if="result.definition"
+              class="shelfview-reader-shell__dictionary-definition"
+              data-testid="shelfview-dictionary-definition"
+            >{{ result.definition }}</p>
+            <span
+              v-if="result.sourceName"
+              class="shelfview-reader-shell__dictionary-source"
+              data-testid="shelfview-dictionary-source"
+            >{{ result.sourceName }}</span>
+            <a
+              v-if="result.url"
+              class="shelfview-reader-shell__dictionary-link"
+              :href="result.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="shelfview-dictionary-search"
+            >
+              <v-icon small>mdi-open-in-new</v-icon>
+              {{ result.label }}
+            </a>
+          </li>
+        </ul>
+      </aside>
+    </transition>
 
-        <v-select
-          v-model="imageFilterPreset"
-          :items="allImageFilterPresetOptions"
-          item-text="text"
-          item-value="value"
-          dense
-          outlined
-          hide-details
-          :label="$t('shelfview_reader.image_processing')"
-          data-testid="shelfview-reader-fixed-image-processing"
-          @change="onFixedPageDisplaySettingChanged"
-        />
-
-        <div class="shelfview-reader-shell__text-setting-row">
-          <label for="shelfview-fixed-page-scale">
-            {{ $t('shelfview_reader.page_scale') }}
-            <span>{{ fixedPageScale }}%</span>
-          </label>
-          <v-slider
-            id="shelfview-fixed-page-scale"
-            v-model.number="fixedPageScale"
-            min="50"
-            max="300"
-            step="5"
-            hide-details
-            data-testid="shelfview-reader-fixed-scale"
-            @input="onFixedPageDisplaySettingChanged"
-          />
-        </div>
-
-        <div class="shelfview-reader-shell__text-setting-row">
-          <label for="shelfview-fixed-page-margin">
-            {{ $t('shelfview_reader.margin') }}
-            <span>{{ fixedPageMargin }}px</span>
-          </label>
-          <v-slider
-            id="shelfview-fixed-page-margin"
-            v-model.number="fixedPageMargin"
-            min="0"
-            max="96"
-            step="4"
-            hide-details
-            data-testid="shelfview-reader-fixed-margin"
-            @input="onFixedPageDisplaySettingChanged"
-          />
-        </div>
-
-        <div class="shelfview-reader-shell__text-setting-row">
-          <label for="shelfview-fixed-page-gap">
-            {{ $t('shelfview_reader.page_gap') }}
-            <span>{{ fixedPageGap }}px</span>
-          </label>
-          <v-slider
-            id="shelfview-fixed-page-gap"
-            v-model.number="fixedPageGap"
-            min="0"
-            max="64"
-            step="2"
-            hide-details
-            data-testid="shelfview-reader-fixed-gap"
-            @input="onFixedPageDisplaySettingChanged"
-          />
-        </div>
-
-        <div class="shelfview-reader-shell__text-setting-row">
-          <label for="shelfview-fixed-page-brightness">
-            {{ $t('shelfview_reader.brightness') }}
-            <span>{{ fixedPageBrightness.toFixed(2) }}</span>
-          </label>
-          <v-slider
-            id="shelfview-fixed-page-brightness"
-            v-model.number="fixedPageBrightness"
-            min="0.8"
-            max="1.2"
-            step="0.02"
-            hide-details
-            data-testid="shelfview-reader-fixed-brightness"
-            @input="onFixedPageDisplaySettingChanged"
-          />
-        </div>
-
-        <div class="shelfview-reader-shell__text-setting-row">
-          <label for="shelfview-fixed-page-contrast">
-            {{ $t('shelfview_reader.contrast') }}
-            <span>{{ fixedPageContrast.toFixed(2) }}</span>
-          </label>
-          <v-slider
-            id="shelfview-fixed-page-contrast"
-            v-model.number="fixedPageContrast"
-            min="0.85"
-            max="1.35"
-            step="0.02"
-            hide-details
-            data-testid="shelfview-reader-fixed-contrast"
-            @input="onFixedPageDisplaySettingChanged"
-          />
-        </div>
-
-        <v-checkbox
-          v-model="fixedPageCoverSingle"
-          dense
-          hide-details
-          :label="$t('shelfview_reader.cover_single')"
-          data-testid="shelfview-reader-fixed-cover-single"
-          @change="onFixedPageDisplaySettingChanged"
-        />
+    <transition name="shelfview-panel">
+      <aside
+        v-if="bookmarksDrawerOpen"
+        class="shelfview-reader-shell__bookmarks-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shelfview-bookmarks-title"
+        data-testid="shelfview-bookmarks-drawer"
+      >
+        <header class="shelfview-reader-shell__drawer-header">
+          <h2 id="shelfview-bookmarks-title">{{ $t('shelfview_reader.bookmarks') }}</h2>
+          <v-btn
+            icon
+            :aria-label="$t('shelfview_reader.close')"
+            data-testid="shelfview-bookmarks-close"
+            @click="closeBookmarksDrawer"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </header>
 
         <v-btn
           block
-          color="secondary"
-          data-testid="shelfview-reader-fixed-settings-reset"
-          @click="resetFixedPageDisplaySettings"
+          class="shelfview-reader-shell__action shelfview-reader-shell__action--accent"
+          data-testid="shelfview-bookmarks-add"
+          @click="addBookmarkForCurrentPage"
         >
-          {{ $t('shelfview_reader.reset') }}
+          <v-icon left>mdi-bookmark-plus-outline</v-icon>
+          {{ $t('shelfview_reader.add_bookmark') }}
         </v-btn>
-      </div>
-    </aside>
 
-    <aside
-      v-if="textSettingsOpen && textControlsVisible"
-      class="shelfview-reader-shell__text-settings"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="shelfview-text-settings-title"
-      data-testid="shelfview-reader-text-settings"
-    >
-      <header class="shelfview-reader-shell__text-settings-header">
-        <h2 id="shelfview-text-settings-title">{{ $t('shelfview_reader.text_settings') }}</h2>
-        <v-btn
-          icon
-          :aria-label="$t('shelfview_reader.text_settings_close')"
-          data-testid="shelfview-reader-text-settings-close"
-          @click="closeTextSettings"
+        <p
+          v-if="bookmarks.length === 0"
+          class="shelfview-reader-shell__bookmarks-empty"
+          data-testid="shelfview-bookmarks-empty"
         >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </header>
+          {{ $t('shelfview_reader.no_bookmarks') }}
+        </p>
 
-      <div class="shelfview-reader-shell__text-settings-body">
-        <div
-          class="shelfview-reader-shell__text-settings-primary"
-          data-testid="shelfview-reader-text-settings-primary"
+        <ul
+          v-else
+          class="shelfview-reader-shell__bookmarks-list"
         >
-          <div class="shelfview-reader-shell__text-setting-group">
-            <span class="shelfview-reader-shell__text-setting-group-label">{{ $t('shelfview_reader.control_text_theme') }}</span>
-            <div
-              class="shelfview-reader-shell__text-theme-chips"
-              data-testid="shelfview-reader-text-theme-chips"
+          <li
+            v-for="bookmark in bookmarks"
+            :key="bookmark.id"
+            class="shelfview-reader-shell__bookmark-row"
+          >
+            <div class="shelfview-reader-shell__bookmark-main">
+              <button
+                type="button"
+                class="shelfview-reader-shell__bookmark-link"
+                data-testid="shelfview-bookmark-go"
+                @click="goToBookmark(bookmark)"
+              >
+                {{ bookmarkLabel(bookmark) }}
+              </button>
+              <p
+                v-if="bookmark.note && editingBookmarkId !== bookmark.id"
+                class="shelfview-reader-shell__bookmark-note"
+                data-testid="shelfview-bookmark-note"
+              >
+                {{ bookmark.note }}
+              </p>
+              <form
+                v-if="editingBookmarkId === bookmark.id"
+                class="shelfview-reader-shell__bookmark-note-editor"
+                data-testid="shelfview-bookmark-note-editor"
+                @submit.prevent="saveBookmarkNote(bookmark)"
+              >
+                <v-text-field
+                  v-model="bookmarkNoteDraft"
+                  dense
+                  outlined
+                  hide-details
+                  :label="$t('shelfview_reader.bookmark_note')"
+                  data-testid="shelfview-bookmark-note-input"
+                />
+                <div class="shelfview-reader-shell__bookmark-note-actions">
+                  <v-btn
+                    icon
+                    small
+                    type="button"
+                    :aria-label="$t('shelfview_reader.save_bookmark_note')"
+                    data-testid="shelfview-bookmark-note-save"
+                    @click="saveBookmarkNote(bookmark)"
+                  >
+                    <v-icon small>mdi-check</v-icon>
+                  </v-btn>
+                  <v-btn
+                    icon
+                    small
+                    type="button"
+                    :aria-label="$t('shelfview_reader.cancel_bookmark_note')"
+                    data-testid="shelfview-bookmark-note-cancel"
+                    @click="cancelBookmarkNoteEdit"
+                  >
+                    <v-icon small>mdi-close</v-icon>
+                  </v-btn>
+                </div>
+              </form>
+            </div>
+            <v-btn
+              icon
+              small
+              :aria-label="$t('shelfview_reader.edit_bookmark_note')"
+              data-testid="shelfview-bookmark-note-edit"
+              @click="startBookmarkNoteEdit(bookmark)"
             >
-              <v-btn
-                v-for="option in textThemeOptions"
-                :key="`text-theme-chip-${option.value}`"
-                small
-                :color="option.active ? 'primary' : undefined"
-                :outlined="!option.active"
-                :aria-pressed="option.active ? 'true' : 'false'"
-                :data-testid="`shelfview-reader-text-theme-chip-${option.value}`"
-                @click="selectTextThemeOption(option.value)"
-              >
-                <v-icon
-                  left
-                  small
-                >{{ option.icon }}</v-icon>
-                <span>{{ option.label }}</span>
-              </v-btn>
-            </div>
-          </div>
+              <v-icon small>mdi-note-edit-outline</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              small
+              :aria-label="$t('shelfview_reader.delete_bookmark')"
+              data-testid="shelfview-bookmark-delete"
+              @click="deleteBookmark(bookmark)"
+            >
+              <v-icon small>mdi-delete-outline</v-icon>
+            </v-btn>
+          </li>
+        </ul>
+      </aside>
+    </transition>
 
-          <div class="shelfview-reader-shell__text-setting-row shelfview-reader-shell__text-setting-row--stepper">
-            <span class="shelfview-reader-shell__text-setting-row-label">{{ $t('shelfview_reader.font_size') }}</span>
-            <div class="shelfview-reader-shell__text-font-size-stepper">
-              <v-btn
-                icon
-                small
-                :aria-label="$t('shelfview_reader.font_size_decrease')"
-                data-testid="shelfview-reader-text-font-size-decrease"
-                @click="adjustTextFontSize(-1)"
+    <transition name="shelfview-panel">
+      <aside
+        v-if="highlightsDrawerOpen"
+        class="shelfview-reader-shell__bookmarks-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shelfview-highlights-title"
+        data-testid="shelfview-highlights-drawer"
+      >
+        <header class="shelfview-reader-shell__drawer-header">
+          <h2 id="shelfview-highlights-title">{{ $t('shelfview_reader.highlights') }}</h2>
+          <v-btn
+            icon
+            :aria-label="$t('shelfview_reader.close')"
+            data-testid="shelfview-highlights-close"
+            @click="closeHighlightsDrawer"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </header>
+
+        <p
+          v-if="highlights.length === 0"
+          class="shelfview-reader-shell__bookmarks-empty"
+          data-testid="shelfview-highlights-empty"
+        >
+          {{ $t('shelfview_reader.no_highlights') }}
+        </p>
+
+        <ul
+          v-else
+          class="shelfview-reader-shell__bookmarks-list"
+        >
+          <li
+            v-for="highlight in highlights"
+            :key="highlight.id"
+            class="shelfview-reader-shell__bookmark-row"
+          >
+            <div class="shelfview-reader-shell__bookmark-main">
+              <button
+                type="button"
+                class="shelfview-reader-shell__bookmark-link"
+                data-testid="shelfview-highlight-go"
+                @click="goToHighlight(highlight)"
               >
-                <span aria-hidden="true">A-</span>
-              </v-btn>
-              <span
-                class="shelfview-reader-shell__text-font-size-value"
-                data-testid="shelfview-reader-text-font-size"
-              >{{ textFontSize }}px</span>
-              <v-btn
-                icon
-                small
-                :aria-label="$t('shelfview_reader.font_size_increase')"
-                data-testid="shelfview-reader-text-font-size-increase"
-                @click="adjustTextFontSize(1)"
+                {{ highlightLabel(highlight) }}
+              </button>
+
+              <div class="shelfview-reader-shell__highlight-colors">
+                <button
+                  v-for="color in highlightColorOptions"
+                  :key="color"
+                  type="button"
+                  class="shelfview-reader-shell__highlight-color"
+                  :class="[
+                    `shelfview-reader-shell__highlight-color--${color.toLowerCase()}`,
+                    {'shelfview-reader-shell__highlight-color--selected': highlight.color === color},
+                  ]"
+                  :aria-label="$t(`shelfview_reader.highlight_color_${color.toLowerCase()}`)"
+                  :aria-pressed="highlight.color === color ? 'true' : 'false'"
+                  data-testid="shelfview-highlight-color"
+                  @click="setHighlightColor(highlight, color)"
+                />
+              </div>
+
+              <p
+                v-if="highlight.note && editingHighlightId !== highlight.id"
+                class="shelfview-reader-shell__bookmark-note"
+                data-testid="shelfview-highlight-note"
               >
-                <span aria-hidden="true">A+</span>
-              </v-btn>
+                {{ highlight.note }}
+              </p>
+              <form
+                v-if="editingHighlightId === highlight.id"
+                class="shelfview-reader-shell__bookmark-note-editor"
+                data-testid="shelfview-highlight-note-editor"
+                @submit.prevent="saveHighlightNote(highlight)"
+              >
+                <v-text-field
+                  v-model="highlightNoteDraft"
+                  dense
+                  outlined
+                  hide-details
+                  :label="$t('shelfview_reader.bookmark_note')"
+                  data-testid="shelfview-highlight-note-input"
+                />
+                <div class="shelfview-reader-shell__bookmark-note-actions">
+                  <v-btn
+                    icon
+                    small
+                    type="button"
+                    :aria-label="$t('shelfview_reader.save_bookmark_note')"
+                    data-testid="shelfview-highlight-note-save"
+                    @click="saveHighlightNote(highlight)"
+                  >
+                    <v-icon small>mdi-check</v-icon>
+                  </v-btn>
+                  <v-btn
+                    icon
+                    small
+                    type="button"
+                    :aria-label="$t('shelfview_reader.cancel_bookmark_note')"
+                    data-testid="shelfview-highlight-note-cancel"
+                    @click="cancelHighlightNoteEdit"
+                  >
+                    <v-icon small>mdi-close</v-icon>
+                  </v-btn>
+                </div>
+              </form>
             </div>
+            <v-btn
+              icon
+              small
+              :aria-label="$t('shelfview_reader.edit_bookmark_note')"
+              data-testid="shelfview-highlight-note-edit"
+              @click="startHighlightNoteEdit(highlight)"
+            >
+              <v-icon small>mdi-note-edit-outline</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              small
+              :aria-label="$t('shelfview_reader.delete_highlight')"
+              data-testid="shelfview-highlight-delete"
+              @click="deleteHighlight(highlight)"
+            >
+              <v-icon small>mdi-delete-outline</v-icon>
+            </v-btn>
+          </li>
+        </ul>
+      </aside>
+    </transition>
+
+    <transition name="shelfview-panel">
+      <aside
+        v-if="fixedPageSettingsOpen && fixedPageControlsVisible"
+        class="shelfview-reader-shell__text-settings"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shelfview-fixed-settings-title"
+        data-testid="shelfview-reader-fixed-settings"
+      >
+        <header class="shelfview-reader-shell__text-settings-header">
+          <h2 id="shelfview-fixed-settings-title">{{ $t('shelfview_reader.fixed_settings') }}</h2>
+          <v-btn
+            icon
+            :aria-label="$t('shelfview_reader.fixed_settings_close')"
+            data-testid="shelfview-reader-fixed-settings-close"
+            @click="closeFixedPageSettings"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </header>
+
+        <div class="shelfview-reader-shell__text-settings-body">
+          <v-select
+            v-model="fixedPageBackground"
+            :items="fixedPageBackgroundOptions"
+            item-text="text"
+            item-value="value"
+            dense
+            outlined
+            hide-details
+            :label="$t('shelfview_reader.background')"
+            data-testid="shelfview-reader-fixed-background"
+            @change="onFixedPageDisplaySettingChanged"
+          />
+
+          <v-select
+            v-model="imageFilterPreset"
+            :items="allImageFilterPresetOptions"
+            item-text="text"
+            item-value="value"
+            dense
+            outlined
+            hide-details
+            :label="$t('shelfview_reader.control_filter')"
+            data-testid="shelfview-reader-fixed-image-processing"
+            @change="onFixedPageDisplaySettingChanged"
+          />
+
+          <div class="shelfview-reader-shell__text-setting-row">
+            <label for="shelfview-fixed-page-scale">
+              {{ $t('shelfview_reader.page_scale') }}
+              <span>{{ fixedPageScale }}%</span>
+            </label>
+            <v-slider
+              id="shelfview-fixed-page-scale"
+              v-model.number="fixedPageScale"
+              min="50"
+              max="300"
+              step="5"
+              hide-details
+              data-testid="shelfview-reader-fixed-scale"
+              @input="onFixedPageDisplaySettingChanged"
+            />
           </div>
 
           <div class="shelfview-reader-shell__text-setting-row">
-            <label for="shelfview-text-line-height">
-              {{ $t('shelfview_reader.line_height') }}
-              <span>{{ textLineHeight.toFixed(2) }}</span>
+            <label for="shelfview-fixed-page-margin">
+              {{ $t('shelfview_reader.margin') }}
+              <span>{{ fixedPageMargin }}px</span>
             </label>
             <v-slider
-              id="shelfview-text-line-height"
-              v-model.number="textLineHeight"
-              min="1.35"
-              max="2.4"
-              step="0.05"
+              id="shelfview-fixed-page-margin"
+              v-model.number="fixedPageMargin"
+              min="0"
+              max="96"
+              step="4"
               hide-details
-              data-testid="shelfview-reader-text-line-height"
-              @input="onTextDisplaySettingChanged"
+              data-testid="shelfview-reader-fixed-margin"
+              @input="onFixedPageDisplaySettingChanged"
             />
           </div>
+
+          <div class="shelfview-reader-shell__text-setting-row">
+            <label for="shelfview-fixed-page-gap">
+              {{ $t('shelfview_reader.page_gap') }}
+              <span>{{ fixedPageGap }}px</span>
+            </label>
+            <v-slider
+              id="shelfview-fixed-page-gap"
+              v-model.number="fixedPageGap"
+              min="0"
+              max="64"
+              step="2"
+              hide-details
+              data-testid="shelfview-reader-fixed-gap"
+              @input="onFixedPageDisplaySettingChanged"
+            />
+          </div>
+
+          <div class="shelfview-reader-shell__text-setting-row">
+            <label for="shelfview-fixed-page-brightness">
+              {{ $t('shelfview_reader.brightness') }}
+              <span>{{ fixedPageBrightness.toFixed(2) }}</span>
+            </label>
+            <v-slider
+              id="shelfview-fixed-page-brightness"
+              v-model.number="fixedPageBrightness"
+              min="0.8"
+              max="1.2"
+              step="0.02"
+              hide-details
+              data-testid="shelfview-reader-fixed-brightness"
+              @input="onFixedPageDisplaySettingChanged"
+            />
+          </div>
+
+          <div class="shelfview-reader-shell__text-setting-row">
+            <label for="shelfview-fixed-page-contrast">
+              {{ $t('shelfview_reader.contrast') }}
+              <span>{{ fixedPageContrast.toFixed(2) }}</span>
+            </label>
+            <v-slider
+              id="shelfview-fixed-page-contrast"
+              v-model.number="fixedPageContrast"
+              min="0.85"
+              max="1.35"
+              step="0.02"
+              hide-details
+              data-testid="shelfview-reader-fixed-contrast"
+              @input="onFixedPageDisplaySettingChanged"
+            />
+          </div>
+
+          <v-checkbox
+            v-model="fixedPageCoverSingle"
+            dense
+            hide-details
+            :label="$t('shelfview_reader.cover_single')"
+            data-testid="shelfview-reader-fixed-cover-single"
+            @change="onFixedPageDisplaySettingChanged"
+          />
+
+          <v-btn
+            block
+            class="shelfview-reader-shell__action"
+            data-testid="shelfview-reader-fixed-settings-reset"
+            @click="resetFixedPageDisplaySettings"
+          >
+            {{ $t('shelfview_reader.reset') }}
+          </v-btn>
         </div>
+      </aside>
+    </transition>
 
-        <v-expansion-panels
-          accordion
-          dark
-          flat
-          class="shelfview-reader-shell__text-settings-advanced"
-          data-testid="shelfview-reader-text-settings-advanced"
-        >
-          <v-expansion-panel>
-            <v-expansion-panel-header data-testid="shelfview-reader-text-settings-more">
-              {{ $t('shelfview_reader.text_settings_more') }}
-            </v-expansion-panel-header>
-            <v-expansion-panel-content>
-              <div class="shelfview-reader-shell__text-settings-advanced-content">
-                <v-select
-                  v-model="textFontFamily"
-                  :items="textFontFamilyOptions"
-                  item-text="text"
-                  item-value="value"
-                  dense
-                  outlined
-                  hide-details
-                  :label="$t('shelfview_reader.font')"
-                  data-testid="shelfview-reader-text-font-family"
-                  @change="onTextDisplaySettingChanged"
-                />
+    <transition name="shelfview-panel">
+      <aside
+        v-if="textSettingsOpen && textControlsVisible"
+        class="shelfview-reader-shell__text-settings"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shelfview-text-settings-title"
+        data-testid="shelfview-reader-text-settings"
+      >
+        <header class="shelfview-reader-shell__text-settings-header">
+          <h2 id="shelfview-text-settings-title">{{ $t('shelfview_reader.text_settings') }}</h2>
+          <v-btn
+            icon
+            :aria-label="$t('shelfview_reader.text_settings_close')"
+            data-testid="shelfview-reader-text-settings-close"
+            @click="closeTextSettings"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </header>
 
-                <v-select
-                  v-model="textAlign"
-                  :items="textAlignOptions"
-                  item-text="text"
-                  item-value="value"
-                  dense
-                  outlined
-                  hide-details
-                  :label="$t('shelfview_reader.align')"
-                  data-testid="shelfview-reader-text-align"
-                  @change="onTextDisplaySettingChanged"
-                />
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-letter-spacing">
-                    {{ $t('shelfview_reader.letter_spacing') }}
-                    <span>{{ textLetterSpacing.toFixed(1) }}px</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-letter-spacing"
-                    v-model.number="textLetterSpacing"
-                    min="0"
-                    max="2.5"
-                    step="0.1"
-                    hide-details
-                    data-testid="shelfview-reader-text-letter-spacing"
-                    @input="onTextDisplaySettingChanged"
-                  />
-                </div>
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-word-spacing">
-                    {{ $t('shelfview_reader.word_spacing') }}
-                    <span>{{ textWordSpacing.toFixed(1) }}px</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-word-spacing"
-                    v-model.number="textWordSpacing"
-                    min="0"
-                    max="8"
-                    step="0.5"
-                    hide-details
-                    data-testid="shelfview-reader-text-word-spacing"
-                    @input="onTextDisplaySettingChanged"
-                  />
-                </div>
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-content-width">
-                    {{ $t('shelfview_reader.width') }}
-                    <span>{{ textContentWidth }}px</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-content-width"
-                    v-model.number="textContentWidth"
-                    min="520"
-                    max="2560"
-                    step="20"
-                    hide-details
-                    data-testid="shelfview-reader-text-content-width"
-                    @input="onTextDisplaySettingChanged"
-                  />
-                </div>
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-page-margin">
-                    {{ $t('shelfview_reader.margin') }}
-                    <span>{{ textPageMargin }}px</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-page-margin"
-                    v-model.number="textPageMargin"
-                    min="16"
-                    max="240"
-                    step="4"
-                    hide-details
-                    data-testid="shelfview-reader-text-page-margin"
-                    @input="onTextDisplaySettingChanged"
-                  />
-                </div>
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-paragraph-spacing">
-                    {{ $t('shelfview_reader.paragraph') }}
-                    <span>{{ textParagraphSpacing.toFixed(2) }}em</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-paragraph-spacing"
-                    v-model.number="textParagraphSpacing"
-                    min="0.6"
-                    max="2.6"
-                    step="0.05"
-                    hide-details
-                    data-testid="shelfview-reader-text-paragraph-spacing"
-                    @input="onTextDisplaySettingChanged"
-                  />
-                </div>
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-font-weight">
-                    {{ $t('shelfview_reader.weight') }}
-                    <span>{{ textFontWeight }}</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-font-weight"
-                    v-model.number="textFontWeight"
-                    min="300"
-                    max="700"
-                    step="50"
-                    hide-details
-                    data-testid="shelfview-reader-text-font-weight"
-                    @input="onTextDisplaySettingChanged"
-                  />
-                </div>
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-brightness">
-                    {{ $t('shelfview_reader.brightness') }}
-                    <span>{{ textBrightness.toFixed(2) }}</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-brightness"
-                    v-model.number="textBrightness"
-                    min="0.8"
-                    max="1.2"
-                    step="0.02"
-                    hide-details
-                    data-testid="shelfview-reader-text-brightness"
-                    @input="onTextDisplaySettingChanged"
-                  />
-                </div>
-
-                <div class="shelfview-reader-shell__text-setting-row">
-                  <label for="shelfview-text-tts-rate">
-                    {{ $t('shelfview_reader.read_aloud_speed') }}
-                    <span>{{ textToSpeechRate.toFixed(1) }}x</span>
-                  </label>
-                  <v-slider
-                    id="shelfview-text-tts-rate"
-                    v-model.number="textToSpeechRate"
-                    min="0.7"
-                    max="1.4"
-                    step="0.1"
-                    hide-details
-                    data-testid="shelfview-reader-tts-rate"
-                    @input="onTextToSpeechRateChanged"
-                  />
-                </div>
-
-                <v-select
-                  v-if="textToSpeechVoiceOptions.length > 1"
-                  v-model="textToSpeechVoiceURI"
-                  :items="textToSpeechVoiceOptions"
-                  item-text="text"
-                  item-value="value"
-                  dense
-                  outlined
-                  hide-details
-                  :label="$t('shelfview_reader.read_aloud_voice')"
-                  data-testid="shelfview-reader-tts-voice"
-                />
+        <div class="shelfview-reader-shell__text-settings-body">
+          <div
+            class="shelfview-reader-shell__text-settings-primary"
+            data-testid="shelfview-reader-text-settings-primary"
+          >
+            <div class="shelfview-reader-shell__text-setting-group">
+              <span class="shelfview-reader-shell__text-setting-group-label">{{ $t('shelfview_reader.control_text_theme') }}</span>
+              <div
+                class="shelfview-reader-shell__text-theme-chips"
+                data-testid="shelfview-reader-text-theme-chips"
+              >
+                <v-btn
+                  v-for="option in textThemeOptions"
+                  :key="`text-theme-chip-${option.value}`"
+                  small
+                  :color="option.active ? 'primary' : undefined"
+                  :outlined="!option.active"
+                  :aria-pressed="option.active ? 'true' : 'false'"
+                  :data-testid="`shelfview-reader-text-theme-chip-${option.value}`"
+                  @click="selectTextThemeOption(option.value)"
+                >
+                  <v-icon
+                    left
+                    small
+                  >{{ option.icon }}</v-icon>
+                  <span>{{ option.label }}</span>
+                </v-btn>
               </div>
-            </v-expansion-panel-content>
-          </v-expansion-panel>
-        </v-expansion-panels>
+            </div>
 
-        <v-btn
-          block
-          color="secondary"
-          data-testid="shelfview-reader-text-settings-reset"
-          @click="resetTextDisplaySettings"
-        >
-          {{ $t('shelfview_reader.reset') }}
-        </v-btn>
-      </div>
-    </aside>
+            <div class="shelfview-reader-shell__text-setting-row shelfview-reader-shell__text-setting-row--stepper">
+              <span class="shelfview-reader-shell__text-setting-row-label">{{ $t('shelfview_reader.font_size') }}</span>
+              <div class="shelfview-reader-shell__text-font-size-stepper">
+                <v-btn
+                  icon
+                  small
+                  :aria-label="$t('shelfview_reader.font_size_decrease')"
+                  data-testid="shelfview-reader-text-font-size-decrease"
+                  @click="adjustTextFontSize(-1)"
+                >
+                  <span aria-hidden="true">A-</span>
+                </v-btn>
+                <span
+                  class="shelfview-reader-shell__text-font-size-value"
+                  data-testid="shelfview-reader-text-font-size"
+                >{{ textFontSize }}px</span>
+                <v-btn
+                  icon
+                  small
+                  :aria-label="$t('shelfview_reader.font_size_increase')"
+                  data-testid="shelfview-reader-text-font-size-increase"
+                  @click="adjustTextFontSize(1)"
+                >
+                  <span aria-hidden="true">A+</span>
+                </v-btn>
+              </div>
+            </div>
+
+            <div class="shelfview-reader-shell__text-setting-row">
+              <label for="shelfview-text-line-height">
+                {{ $t('shelfview_reader.line_height') }}
+                <span>{{ textLineHeight.toFixed(2) }}</span>
+              </label>
+              <v-slider
+                id="shelfview-text-line-height"
+                v-model.number="textLineHeight"
+                min="1.35"
+                max="2.4"
+                step="0.05"
+                hide-details
+                data-testid="shelfview-reader-text-line-height"
+                @input="onTextDisplaySettingChanged"
+              />
+            </div>
+          </div>
+
+          <v-expansion-panels
+            accordion
+            dark
+            flat
+            class="shelfview-reader-shell__text-settings-advanced"
+            data-testid="shelfview-reader-text-settings-advanced"
+          >
+            <v-expansion-panel>
+              <v-expansion-panel-header data-testid="shelfview-reader-text-settings-more">
+                {{ $t('shelfview_reader.text_settings_more') }}
+              </v-expansion-panel-header>
+              <v-expansion-panel-content>
+                <div class="shelfview-reader-shell__text-settings-advanced-content">
+                  <v-select
+                    v-model="textFontFamily"
+                    :items="textFontFamilyOptions"
+                    item-text="text"
+                    item-value="value"
+                    dense
+                    outlined
+                    hide-details
+                    :label="$t('shelfview_reader.font')"
+                    data-testid="shelfview-reader-text-font-family"
+                    @change="onTextDisplaySettingChanged"
+                  />
+
+                  <v-select
+                    v-model="textAlign"
+                    :items="textAlignOptions"
+                    item-text="text"
+                    item-value="value"
+                    dense
+                    outlined
+                    hide-details
+                    :label="$t('shelfview_reader.align')"
+                    data-testid="shelfview-reader-text-align"
+                    @change="onTextDisplaySettingChanged"
+                  />
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-letter-spacing">
+                      {{ $t('shelfview_reader.letter_spacing') }}
+                      <span>{{ textLetterSpacing.toFixed(1) }}px</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-letter-spacing"
+                      v-model.number="textLetterSpacing"
+                      min="0"
+                      max="2.5"
+                      step="0.1"
+                      hide-details
+                      data-testid="shelfview-reader-text-letter-spacing"
+                      @input="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-word-spacing">
+                      {{ $t('shelfview_reader.word_spacing') }}
+                      <span>{{ textWordSpacing.toFixed(1) }}px</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-word-spacing"
+                      v-model.number="textWordSpacing"
+                      min="0"
+                      max="8"
+                      step="0.5"
+                      hide-details
+                      data-testid="shelfview-reader-text-word-spacing"
+                      @input="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-content-width">
+                      {{ $t('shelfview_reader.width') }}
+                      <span>{{ textContentWidth }}px</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-content-width"
+                      v-model.number="textContentWidth"
+                      min="520"
+                      max="2560"
+                      step="20"
+                      hide-details
+                      data-testid="shelfview-reader-text-content-width"
+                      @input="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-page-margin">
+                      {{ $t('shelfview_reader.margin') }}
+                      <span>{{ textPageMargin }}px</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-page-margin"
+                      v-model.number="textPageMargin"
+                      min="16"
+                      max="240"
+                      step="4"
+                      hide-details
+                      data-testid="shelfview-reader-text-page-margin"
+                      @input="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-paragraph-spacing">
+                      {{ $t('shelfview_reader.paragraph') }}
+                      <span>{{ textParagraphSpacing.toFixed(2) }}em</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-paragraph-spacing"
+                      v-model.number="textParagraphSpacing"
+                      min="0.6"
+                      max="2.6"
+                      step="0.05"
+                      hide-details
+                      data-testid="shelfview-reader-text-paragraph-spacing"
+                      @input="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-font-weight">
+                      {{ $t('shelfview_reader.weight') }}
+                      <span>{{ textFontWeight }}</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-font-weight"
+                      v-model.number="textFontWeight"
+                      min="300"
+                      max="700"
+                      step="50"
+                      hide-details
+                      data-testid="shelfview-reader-text-font-weight"
+                      @input="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-unwrap">
+                      {{ $t('shelfview_reader.unwrap_lines') }}
+                      <span>{{ textUnwrapLines ? $t('shelfview_reader.state_on') : $t('shelfview_reader.state_off') }}</span>
+                    </label>
+                    <!-- Old Korean TXT files are hard-wrapped at a fixed column,
+                         which stops them reflowing with the font size. -->
+                    <v-switch
+                      id="shelfview-text-unwrap"
+                      v-model="textUnwrapLines"
+                      dense
+                      hide-details
+                      :label="$t('shelfview_reader.unwrap_lines_hint')"
+                      data-testid="shelfview-reader-text-unwrap"
+                      @change="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-brightness">
+                      {{ $t('shelfview_reader.brightness') }}
+                      <span>{{ textBrightness.toFixed(2) }}</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-brightness"
+                      v-model.number="textBrightness"
+                      min="0.5"
+                      max="1.2"
+                      step="0.02"
+                      hide-details
+                      data-testid="shelfview-reader-text-brightness"
+                      @input="onTextDisplaySettingChanged"
+                    />
+                  </div>
+
+                  <div class="shelfview-reader-shell__text-setting-row">
+                    <label for="shelfview-text-tts-rate">
+                      {{ $t('shelfview_reader.read_aloud_speed') }}
+                      <span>{{ textToSpeechRate.toFixed(1) }}x</span>
+                    </label>
+                    <v-slider
+                      id="shelfview-text-tts-rate"
+                      v-model.number="textToSpeechRate"
+                      min="0.7"
+                      max="1.4"
+                      step="0.1"
+                      hide-details
+                      data-testid="shelfview-reader-tts-rate"
+                      @input="onTextToSpeechRateChanged"
+                    />
+                  </div>
+
+                  <v-select
+                    v-if="textToSpeechVoiceOptions.length > 1"
+                    v-model="textToSpeechVoiceURI"
+                    :items="textToSpeechVoiceOptions"
+                    item-text="text"
+                    item-value="value"
+                    dense
+                    outlined
+                    hide-details
+                    :label="$t('shelfview_reader.read_aloud_voice')"
+                    data-testid="shelfview-reader-tts-voice"
+                  />
+                </div>
+              </v-expansion-panel-content>
+            </v-expansion-panel>
+          </v-expansion-panels>
+
+          <v-btn
+            block
+            class="shelfview-reader-shell__action"
+            data-testid="shelfview-reader-text-settings-reset"
+            @click="resetTextDisplaySettings"
+          >
+            {{ $t('shelfview_reader.reset') }}
+          </v-btn>
+        </div>
+      </aside>
+    </transition>
 
     <section
       v-if="showShortcutHelp"
@@ -1526,7 +1848,7 @@
           </template>
         </dl>
         <v-btn
-          color="primary"
+          class="shelfview-reader-shell__action shelfview-reader-shell__action--accent"
           data-testid="shelfview-reader-shortcuts-close"
           @click="closeShortcutHelp"
         >
@@ -1563,14 +1885,14 @@
         <div class="shelfview-reader-shell__end-actions">
           <v-btn
             v-if="siblingNext"
-            color="primary"
+            class="shelfview-reader-shell__action shelfview-reader-shell__action--accent"
             data-testid="shelfview-reader-end-next"
             @click="goToNextBook"
           >
             {{ $t('shelfview_reader.read_next_book') }}
           </v-btn>
           <v-btn
-            color="secondary"
+            class="shelfview-reader-shell__action"
             data-testid="shelfview-reader-end-exit"
             @click="exitEndOfBookPrompt"
           >
@@ -1661,6 +1983,7 @@ import {
 import {
   ShelfViewReaderInputAction,
   ShelfViewTouchPoint,
+  ShelfViewTouchStageState,
   shelfViewReaderKeyboardAction,
   shelfViewShouldIgnoreShortcutTarget,
   shelfViewTapAction,
@@ -1772,6 +2095,7 @@ const SHELFVIEW_FIXED_PAGE_FORMAT: ShelfViewPreferenceFormat = 'FIXED_PAGE_SEQUE
 const SHELFVIEW_TEXT_FORMAT: ShelfViewPreferenceFormat = 'TEXT_REFLOW'
 const SHELFVIEW_GLOBAL_SCOPE_ID = 'GLOBAL'
 const POSITION_SAVE_DEBOUNCE_MS = 2000
+const TEXT_SEARCH_DEBOUNCE_MS = 250
 const PREFERENCE_SAVE_DEBOUNCE_MS = 600
 const SLIDESHOW_INTERVAL_MS = 5000
 const FIXED_PAGE_WHEEL_SCALE_STEP = 10
@@ -1806,7 +2130,10 @@ export default Vue.extend({
     context: {} as Context,
     error: undefined as Error | ShelfViewApiError | undefined,
     loading: true,
-    pageImageFailed: false,
+    failedPageIndexes: [] as number[],
+    loadedPageKeys: [] as string[],
+    widePageIndexes: [] as number[],
+    mixedContentIndex: 0,
     pageImageReloadNonce: 0,
     textEncodingOverride: undefined as string | undefined,
     readerLayout: 'SINGLE_PAGE' as ShelfViewFixedPageLayout,
@@ -1833,6 +2160,7 @@ export default Vue.extend({
     textAlign: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textAlign,
     textFontWeight: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textFontWeight,
     textBrightness: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textBrightness,
+    textUnwrapLines: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textUnwrapLines,
     fixedPageSettingsOpen: false,
     textSettingsOpen: false,
     canReturnToPreviousScreen: false,
@@ -1846,12 +2174,16 @@ export default Vue.extend({
     thumbnailStripOpen: false,
     textSearchOpen: false,
     textSearchQuery: '',
+    textSearchQueryApplied: '',
+    textSearchTimer: undefined as number | undefined,
     textSearchMatchIndex: 0,
     textToSpeechActive: false,
     textToSpeechRate: TEXT_TO_SPEECH_RATE_DEFAULT,
     textToSpeechVoiceURI: '',
     textToSpeechVoices: [] as SpeechSynthesisVoice[],
     textToSpeechUtterance: undefined as SpeechSynthesisUtterance | undefined,
+    textToSpeechParagraphIndex: undefined as number | undefined,
+    textToSpeechPaused: false,
     pageJumpInput: '1',
     slideshowActive: false,
     slideshowTimer: undefined as number | undefined,
@@ -1862,6 +2194,9 @@ export default Vue.extend({
     bookmarks: [] as ShelfViewBookmarkDto[],
     highlights: [] as ShelfViewHighlightDto[],
     bookmarksDrawerOpen: false,
+    highlightsDrawerOpen: false,
+    editingHighlightId: '',
+    highlightNoteDraft: '',
     contentsDrawerOpen: false,
     dictionaryDrawerOpen: false,
     dictionaryQuery: '',
@@ -1877,6 +2212,11 @@ export default Vue.extend({
     preferenceSaveTimer: undefined as number | undefined,
     globalPageFitPending: false,
     touchStart: undefined as ShelfViewTouchPoint | undefined,
+    touchStartScrollLeft: undefined as number | undefined,
+    selectionRect: undefined as {top: number, left: number} | undefined,
+    appliedCharsPerPage: undefined as number | undefined,
+    scrollFrameHandle: undefined as number | undefined,
+    viewportFrameHandle: undefined as number | undefined,
     readerPointerTapStart: undefined as ShelfViewPointerTapStart | undefined,
     fixedPagePanStart: undefined as ShelfViewPanStart | undefined,
     fixedPagePanning: false,
@@ -1890,6 +2230,7 @@ export default Vue.extend({
     window.addEventListener('pagehide', this.onPageHide)
     window.addEventListener('keydown', this.onReaderKeydown)
     document.addEventListener('visibilitychange', this.onVisibilityChange)
+    document.addEventListener('selectionchange', this.refreshSelectionActions)
     if (screenfull.isEnabled) {
       this.fullscreenAvailable = true
       this.isFullscreen = screenfull.isFullscreen
@@ -1905,6 +2246,7 @@ export default Vue.extend({
     this.setupRequestId += 1
     void this.flushReaderState()
     this.clearReaderStateTimers()
+    this.cancelReaderFrames()
     this.stopSlideshow()
     window.removeEventListener('online', this.onReaderOnline)
     window.removeEventListener('offline', this.onReaderOffline)
@@ -1913,6 +2255,7 @@ export default Vue.extend({
     window.removeEventListener('pagehide', this.onPageHide)
     window.removeEventListener('keydown', this.onReaderKeydown)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    document.removeEventListener('selectionchange', this.refreshSelectionActions)
     if (screenfull.isEnabled) {
       screenfull.off('change', this.onFullscreenChange)
       if (screenfull.isFullscreen) void screenfull.exit()
@@ -1970,6 +2313,7 @@ export default Vue.extend({
         this.overflowMenuOpen ||
         this.endOfBookPromptOpen ||
         this.bookmarksDrawerOpen ||
+        this.highlightsDrawerOpen ||
         this.contentsDrawerOpen ||
         this.dictionaryDrawerOpen
     },
@@ -1981,14 +2325,22 @@ export default Vue.extend({
     },
     tapPagingEnabled(): boolean {
       return this.fixedPageControlsVisible &&
-        this.readerLayout !== 'CONTINUOUS_SCROLL' &&
-        this.fixedPageScale <= 100
+        this.readerLayout !== 'CONTINUOUS_SCROLL'
     },
     textSearchAvailable(): boolean {
       return this.textControlsVisible && !!this.manifest?.capabilities.search
     },
     textToSpeechAvailable(): boolean {
       return this.textControlsVisible && this.currentTextToSpeechText.length > 0 && this.browserTextToSpeechAvailable()
+    },
+    textToSpeechStateLabel(): string {
+      if (!this.textToSpeechActive) return this.$t('shelfview_reader.state_off') as string
+      return this.textToSpeechPaused
+        ? this.$t('shelfview_reader.state_paused') as string
+        : this.$t('shelfview_reader.state_on') as string
+    },
+    textToSpeechPauseAvailable(): boolean {
+      return this.browserTextToSpeechPauseAvailable()
     },
     textToSpeechLabel(): string {
       return this.textToSpeechActive
@@ -2062,6 +2414,10 @@ export default Vue.extend({
     readerStateNoticeVisible(): boolean {
       return this.readerStateStatus !== 'IDLE' && this.readerStateMessage.length > 0
     },
+    readerStateFailureVisible(): boolean {
+      return (this.readerStateStatus === 'ERROR' || this.readerStateStatus === 'OFFLINE') &&
+        this.readerStateMessage.length > 0
+    },
     readerStateNoticeClass(): object {
       return {
         'shelfview-reader-shell__sync-status--error': this.readerStateStatus === 'ERROR' || this.readerStateStatus === 'OFFLINE',
@@ -2110,14 +2466,35 @@ export default Vue.extend({
           : this.currentLocator.paragraph
       }
       if (this.currentLocator?.kind === 'MIXED') {
-        return this.currentLocator.itemLocator.kind === 'PAGE'
-          ? this.currentLocator.itemLocator.page
-          : this.currentLocator.itemLocator.paragraph
+        // The mixed adapter reports pages for a paginated text item and the raw
+        // paragraph otherwise, so the counter matches what pagesCount counts.
+        return this.mixedContentIndex
       }
       return 0
     },
     currentPageNumber(): number {
       return this.currentPageIndex + 1
+    },
+    highlightColorOptions(): ShelfViewHighlightColor[] {
+      // The backend and the paragraph styling have carried all five since
+      // SV-930; only the UI to reach them was missing.
+      return ['YELLOW', 'GREEN', 'BLUE', 'PINK', 'UNDERLINE']
+    },
+    selectionActionsVisible(): boolean {
+      return this.textControlsVisible && !!this.selectionRect && !this.anyChromePanelOpen
+    },
+    selectionActionsStyle(): Record<string, string> {
+      return {
+        top: `${this.selectionRect?.top ?? 0}px`,
+        left: `${this.selectionRect?.left ?? 0}px`,
+      }
+    },
+    progressPercentLabel(): string {
+      if (!this.adapter || this.pagesCount < 1) return ''
+
+      const progression = this.adapter.getProgression()
+      if (!Number.isFinite(progression)) return ''
+      return `${Math.round(Math.max(0, Math.min(1, progression)) * 100)}%`
     },
     currentPageLabel(): string {
       const visiblePages = this.visiblePageSources.map(page => page.pageIndex + 1)
@@ -2126,17 +2503,35 @@ export default Vue.extend({
       }
       return this.currentPageNumber.toString()
     },
+    /**
+     * `application` hands every key to the reader, which is right for a page of
+     * images but wrong for prose: it switches a screen reader out of browse mode
+     * and the shell only handles nine keys, so the book text becomes unreachable.
+     * Text keeps the plain `main` semantics and still pages from the keyboard,
+     * because the handler is on `window` rather than on this element.
+     */
+    readerStageRole(): string | undefined {
+      return this.textControlsVisible ? undefined : 'application'
+    },
     readerAriaLabel(): string {
-      return `${this.bookTitle} reader, ${this.currentLocationUnit} ${this.currentPageLabel} of ${this.pagesCount}`
+      return this.$t('shelfview_reader.reader_aria_label', {
+        title: this.bookTitle,
+        unit: this.currentLocationUnit,
+        position: this.currentPageLabel,
+        total: this.pagesCount,
+      }) as string
     },
     readerLiveStatus(): string {
-      return `${this.currentLocationUnitLabel} ${this.currentPageLabel} of ${this.pagesCount}`
+      return this.$t('shelfview_reader.reader_live_status', {
+        unit: this.currentLocationUnit,
+        position: this.currentPageLabel,
+        total: this.pagesCount,
+      }) as string
     },
     currentLocationUnit(): string {
-      return this.textControlsVisible ? 'paragraph' : 'page'
-    },
-    currentLocationUnitLabel(): string {
-      return this.textControlsVisible ? 'Paragraph' : 'Page'
+      return this.textControlsVisible
+        ? this.$t('shelfview_reader.unit_paragraph') as string
+        : this.$t('shelfview_reader.unit_page') as string
     },
     shortcutRows(): Array<{ keys: string, label: string }> {
       return [
@@ -2150,6 +2545,16 @@ export default Vue.extend({
         ...(this.fixedPageControlsVisible ? [{keys: this.$t('shelfview_reader.shortcut_keys_rotate') as string, label: this.$t('shelfview_reader.shortcut_rotate') as string}] : []),
         ...(this.fullscreenAvailable ? [{keys: this.$t('shelfview_reader.shortcut_keys_fullscreen') as string, label: this.$t('shelfview_reader.shortcut_fullscreen') as string}] : []),
         {keys: this.$t('shelfview_reader.shortcut_keys_help') as string, label: this.$t('shelfview_reader.shortcut_show') as string},
+        ...(this.contentsAvailable ? [{keys: 'T', label: this.$t('shelfview_reader.shortcut_contents') as string}] : []),
+        {keys: 'B', label: this.$t('shelfview_reader.shortcut_bookmarks') as string},
+        {keys: 'S', label: this.$t('shelfview_reader.shortcut_settings') as string},
+        ...(this.fixedPageControlsVisible ? [
+          {keys: 'G', label: this.$t('shelfview_reader.shortcut_page_jump') as string},
+          {keys: this.$t('shelfview_reader.shortcut_keys_zoom') as string, label: this.$t('shelfview_reader.shortcut_zoom') as string},
+        ] : []),
+        // A bluetooth page turner sends these keys, so it already works; saying
+        // so saves the reader from having to find out by trial.
+        {keys: this.$t('shelfview_reader.shortcut_keys_remote') as string, label: this.$t('shelfview_reader.shortcut_remote') as string},
       ]
     },
     canGoPrevious(): boolean {
@@ -2182,6 +2587,7 @@ export default Vue.extend({
         this.readerLayout,
         this.readingDirection,
         this.fixedPageCoverSingle,
+        new Set(this.widePageIndexes),
       )
         .map(pageIndex => ({
           pageIndex,
@@ -2224,7 +2630,7 @@ export default Vue.extend({
       return this.textAdapter?.getVisibleParagraphs(this.readerLayout) ?? this.mixedContentAdapter?.getVisibleParagraphs(this.readerLayout) ?? []
     },
     textSearchMatches(): ShelfViewTextSearchMatch[] {
-      const query = this.textSearchQuery.trim().toLocaleLowerCase()
+      const query = this.textSearchQueryApplied.trim().toLocaleLowerCase()
       if (!query || !this.textSearchAvailable) return []
 
       const matches: ShelfViewTextSearchMatch[] = []
@@ -2245,7 +2651,7 @@ export default Vue.extend({
       return this.textSearchMatches[this.textSearchMatchIndex]
     },
     textSearchStatus(): string {
-      if (!this.textSearchQuery.trim()) return this.$t('shelfview_reader.search_empty') as string
+      if (!this.textSearchQueryApplied.trim()) return this.$t('shelfview_reader.search_empty') as string
       if (this.textSearchMatches.length === 0) return this.$t('shelfview_reader.search_no_matches') as string
       return this.$t('shelfview_reader.search_match_status', {
         current: this.textSearchMatchIndex + 1,
@@ -2271,6 +2677,7 @@ export default Vue.extend({
         'shelfview-reader-shell__pages--single': this.readerLayout === 'SINGLE_PAGE',
         'shelfview-reader-shell__pages--double': this.readerLayout === 'DOUBLE_PAGE',
         'shelfview-reader-shell__pages--continuous': this.readerLayout === 'CONTINUOUS_SCROLL',
+        'shelfview-reader-shell__pages--rotated-quarter': this.fixedPageRotation === 90 || this.fixedPageRotation === 270,
       }
     },
     pageImageClass(): object {
@@ -2341,6 +2748,10 @@ export default Vue.extend({
       }))
     },
     readerStageStyle(): Record<string, string> {
+      // Brightness belongs to the whole reading surface. Applied to the article
+      // alone it only darkened the glyphs, which raised contrast on the paper
+      // theme instead of lowering it.
+      if (this.textControlsVisible) return {'--sv-text-brightness': this.textBrightness.toString()}
       if (!this.fixedPageControlsVisible) return {}
 
       return {
@@ -2364,7 +2775,6 @@ export default Vue.extend({
         '--sv-text-paragraph-spacing': `${this.textParagraphSpacing}em`,
         '--sv-text-align': shelfViewTextAlign(this.textAlign).cssValue,
         '--sv-text-font-weight': this.textFontWeight.toString(),
-        '--sv-text-brightness': this.textBrightness.toString(),
       }
     },
     slideshowLabel(): string {
@@ -2429,7 +2839,14 @@ export default Vue.extend({
       }))
     },
     imageFilterPresetOptions(): ShelfViewControlMenuOption[] {
-      return SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS.map(option => ({
+      const presets = SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS.some(option => option.id === this.visibleImageFilterPreset)
+        ? SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS
+        : [
+          ...SHELFVIEW_IMAGE_FILTER_PRIMARY_PRESETS,
+          ...SHELFVIEW_IMAGE_FILTER_PRESETS.filter(option => option.id === this.visibleImageFilterPreset),
+        ]
+
+      return presets.map(option => ({
         value: option.id,
         icon: option.icon,
         label: this.$t(`shelfview_reader.filter_${option.id.toLowerCase()}`) as string,
@@ -2498,6 +2915,16 @@ export default Vue.extend({
       }
       return this.$t('shelfview_reader.empty_pages') as string
     },
+    /**
+     * True only when nothing readable is left on screen. A single broken entry
+     * inside an archive now stops at its own page, so a spread keeps its other
+     * half and continuous scroll keeps the reader's place instead of throwing
+     * the whole stage away.
+     */
+    pageImageFailed(): boolean {
+      const visible = this.visiblePageSources
+      return visible.length > 0 && visible.every(page => this.pageImageFailedAt(page.pageIndex))
+    },
     hasDisplayError(): boolean {
       return !!this.error || this.pageImageFailed
     },
@@ -2511,6 +2938,8 @@ export default Vue.extend({
       if (this.pageImageFailed) return this.$t('shelfview_reader.error_page_failed_title') as string
       if (this.error instanceof ShelfViewApiError) {
         switch (this.error.code) {
+          case 'UNAUTHENTICATED':
+            return this.$t('shelfview_reader.error_unauthenticated_title') as string
           case 'FORBIDDEN':
             return this.$t('shelfview_reader.error_forbidden_title') as string
           case 'NOT_FOUND':
@@ -2535,6 +2964,8 @@ export default Vue.extend({
       }
       if (this.error instanceof ShelfViewApiError) {
         switch (this.error.code) {
+          case 'UNAUTHENTICATED':
+            return this.$t('shelfview_reader.error_unauthenticated_message') as string
           case 'FORBIDDEN':
             return this.$t('shelfview_reader.error_forbidden_message') as string
           case 'NOT_FOUND':
@@ -2563,6 +2994,9 @@ export default Vue.extend({
       // not reach the reader (Rule_UIUX 6-1).
       return this.$t('shelfview_reader.error_generic_message') as string
     },
+    signInRecoveryVisible(): boolean {
+      return this.error instanceof ShelfViewApiError && this.error.code === 'UNAUTHENTICATED'
+    },
     textRecoveryAvailable(): boolean {
       return this.manifest?.kind === 'TEXT_REFLOW' || this.manifest?.kind === 'MIXED_CONTENT_SEQUENCE'
     },
@@ -2588,6 +3022,7 @@ export default Vue.extend({
       void this.loadDictionaryProviders()
       this.textSearchOpen = false
       this.textSearchQuery = ''
+      this.textSearchQueryApplied = ''
       this.textSearchMatchIndex = 0
       this.chromeVisible = true
       this.overflowMenuOpen = false
@@ -2597,8 +3032,11 @@ export default Vue.extend({
       this.stopSlideshow()
       this.clearReaderStateTimers()
       this.setReaderStateStatus('IDLE', '')
+      this.cancelReaderFrames()
+      this.appliedCharsPerPage = undefined
       this.destroyAdapter()
-      this.pageImageFailed = false
+      this.failedPageIndexes = []
+      this.widePageIndexes = []
 
       this.context = {} as Context
       if (this.$route.query.contextId && this.$route.query.context &&
@@ -2610,16 +3048,22 @@ export default Vue.extend({
       }
 
       try {
-        this.book = await this.$talesBooks.getBook(bookId)
+        // Opening a book used to cost four round trips in a row before the
+        // first page image was even requested. The manifest is all the adapter
+        // needs, and the book only feeds the toolbar title, so the two run
+        // together; the series title and the next-book lookup arrive later
+        // because `bookTitle` already tolerates them being absent.
+        const [book, manifest] = await Promise.all([
+          this.$talesBooks.getBook(bookId),
+          this.$shelfViewManifest.getManifest(bookId),
+        ])
         if (requestId !== this.setupRequestId) return
 
-        this.series = await this.$talesSeries.getOneSeries(this.book.seriesId)
-        if (requestId !== this.setupRequestId) return
-
-        this.book.context = this.context
+        book.context = this.context
+        this.book = book
+        this.manifest = manifest
+        void this.loadSeries(book.seriesId, requestId)
         void this.loadSiblingNext(bookId, requestId)
-        this.manifest = await this.$shelfViewManifest.getManifest(bookId)
-        if (requestId !== this.setupRequestId) return
 
         if (this.manifest.kind === 'EPUB_WEBPUB') {
           await this.openEpubBridgeManifest(this.manifest)
@@ -2642,6 +3086,18 @@ export default Vue.extend({
         if (requestId === this.setupRequestId) this.error = e
       } finally {
         if (requestId === this.setupRequestId) this.loading = false
+      }
+    },
+    async loadSeries(
+      seriesId: string,
+      requestId: number,
+    ) {
+      try {
+        const series = await this.$talesSeries.getOneSeries(seriesId)
+        if (requestId === this.setupRequestId) this.series = series
+      } catch (e) {
+        // The title falls back to the book name; this must not block reading.
+        if (requestId === this.setupRequestId) this.series = undefined
       }
     },
     async loadSiblingNext(
@@ -2792,18 +3248,71 @@ export default Vue.extend({
 
       void this.setup(this.bookId)
     },
+    goToSignIn() {
+      void this.$router.push({
+        name: 'login',
+        query: {redirect: this.$route.fullPath},
+      })
+    },
     retryPageImage() {
-      this.pageImageFailed = false
+      this.failedPageIndexes = []
       this.pageImageReloadNonce += 1
       this.$nextTick(() => this.focusReaderStage())
     },
     retryTextEncoding(encoding?: string) {
       this.textEncodingOverride = encoding
-      this.pageImageFailed = false
+      this.failedPageIndexes = []
       void this.setup(this.bookId)
     },
-    onPageImageError() {
-      this.pageImageFailed = true
+    pageImageFailedAt(pageIndex: number): boolean {
+      return this.failedPageIndexes.includes(pageIndex)
+    },
+    pageImageLoadedAt(pageIndex: number): boolean {
+      return this.loadedPageKeys.includes(this.pageImageKey(pageIndex))
+    },
+    /**
+     * Records a page that is wider than it is tall, which in a comic means a
+     * double-spread illustration. The manifest carries no page sizes, so the
+     * only place to learn this is the image once it has decoded.
+     */
+    notePageAspect(
+      pageIndex: number,
+      e?: Event,
+    ) {
+      const image = e?.target as HTMLImageElement | undefined
+      const width = image?.naturalWidth ?? 0
+      const height = image?.naturalHeight ?? 0
+      if (width < 1 || height < 1) return
+
+      const wide = width > height
+      const known = this.widePageIndexes.includes(pageIndex)
+      if (wide === known) return
+
+      this.widePageIndexes = wide
+        ? [...this.widePageIndexes, pageIndex]
+        : this.widePageIndexes.filter(index => index !== pageIndex)
+    },
+    pageImageKey(pageIndex: number): string {
+      return `${pageIndex}-${this.pageImageReloadNonce}`
+    },
+    onPageImageLoaded(
+      pageIndex: number,
+      e?: Event,
+    ) {
+      this.notePageAspect(pageIndex, e)
+
+      const key = this.pageImageKey(pageIndex)
+      if (this.loadedPageKeys.includes(key)) return
+
+      // Only the pages in flight matter, so the list stays short instead of
+      // growing for the length of a thousand-page book.
+      this.loadedPageKeys = [...this.loadedPageKeys.slice(-11), key]
+    },
+    onPageImageError(pageIndex?: number) {
+      if (typeof pageIndex !== 'number') return
+      if (this.failedPageIndexes.includes(pageIndex)) return
+
+      this.failedPageIndexes = [...this.failedPageIndexes, pageIndex]
     },
     errorLooksEncodingRelated(error: Error | ShelfViewApiError): boolean {
       return error.message.toLowerCase().includes('encoding')
@@ -2819,30 +3328,53 @@ export default Vue.extend({
     syncAdapterState() {
       if (!this.adapter) {
         this.currentLocator = undefined
+        this.mixedContentIndex = 0
         return
       }
 
       this.currentLocator = this.adapter.getCurrentLocator()
+      // Read once here rather than from a computed: switching mixed items
+      // destroys one item adapter before the next one has opened, and a
+      // computed can be evaluated inside that gap.
+      this.mixedContentIndex = this.mixedContentAdapter?.getCurrentContentIndex() ?? 0
       this.pageJumpInput = this.currentPageNumber.toString()
     },
     recomputeTextPagination() {
-      if (!this.textAdapter || this.readerLayout !== 'SINGLE_PAGE') return
+      // A TXT reached through a mixed archive is the same reading experience as
+      // a standalone TXT, so it gets the same page budget (ADR-0009 revisit
+      // trigger). Anything but single-page keeps the budget at zero, which the
+      // pagination helper reads as one paragraph per page.
+      if (!this.textAdapter && !this.mixedContentAdapter?.isCurrentText()) return
 
       const stage = this.$refs.readerStage as HTMLElement | undefined
       if (!stage) return
 
+      const charsPerPage = this.readerLayout === 'SINGLE_PAGE'
+        ? this.estimatedCharsPerPage(stage)
+        : 0
+      if (charsPerPage === undefined) return
+      // Rebuilding the page table walks every paragraph, and a resize burst
+      // recomputes the same budget over and over, so an unchanged budget is
+      // dropped here rather than inside the adapters.
+      if (charsPerPage === this.appliedCharsPerPage) return
+
+      this.appliedCharsPerPage = charsPerPage
+      this.textAdapter?.setPagination(charsPerPage)
+      this.mixedContentAdapter?.setPagination(charsPerPage)
+    },
+    estimatedCharsPerPage(stage: HTMLElement): number | undefined {
       const stageWidth = stage.clientWidth
       const stageHeight = stage.clientHeight - this.readerStageVerticalPadding(stage)
-      if (stageWidth <= 0 || stageHeight <= 0) return
+      if (stageWidth <= 0 || stageHeight <= 0) return undefined
 
-      this.textAdapter.setPagination(shelfViewEstimateCharsPerPage({
+      return shelfViewEstimateCharsPerPage({
         columnWidth: Math.min(stageWidth, this.textContentWidth),
         viewportHeight: stageHeight,
         fontSize: this.textFontSize,
         lineHeight: this.textLineHeight,
         marginX: this.textPageMargin,
         marginY: Math.max(18, Math.round(this.textPageMargin * 0.75)),
-      }))
+      })
     },
     // clientHeight counts the stage padding, and the toolbar reservation makes
     // that padding big enough to matter, so the page budget is measured against
@@ -2858,7 +3390,7 @@ export default Vue.extend({
     async previousPage() {
       if (!this.adapter) return
 
-      this.pageImageFailed = false
+      this.failedPageIndexes = []
       if (this.mixedContentAdapter) {
         await this.mixedContentAdapter.previous()
         this.normalizeReaderLayout()
@@ -2891,7 +3423,7 @@ export default Vue.extend({
         return
       }
 
-      this.pageImageFailed = false
+      this.failedPageIndexes = []
       if (this.mixedContentAdapter) {
         await this.mixedContentAdapter.next()
         this.normalizeReaderLayout()
@@ -2919,7 +3451,7 @@ export default Vue.extend({
     async goToPageIndex(pageIndex: number) {
       if (!this.adapter) return
 
-      this.pageImageFailed = false
+      this.failedPageIndexes = []
       if (this.mixedContentAdapter) {
         await this.mixedContentAdapter.goToCurrentItemContentIndex(pageIndex)
         this.syncAdapterState()
@@ -3229,6 +3761,7 @@ export default Vue.extend({
       if (isFiniteNumber(settings.textParagraphSpacing)) this.textParagraphSpacing = settings.textParagraphSpacing
       if (isFiniteNumber(settings.textFontWeight)) this.textFontWeight = settings.textFontWeight
       if (isFiniteNumber(settings.textBrightness)) this.textBrightness = settings.textBrightness
+      if (typeof settings.textUnwrapLines === 'boolean') this.textUnwrapLines = settings.textUnwrapLines
       this.normalizeTextDisplaySettings()
     },
     normalizeTextDisplaySettings() {
@@ -3245,6 +3778,7 @@ export default Vue.extend({
         textAlign: this.textAlign,
         textFontWeight: this.textFontWeight,
         textBrightness: this.textBrightness,
+        textUnwrapLines: this.textUnwrapLines,
       })
 
       this.textTheme = settings.textTheme
@@ -3259,6 +3793,7 @@ export default Vue.extend({
       this.textAlign = settings.textAlign
       this.textFontWeight = settings.textFontWeight
       this.textBrightness = settings.textBrightness
+      this.textUnwrapLines = settings.textUnwrapLines
     },
     currentPreferenceSettings(format?: ShelfViewPreferenceFormat): ShelfViewFixedPagePreferenceSettings {
       if ((format ?? this.currentPreferenceFormat()) === SHELFVIEW_TEXT_FORMAT) {
@@ -3276,6 +3811,7 @@ export default Vue.extend({
           textAlign: this.textAlign,
           textFontWeight: this.textFontWeight,
           textBrightness: this.textBrightness,
+          textUnwrapLines: this.textUnwrapLines,
         }
       }
 
@@ -3323,6 +3859,23 @@ export default Vue.extend({
         this.flushPositionSave(),
         this.flushPreferenceSave(),
       ])
+    },
+    /**
+     * Saves the position from `pagehide` or a hide `visibilitychange`, where the
+     * ordinary XHR would be cancelled with the page. Nothing is awaited and no
+     * status is set, because the reader is on its way out.
+     */
+    flushPositionSaveOnUnload() {
+      if (this.positionSaveTimer !== undefined) {
+        window.clearTimeout(this.positionSaveTimer)
+        this.positionSaveTimer = undefined
+      }
+      if (!this.adapter || !this.currentLocator || this.browserOffline()) return false
+
+      return this.$shelfViewState.savePositionOnUnload(this.bookId, {
+        locator: this.currentLocator,
+        progression: this.adapter.getProgression(),
+      })
     },
     async flushPositionSave() {
       if (this.positionSaveTimer !== undefined) {
@@ -3381,6 +3934,29 @@ export default Vue.extend({
         this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_save_failed') as string)
       }
     },
+    /** Enter searches at once rather than waiting out the debounce. */
+    async applyTextSearchQueryAndGoToNext() {
+      if (this.textSearchTimer !== undefined) {
+        window.clearTimeout(this.textSearchTimer)
+        this.textSearchTimer = undefined
+        this.applyTextSearchQuery()
+        return
+      }
+
+      await this.goToNextTextSearchMatch()
+    },
+    cancelReaderFrames() {
+      if (this.textSearchTimer !== undefined) {
+        window.clearTimeout(this.textSearchTimer)
+        this.textSearchTimer = undefined
+      }
+      if (typeof window.cancelAnimationFrame === 'function') {
+        if (this.scrollFrameHandle !== undefined) window.cancelAnimationFrame(this.scrollFrameHandle)
+        if (this.viewportFrameHandle !== undefined) window.cancelAnimationFrame(this.viewportFrameHandle)
+      }
+      this.scrollFrameHandle = undefined
+      this.viewportFrameHandle = undefined
+    },
     clearReaderStateTimers() {
       if (this.positionSaveTimer !== undefined) {
         window.clearTimeout(this.positionSaveTimer)
@@ -3417,23 +3993,91 @@ export default Vue.extend({
 
       this.startTextToSpeech()
     },
+    toggleTextToSpeechPause() {
+      if (!this.textToSpeechActive || !this.browserTextToSpeechPauseAvailable()) return
+
+      if (this.textToSpeechPaused) {
+        window.speechSynthesis.resume()
+        this.textToSpeechPaused = false
+        return
+      }
+
+      window.speechSynthesis.pause()
+      this.textToSpeechPaused = true
+    },
     startTextToSpeech() {
       if (!this.textToSpeechAvailable) return
 
-      const text = this.selectedTextToSpeechText() || this.currentTextToSpeechText
-      if (!text) return
+      // A deliberate selection is read once and nothing more; without one the
+      // reader wants the book read to them, so playback carries on paragraph by
+      // paragraph and turns the page at the end of a screenful.
+      const selectedText = this.selectedTextToSpeechText()
+      if (selectedText) {
+        this.stopTextToSpeech()
+        this.speakTextToSpeech(selectedText, undefined)
+        return
+      }
+
+      const locator = this.currentTextLocator()
+      if (!locator) return
 
       this.stopTextToSpeech()
+      this.speakTextToSpeechParagraph(locator.paragraph)
+    },
+    speakTextToSpeechParagraph(paragraphIndex: number): boolean {
+      const text = this.visibleTextParagraphs
+        .find(paragraph => paragraph.paragraphIndex === paragraphIndex)
+        ?.text
+        .trim() ?? ''
+      if (!text) return false
 
+      this.speakTextToSpeech(text, paragraphIndex)
+      return true
+    },
+    speakTextToSpeech(
+      text: string,
+      paragraphIndex: number | undefined,
+    ) {
       const utterance = new window.SpeechSynthesisUtterance(text)
       utterance.rate = this.textToSpeechRate
       const voice = this.selectedTextToSpeechVoice()
       if (voice) utterance.voice = voice
-      utterance.onend = () => this.clearTextToSpeechState(utterance)
+      utterance.onend = () => {
+        if (this.textToSpeechUtterance !== utterance) return
+        if (paragraphIndex === undefined) {
+          this.clearTextToSpeechState(utterance)
+          return
+        }
+        void this.advanceTextToSpeech(paragraphIndex)
+      }
       utterance.onerror = () => this.clearTextToSpeechState(utterance)
       this.textToSpeechUtterance = utterance
+      this.textToSpeechParagraphIndex = paragraphIndex
       this.textToSpeechActive = true
+      this.textToSpeechPaused = false
       window.speechSynthesis.speak(utterance)
+    },
+    async advanceTextToSpeech(spokenParagraphIndex: number) {
+      const remaining = this.visibleTextParagraphs
+        .filter(paragraph => paragraph.paragraphIndex > spokenParagraphIndex)
+        .sort((a, b) => a.paragraphIndex - b.paragraphIndex)[0]
+      if (remaining && this.speakTextToSpeechParagraph(remaining.paragraphIndex)) return
+
+      if (!this.canGoNext) {
+        this.stopTextToSpeech()
+        return
+      }
+
+      await this.nextPage()
+      // The prompt at the end of a book replaces the page, so reading stops
+      // rather than talking over a dialog the reader has to answer.
+      if (!this.textToSpeechActive || this.endOfBookPromptOpen) {
+        this.stopTextToSpeech()
+        return
+      }
+
+      const first = [...this.visibleTextParagraphs].sort((a, b) => a.paragraphIndex - b.paragraphIndex)[0]
+      if (!first || !this.speakTextToSpeechParagraph(first.paragraphIndex)) this.stopTextToSpeech()
     },
     selectedTextToSpeechText(): string {
       const selection = window.getSelection?.()
@@ -3471,12 +4115,21 @@ export default Vue.extend({
     stopTextToSpeech() {
       if (this.browserTextToSpeechAvailable()) window.speechSynthesis.cancel()
       this.textToSpeechUtterance = undefined
+      this.textToSpeechParagraphIndex = undefined
       this.textToSpeechActive = false
+      this.textToSpeechPaused = false
     },
     clearTextToSpeechState(utterance: SpeechSynthesisUtterance) {
       if (this.textToSpeechUtterance !== utterance) return
       this.textToSpeechUtterance = undefined
+      this.textToSpeechParagraphIndex = undefined
       this.textToSpeechActive = false
+      this.textToSpeechPaused = false
+    },
+    browserTextToSpeechPauseAvailable(): boolean {
+      return this.browserTextToSpeechAvailable() &&
+        typeof window.speechSynthesis.pause === 'function' &&
+        typeof window.speechSynthesis.resume === 'function'
     },
     browserTextToSpeechAvailable(): boolean {
       return typeof window !== 'undefined' &&
@@ -3492,7 +4145,21 @@ export default Vue.extend({
         typeof window.speechSynthesis.addEventListener === 'function' &&
         typeof window.speechSynthesis.removeEventListener === 'function'
     },
+    /**
+     * Searching walks every paragraph in the book, and the backend allows a TXT
+     * of up to 5MB, so running it on each keystroke stalls typing. The query is
+     * applied once the reader pauses instead.
+     */
     onTextSearchInput() {
+      if (this.textSearchTimer !== undefined) window.clearTimeout(this.textSearchTimer)
+
+      this.textSearchTimer = window.setTimeout(() => {
+        this.textSearchTimer = undefined
+        this.applyTextSearchQuery()
+      }, TEXT_SEARCH_DEBOUNCE_MS)
+    },
+    applyTextSearchQuery() {
+      this.textSearchQueryApplied = this.textSearchQuery
       this.textSearchMatchIndex = 0
       if (this.textSearchMatches.length > 0) void this.goToTextSearchMatch(0)
     },
@@ -3550,14 +4217,25 @@ export default Vue.extend({
       return {
         'shelfview-reader-shell__text-paragraph--highlighted': this.textParagraphBookmarked(paragraphIndex),
         'shelfview-reader-shell__text-paragraph--search-current': this.currentTextSearchMatch?.paragraphIndex === paragraphIndex,
+        'shelfview-reader-shell__text-paragraph--speaking': this.textToSpeechParagraphIndex === paragraphIndex,
       }
+    },
+    /**
+     * Folds the single newlines inside a paragraph into spaces so a hard-wrapped
+     * TXT reflows with the column instead of keeping the line breaks the file was
+     * saved with. It is a one-for-one replacement done at render time only:
+     * bookmarks and highlights count characters in the original text, so the
+     * length must not change and the stored text must not be touched.
+     */
+    displayParagraphText(text: string): string {
+      return this.textUnwrapLines ? text.split('\n').join(' ') : text
     },
     textParagraphSegments(paragraph: ShelfViewTextParagraph): ShelfViewTextParagraphSegment[] {
       const ranges = this.textDedicatedHighlightRangesForParagraph(paragraph.paragraphIndex, paragraph.text.length)
       if (ranges.length === 0) {
         return [{
           key: `${paragraph.paragraphIndex}-plain`,
-          text: paragraph.text,
+          text: this.displayParagraphText(paragraph.text),
           highlighted: false,
         }]
       }
@@ -3574,14 +4252,14 @@ export default Vue.extend({
           if (start > cursor) {
             segments.push({
               key: `${paragraph.paragraphIndex}-plain-${cursor}-${start}`,
-              text: paragraph.text.slice(cursor, start),
+              text: this.displayParagraphText(paragraph.text.slice(cursor, start)),
               highlighted: false,
             })
           }
 
           segments.push({
             key: `${paragraph.paragraphIndex}-highlight-${rangeIndex}-${start}-${range.end}`,
-            text: paragraph.text.slice(start, range.end),
+            text: this.displayParagraphText(paragraph.text.slice(start, range.end)),
             highlighted: true,
             color: range.color,
           })
@@ -3591,7 +4269,7 @@ export default Vue.extend({
       if (cursor < paragraph.text.length) {
         segments.push({
           key: `${paragraph.paragraphIndex}-plain-${cursor}-end`,
-          text: paragraph.text.slice(cursor),
+          text: this.displayParagraphText(paragraph.text.slice(cursor)),
           highlighted: false,
         })
       }
@@ -3763,6 +4441,55 @@ export default Vue.extend({
     closeShortcutHelp() {
       this.showShortcutHelp = false
       this.$nextTick(() => this.focusReaderStage())
+    },
+    /**
+     * Closes the innermost open reader panel and reports whether it closed one.
+     * The order runs from the panel drawn on top down to the settings panel that
+     * opens the rest, so repeated Escapes retrace the way the reader came in.
+     */
+    closeTopmostChromePanel(): boolean {
+      if (this.openControlMenu) {
+        this.closeControlMenu()
+        return true
+      }
+      if (this.showShortcutHelp) {
+        this.closeShortcutHelp()
+        return true
+      }
+      if (this.dictionaryDrawerOpen) {
+        this.closeDictionaryDrawer()
+        return true
+      }
+      if (this.highlightsDrawerOpen) {
+        this.closeHighlightsDrawer()
+        return true
+      }
+      if (this.bookmarksDrawerOpen) {
+        this.closeBookmarksDrawer()
+        return true
+      }
+      if (this.contentsDrawerOpen) {
+        this.closeContentsDrawer()
+        return true
+      }
+      if (this.fixedPageSettingsOpen) {
+        this.closeFixedPageSettings()
+        return true
+      }
+      if (this.textSettingsOpen) {
+        this.closeTextSettings()
+        return true
+      }
+      if (this.textSearchOpen) {
+        this.toggleTextSearch()
+        return true
+      }
+      if (this.overflowMenuOpen) {
+        this.closeOverflowMenu()
+        this.$nextTick(() => this.focusReaderStage())
+        return true
+      }
+      return false
     },
     toggleChrome() {
       this.chromeVisible = !this.chromeVisible
@@ -4163,6 +4890,90 @@ export default Vue.extend({
     normalizedTextQuote(text: string): string {
       return text.replace(/\s+/g, ' ').trim().slice(0, TEXT_HIGHLIGHT_QUOTE_MAX_LENGTH)
     },
+    closeHighlightsDrawer() {
+      this.highlightsDrawerOpen = false
+      this.cancelHighlightNoteEdit()
+      this.$nextTick(() => this.focusReaderStage())
+    },
+    highlightLabel(highlight: ShelfViewHighlightDto): string {
+      const quote = highlight.textQuote?.trim()
+      if (quote) return quote.length > 80 ? `${quote.slice(0, 80)}…` : quote
+
+      const locator = highlight.locator
+      const paragraph = locator.kind === 'TEXT'
+        ? locator.paragraph
+        : locator.kind === 'MIXED' && locator.itemLocator.kind === 'TEXT'
+          ? locator.itemLocator.paragraph
+          : undefined
+      return paragraph === undefined
+        ? this.$t('shelfview_reader.highlights') as string
+        : this.$t('shelfview_reader.bookmark_paragraph', {n: paragraph + 1}) as string
+    },
+    async goToHighlight(highlight: ShelfViewHighlightDto) {
+      if (!this.adapter) return
+
+      try {
+        await this.adapter.goTo(highlight.locator)
+        this.syncAdapterState()
+        this.schedulePositionSave()
+        this.closeHighlightsDrawer()
+      } catch (e) {
+        this.setReaderStateStatus('ERROR', this.$t('shelfview_reader.status_bookmark_unavailable') as string)
+      }
+    },
+    async setHighlightColor(
+      highlight: ShelfViewHighlightDto,
+      color: ShelfViewHighlightColor,
+    ) {
+      if (highlight.color === color) return
+      await this.updateHighlight(highlight, {color, note: highlight.note})
+    },
+    startHighlightNoteEdit(highlight: ShelfViewHighlightDto) {
+      this.editingHighlightId = highlight.id
+      this.highlightNoteDraft = highlight.note ?? ''
+    },
+    cancelHighlightNoteEdit() {
+      this.editingHighlightId = ''
+      this.highlightNoteDraft = ''
+    },
+    async saveHighlightNote(highlight: ShelfViewHighlightDto) {
+      const note = this.highlightNoteDraft.trim() || undefined
+      if (await this.updateHighlight(highlight, {color: highlight.color, note})) this.cancelHighlightNoteEdit()
+    },
+    async updateHighlight(
+      highlight: ShelfViewHighlightDto,
+      changes: {color: ShelfViewHighlightColor, note?: string},
+    ): Promise<boolean> {
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
+        return false
+      }
+
+      try {
+        const updated = await this.$shelfViewState.updateHighlight(highlight.id, changes)
+        this.highlights = this.highlights.map(existing => existing.id === updated.id ? updated : existing)
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_saved') as string)
+        return true
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_highlight_failed') as string)
+        return false
+      }
+    },
+    async deleteHighlight(highlight: ShelfViewHighlightDto) {
+      if (this.browserOffline()) {
+        this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
+        return
+      }
+
+      try {
+        await this.$shelfViewState.deleteHighlight(highlight.id)
+        this.highlights = this.highlights.filter(existing => existing.id !== highlight.id)
+        if (this.editingHighlightId === highlight.id) this.cancelHighlightNoteEdit()
+        this.setReaderStateStatus('SAVED', this.$t('shelfview_reader.status_highlight_deleted') as string)
+      } catch (e) {
+        this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_highlight_failed') as string)
+      }
+    },
     async goToBookmark(bookmark: ShelfViewBookmarkDto) {
       if (!this.adapter) return
 
@@ -4242,13 +5053,42 @@ export default Vue.extend({
       this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
     },
     onVisibilityChange() {
-      if (document.visibilityState === 'hidden') void this.flushReaderState()
+      if (document.visibilityState !== 'hidden') return
+
+      // A hidden tab can be discarded without ever firing pagehide, so this
+      // takes the same keepalive path rather than an XHR that may not finish.
+      if (this.flushPositionSaveOnUnload()) {
+        void this.flushPreferenceSave()
+        return
+      }
+      void this.flushReaderState()
     },
+    /**
+     * A mobile address bar collapsing fires resize repeatedly, and repaginating
+     * rebuilds the paragraph length table each time, so the bursts are collapsed
+     * into one frame the same way scrolling is.
+     */
     onReaderViewportChanged() {
+      if (this.viewportFrameHandle !== undefined) return
+      if (typeof window.requestAnimationFrame !== 'function') {
+        this.applyReaderViewportChange()
+        return
+      }
+
+      this.viewportFrameHandle = window.requestAnimationFrame(() => {
+        this.viewportFrameHandle = undefined
+        this.applyReaderViewportChange()
+      })
+    },
+    applyReaderViewportChange() {
       this.recomputeTextPagination()
       this.$nextTick(() => this.restoreCurrentVisibleContent())
     },
     onPageHide() {
+      if (this.flushPositionSaveOnUnload()) {
+        void this.flushPreferenceSave()
+        return
+      }
       void this.flushReaderState()
     },
     async onReaderKeydown(e: KeyboardEvent) {
@@ -4267,10 +5107,10 @@ export default Vue.extend({
       }
 
       if (e.key === 'Escape') {
-        if (this.anyChromePanelOpen) return
-
         e.preventDefault()
-        this.toggleChrome()
+        // Escape unwinds one layer at a time: the innermost open panel first,
+        // and only the chrome itself once nothing is left open.
+        if (!this.closeTopmostChromePanel()) this.toggleChrome()
         return
       }
 
@@ -4288,6 +5128,10 @@ export default Vue.extend({
       if (!this.fixedPageControlsVisible || this.hasDisplayError || this.empty) return
       if (shelfViewShouldIgnoreShortcutTarget(e.target)) return
       if (!Number.isFinite(e.deltaY) || e.deltaY === 0) return
+      // Zoom is the modifier gesture, as it already was in continuous scroll. A
+      // plain wheel has to stay with the stage, otherwise a width-fitted page
+      // that runs off the bottom of the screen cannot be scrolled at all.
+      if (!e.ctrlKey && !e.metaKey) return
 
       const readerStage = this.$refs.readerStage as HTMLElement | undefined
       if (!readerStage) return
@@ -4403,6 +5247,15 @@ export default Vue.extend({
       this.fixedPagePanning = false
     },
     onReaderTouchStart(e: TouchEvent) {
+      // A second finger means a pinch or a browser gesture, never a page turn.
+      // Dropping the start point here also covers touchend, which fires once per
+      // finger and would otherwise read the released finger as a swipe.
+      if ((e.touches?.length ?? 0) > 1) {
+        this.touchStart = undefined
+        this.touchStartScrollLeft = undefined
+        return
+      }
+
       const touch = e.changedTouches[0]
       if (!touch) return
 
@@ -4410,13 +5263,21 @@ export default Vue.extend({
         x: touch.clientX,
         y: touch.clientY,
       }
+      this.touchStartScrollLeft = (this.$refs.readerStage as HTMLElement | undefined)?.scrollLeft
     },
     async onReaderTouchEnd(e: TouchEvent) {
       const touch = e.changedTouches[0]
       if (!this.touchStart || !touch) return
 
+      if ((e.touches?.length ?? 0) > 0) {
+        this.touchStart = undefined
+        this.touchStartScrollLeft = undefined
+        return
+      }
+
       if (this.openEndPromptForContinuousTouchEnd(e, touch)) {
         this.touchStart = undefined
+        this.touchStartScrollLeft = undefined
         return
       }
 
@@ -4424,13 +5285,52 @@ export default Vue.extend({
         this.touchStart,
         {x: touch.clientX, y: touch.clientY},
         this.readingDirection,
+        this.readerTouchStageState(),
       ) ?? this.readerTapAction(this.touchStart, {x: touch.clientX, y: touch.clientY})
       this.touchStart = undefined
+      this.touchStartScrollLeft = undefined
 
       if (!action) return
 
       if (e.cancelable) e.preventDefault()
       await this.runReaderInputAction(action)
+    },
+    /**
+     * Places the selection toolbar just above the selected text, or clears it
+     * when the selection is empty or outside the book text.
+     */
+    refreshSelectionActions() {
+      if (!this.textControlsVisible) {
+        this.selectionRect = undefined
+        return
+      }
+
+      const selection = window.getSelection?.()
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !this.selectedTextHighlightRange()) {
+        this.selectionRect = undefined
+        return
+      }
+
+      const rect = selection.getRangeAt(0).getBoundingClientRect?.()
+      if (!rect || (rect.width === 0 && rect.height === 0)) {
+        this.selectionRect = undefined
+        return
+      }
+
+      this.selectionRect = {
+        top: Math.max(8, rect.top - 48),
+        left: Math.max(8, rect.left),
+      }
+    },
+    readerTouchStageState(): ShelfViewTouchStageState {
+      const readerStage = this.$refs.readerStage as HTMLElement | undefined
+      if (!readerStage) return {canPanHorizontally: false, scrolledHorizontally: false}
+
+      return {
+        canPanHorizontally: readerStage.scrollWidth > readerStage.clientWidth,
+        scrolledHorizontally: this.touchStartScrollLeft !== undefined &&
+          readerStage.scrollLeft !== this.touchStartScrollLeft,
+      }
     },
     openEndPromptForContinuousScrollEnd(e: WheelEvent) {
       if (!this.adapter || this.hasDisplayError || this.empty || this.endOfBookPromptOpen) return
@@ -4477,18 +5377,43 @@ export default Vue.extend({
       if (!readerStage) return undefined
 
       const rect = readerStage.getBoundingClientRect()
+      // A page wider than the stage is panned with the side zones, so tapping
+      // them must not also turn the page. Measuring the real overflow keeps
+      // paging alive for a page that merely got taller, which a scale threshold
+      // used to switch off without telling anyone.
+      const pagingEnabled = this.tapPagingEnabled &&
+        readerStage.scrollWidth <= readerStage.clientWidth
+
       return shelfViewTapAction(
         {x: start.x - rect.left, y: start.y - rect.top},
         {x: end.x - rect.left, y: end.y - rect.top},
         rect.width || readerStage.clientWidth,
         this.readingDirection,
-        this.tapPagingEnabled,
+        pagingEnabled,
       )
     },
     readerPointerSelectionActive(): boolean {
       return !!window.getSelection?.()?.toString()
     },
+    /**
+     * Scroll fires far faster than the screen repaints, and the work behind it
+     * measures every paragraph or page element in the document. Collapsing the
+     * bursts into one frame keeps a long TXT and a long comic scrolling smoothly
+     * without changing what the reader ends up looking at.
+     */
     onReaderStageScroll() {
+      if (this.scrollFrameHandle !== undefined) return
+      if (typeof window.requestAnimationFrame !== 'function') {
+        this.applyReaderStageScroll()
+        return
+      }
+
+      this.scrollFrameHandle = window.requestAnimationFrame(() => {
+        this.scrollFrameHandle = undefined
+        this.applyReaderStageScroll()
+      })
+    },
+    applyReaderStageScroll() {
       if (!this.adapter) return
 
       if (this.textAdapter || this.mixedContentAdapter?.isCurrentText()) {
@@ -4698,7 +5623,56 @@ export default Vue.extend({
         case 'SHOW_SHORTCUTS':
           this.showShortcutHelp = true
           break
+        case 'TOGGLE_CONTENTS':
+          if (this.contentsAvailable) this.contentsDrawerOpen = !this.contentsDrawerOpen
+          break
+        case 'TOGGLE_BOOKMARKS':
+          this.bookmarksDrawerOpen = !this.bookmarksDrawerOpen
+          break
+        case 'TOGGLE_SETTINGS':
+          this.toggleOverflowMenu()
+          break
+        case 'FOCUS_PAGE_JUMP':
+          this.focusPageJumpInput()
+          break
+        case 'ZOOM_IN':
+          this.stepFixedPageScale(FIXED_PAGE_WHEEL_SCALE_STEP)
+          break
+        case 'ZOOM_OUT':
+          this.stepFixedPageScale(-FIXED_PAGE_WHEEL_SCALE_STEP)
+          break
+        case 'ZOOM_RESET':
+          this.stepFixedPageScale(undefined)
+          break
       }
+    },
+    /**
+     * Steps the page scale, or returns it to 100% when no step is given.
+     * Zooming used to be reachable only through the mouse wheel and a slider
+     * three panels deep, which left trackpad and keyboard readers with no way
+     * to enlarge a panel.
+     */
+    stepFixedPageScale(step: number | undefined) {
+      if (!this.fixedPageControlsVisible) return
+
+      const nextScale = step === undefined
+        ? SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS.fixedPageScale
+        : this.normalizedFixedPageScale(this.fixedPageScale + step)
+      if (nextScale === this.fixedPageScale) return
+
+      this.fixedPageScale = nextScale
+      this.schedulePreferenceSave()
+    },
+    focusPageJumpInput() {
+      if (!this.fixedPageControlsVisible) return
+
+      this.chromeVisible = true
+      this.overflowMenuOpen = true
+      this.$nextTick(() => {
+        const input = this.$el.querySelector('#shelfview-reader-page-jump-input') as HTMLInputElement | undefined
+        input?.focus()
+        input?.select()
+      })
     },
     async closeBook() {
       await this.flushReaderState()
@@ -4750,7 +5724,7 @@ function isFiniteNumber(value: unknown): value is number {
   font-family: "ShelfView Gowun Dodum";
   font-style: normal;
   font-weight: 400;
-  src: url("~@/shelfview/assets/fonts/GowunDodum-Regular.ttf") format("truetype");
+  src: url("~@/shelfview/assets/fonts/GowunDodum-Regular.woff2") format("woff2");
 }
 
 @font-face {
@@ -4758,7 +5732,7 @@ function isFiniteNumber(value: unknown): value is number {
   font-family: "ShelfView Gowun Batang";
   font-style: normal;
   font-weight: 400;
-  src: url("~@/shelfview/assets/fonts/GowunBatang-Regular.ttf") format("truetype");
+  src: url("~@/shelfview/assets/fonts/GowunBatang-Regular.woff2") format("woff2");
 }
 
 .shelfview-reader-shell {
@@ -4766,6 +5740,24 @@ function isFiniteNumber(value: unknown): value is number {
   height: 100vh;
   overflow: hidden;
   width: 100%;
+
+  /* How much vertical space the fit rules must leave for the chrome. The 72px
+     baseline covers the toolbar and the default 16px stage padding; the
+     variable adds whatever the bottom dock and the thumbnail strip reserve on
+     top of that padding, so "fit to screen" keeps meaning it. */
+  --sv-stage-bottom-chrome: 0px;
+}
+
+.shelfview-reader-shell--thumbnails {
+  --sv-stage-bottom-chrome: 88px;
+}
+
+.shelfview-reader-shell--page-dock {
+  --sv-stage-bottom-chrome: 56px;
+}
+
+.shelfview-reader-shell--page-dock.shelfview-reader-shell--thumbnails {
+  --sv-stage-bottom-chrome: 144px;
 }
 
 /* The toolbar stays dark in both application themes so the chrome never glows
@@ -5051,6 +6043,18 @@ function isFiniteNumber(value: unknown): value is number {
   color: var(--sv-chrome-danger);
 }
 
+.shelfview-reader-shell__toolbar-status {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+  flex: 0 1 auto;
+  margin-left: 12px;
+}
+
+.shelfview-reader-shell__toolbar-status .v-icon {
+  color: inherit;
+}
+
 .shelfview-reader-shell__sync-status--saved {
   border-color: var(--sv-chrome-success);
   color: var(--sv-chrome-success);
@@ -5062,7 +6066,11 @@ function isFiniteNumber(value: unknown): value is number {
   height: 100%;
   justify-content: center;
   overflow: hidden;
+  /* Without this an edge swipe reaches the browser's back gesture instead of
+     turning the page, which throws the reader out of the book. */
+  overscroll-behavior: contain;
   padding: 16px;
+  touch-action: pan-x pan-y pinch-zoom;
   width: 100%;
 }
 
@@ -5110,6 +6118,7 @@ function isFiniteNumber(value: unknown): value is number {
 .shelfview-reader-shell__stage--text {
   align-items: stretch;
   cursor: auto;
+  filter: brightness(var(--sv-text-brightness, 1));
   overflow-y: auto;
   padding-left: 0;
   padding-right: 0;
@@ -5150,6 +6159,16 @@ function isFiniteNumber(value: unknown): value is number {
   min-height: 100%;
 }
 
+/* Continuous scroll puts every page in the DOM and loads them lazily, so a page
+   that has not arrived yet is zero pixels tall. Holding a rough page height
+   keeps the scrollbar from growing under the reader's finger and keeps a
+   restored position landing near the right place. The manifest carries no page
+   sizes, so this is a placeholder height rather than the real aspect ratio. */
+.shelfview-reader-shell__pages--continuous .shelfview-reader-shell__page,
+.shelfview-reader-shell__pages--continuous .shelfview-page-content {
+  min-height: 60vh;
+}
+
 .shelfview-reader-shell__page {
   display: block;
   object-fit: contain;
@@ -5169,8 +6188,148 @@ function isFiniteNumber(value: unknown): value is number {
     invert(var(--sv-invert, 0));
 }
 
+.shelfview-reader-shell__progress {
+  color: var(--sv-chrome-muted);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* `rotate` turns the picture but leaves the layout box upright, so a quarter
+   turn is still measured against the unrotated width and height and runs off
+   the screen. Swapping which side each fit rule constrains puts the page back
+   inside the stage. */
+.shelfview-reader-shell__pages--rotated-quarter .shelfview-reader-shell__page--fit-screen {
+  max-height: calc(100% * var(--sv-fixed-page-scale, 1));
+  max-width: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
+}
+
+.shelfview-reader-shell__pages--rotated-quarter .shelfview-reader-shell__page--fit-width {
+  height: calc(100% * var(--sv-fixed-page-scale, 1));
+  max-width: none;
+  width: auto;
+}
+
+.shelfview-reader-shell__pages--rotated-quarter .shelfview-reader-shell__page--fit-height {
+  height: auto;
+  max-height: 100%;
+  width: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
+}
+
+.shelfview-reader-shell__highlight-colors {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.shelfview-reader-shell__highlight-color {
+  border: 1px solid var(--sv-chrome-border-strong);
+  border-radius: 999px;
+  height: 20px;
+  width: 20px;
+}
+
+.shelfview-reader-shell__highlight-color--selected {
+  border-color: var(--sv-chrome-accent);
+  border-width: 2px;
+}
+
+.shelfview-reader-shell__highlight-color:focus-visible {
+  outline: 2px solid var(--sv-chrome-accent);
+  outline-offset: 2px;
+}
+
+/* Colour is the meaning here, so these literals are the rule 1-9 exception. */
+.shelfview-reader-shell__highlight-color--yellow {
+  background: rgba(255, 213, 79, 0.85);
+}
+
+.shelfview-reader-shell__highlight-color--green {
+  background: rgba(129, 199, 132, 0.85);
+}
+
+.shelfview-reader-shell__highlight-color--blue {
+  background: rgba(100, 181, 246, 0.85);
+}
+
+.shelfview-reader-shell__highlight-color--pink {
+  background: rgba(240, 148, 191, 0.85);
+}
+
+.shelfview-reader-shell__highlight-color--underline {
+  background: transparent;
+  border-bottom: 3px solid var(--sv-chrome-text);
+}
+
+.shelfview-reader-shell__selection-actions {
+  background: var(--sv-chrome-elevated);
+  border: 1px solid var(--sv-chrome-border);
+  border-radius: var(--tales-radius-sm);
+  box-shadow: var(--sv-chrome-shadow);
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  position: fixed;
+  z-index: 8;
+}
+
+.shelfview-reader-shell__text--unwrapped {
+  white-space: normal;
+}
+
+/* The reader keeps its own accent so the chrome does not change colour with the
+   application theme (Rule_UIUX 1-9). */
+.shelfview-reader-shell__action.v-btn {
+  background: var(--sv-chrome-surface-soft) !important;
+  color: var(--sv-chrome-text) !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.shelfview-reader-shell__action--accent.v-btn {
+  background: var(--sv-chrome-accent-soft, var(--sv-chrome-surface-soft)) !important;
+  color: var(--sv-chrome-accent) !important;
+}
+
+.shelfview-reader-shell__icon--danger.v-icon {
+  color: var(--sv-chrome-danger) !important;
+}
+
+.shelfview-reader-shell__icon--muted.v-icon {
+  color: var(--sv-chrome-muted) !important;
+}
+
+/* Holds the place of a page that is still arriving, so a slow load reads as
+   loading rather than as a broken screen (Rule_UIUX 1-11). It only paints a
+   surface; nothing here looks like it can be pressed. */
+.shelfview-reader-shell__page--pending {
+  background: var(--sv-chrome-surface-soft);
+  min-height: 240px;
+  min-width: 160px;
+}
+
+/* Stands in for one unreadable page so the pages around it stay put. */
+.shelfview-reader-shell__page-failed {
+  align-items: center;
+  background: var(--sv-chrome-surface-soft);
+  border: 1px dashed var(--sv-chrome-border-strong);
+  border-radius: var(--tales-radius-sm);
+  color: var(--sv-chrome-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  min-height: 240px;
+  min-width: 200px;
+  padding: 24px;
+  text-align: center;
+}
+
+.shelfview-reader-shell__page-failed .v-icon {
+  color: var(--sv-chrome-muted);
+}
+
 .shelfview-reader-shell__page--fit-screen {
-  max-height: calc((100vh - 72px) * var(--sv-fixed-page-scale, 1));
+  max-height: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
   max-width: calc(100% * var(--sv-fixed-page-scale, 1));
 }
 
@@ -5181,7 +6340,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__page--fit-height {
-  height: calc((100vh - 72px) * var(--sv-fixed-page-scale, 1));
+  height: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
   max-width: 100%;
   width: auto;
 }
@@ -5221,7 +6380,6 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__text {
   color: var(--sv-chrome-text);
-  filter: brightness(var(--sv-text-brightness, 1));
   font-family: var(--sv-text-font-family, Pretendard, Arial, sans-serif);
   font-size: var(--sv-text-font-size, 20px);
   font-weight: var(--sv-text-font-weight, 400);
@@ -5284,6 +6442,12 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell__text-paragraph--search-current {
   background: rgba(255, 193, 7, 0.24);
+}
+
+/* Marks the paragraph being read aloud so the reader can follow along. */
+.shelfview-reader-shell__text-paragraph--speaking {
+  box-shadow: inset 3px 0 0 0 var(--sv-chrome-accent);
+  padding-left: 10px;
 }
 
 .shelfview-reader-shell__text-highlight {
@@ -5372,8 +6536,17 @@ function isFiniteNumber(value: unknown): value is number {
   padding: 3px;
 }
 
+/* Colour alone cannot carry "you are here" (Rule_UIUX 1-4), so the current
+   thumbnail also gets a thicker frame, and focus is told apart from it. */
 .shelfview-reader-shell__thumbnail-button--active {
   border-color: var(--sv-chrome-accent);
+  border-width: 2px;
+  box-shadow: inset 0 -3px 0 0 var(--sv-chrome-accent);
+}
+
+.shelfview-reader-shell__thumbnail-button:focus-visible {
+  outline: 2px solid var(--sv-chrome-accent);
+  outline-offset: 2px;
 }
 
 .shelfview-reader-shell__thumbnail-button img {
@@ -5846,9 +7019,27 @@ function isFiniteNumber(value: unknown): value is number {
   width: 100%;
 }
 
+/* The right-hand panels all open in the same place, so a short slide makes it
+   possible to see which one replaced which (Rule_UIUX 1-6: one property,
+   150-200ms). */
+.shelfview-panel-enter-active,
+.shelfview-panel-leave-active {
+  transition: transform 180ms ease;
+}
+
+.shelfview-panel-enter,
+.shelfview-panel-leave-to {
+  transform: translateX(100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shelfview-reader-shell * {
     scroll-behavior: auto !important;
+  }
+
+  .shelfview-panel-enter-active,
+  .shelfview-panel-leave-active {
+    transition: none !important;
   }
 }
 
@@ -5865,6 +7056,12 @@ function isFiniteNumber(value: unknown): value is number {
   .shelfview-reader-shell__page-controls {
     gap: 0;
     max-width: 72vw;
+  }
+
+  /* The labels are what push the controls past the edge at 360px, and the
+     aria-label on each button already carries the same wording. */
+  .shelfview-reader-shell__control-toggle-label {
+    display: none;
   }
 
   .shelfview-reader-shell__overflow {
@@ -5896,6 +7093,12 @@ function isFiniteNumber(value: unknown): value is number {
     display: none;
     max-width: 72px;
     padding: 5px;
+  }
+
+  /* A failed save must stay visible on a phone; only the quiet states hide. */
+  .shelfview-reader-shell__toolbar-status {
+    display: inline-flex;
+    max-width: 45vw;
   }
 
   .shelfview-reader-shell__text {

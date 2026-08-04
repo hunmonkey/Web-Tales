@@ -1,4 +1,5 @@
 import {AxiosInstance} from 'axios'
+import urls from '@/functions/urls'
 import {
   ShelfViewDictionaryLookupResult,
   ShelfViewDictionaryPack,
@@ -46,6 +47,36 @@ export default class ShelfViewStateService {
     } catch (e) {
       if (e instanceof ShelfViewApiError) throw e
       throw toShelfViewApiError(e, 'An error occurred while trying to save ShelfView position')
+    }
+  }
+
+  /**
+   * Saves the position while the page is going away. The browser cancels a
+   * normal XHR started during unload, which loses the last pages the reader
+   * actually read, so this uses a keepalive fetch instead. `sendBeacon` is not
+   * usable here because the endpoint is a PUT. Returns false when the browser
+   * has no keepalive support, so the caller can fall back to [savePosition].
+   */
+  savePositionOnUnload(
+    bookId: string,
+    position: ShelfViewPositionUpdateDto,
+  ): boolean {
+    if (typeof fetch !== 'function') return false
+
+    try {
+      void fetch(`${urls.originNoSlash}${API_SHELFVIEW_BOOKS}/${bookId}/position`, {
+        method: 'PUT',
+        keepalive: true,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify(position),
+      }).catch(() => undefined)
+      return true
+    } catch (e) {
+      return false
     }
   }
 

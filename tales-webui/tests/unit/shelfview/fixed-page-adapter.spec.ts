@@ -57,7 +57,9 @@ describe('FixedPageAdapter', () => {
       offset: 0,
       contentFingerprint: manifest.contentFingerprint,
     })
-    expect(preloads.slice(4).map(x => x.url)).toEqual(['page-3', 'page-4', 'page-5'])
+    // Pages 3 and 4 are already loading and stay; only what entered the window
+    // is requested, so a page turn no longer restarts downloads in flight.
+    expect(preloads.slice(4).map(x => x.url)).toEqual(['page-5'])
 
     await adapter.goTo({
       schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -66,7 +68,23 @@ describe('FixedPageAdapter', () => {
       offset: 0,
       contentFingerprint: manifest.contentFingerprint,
     })
-    expect(preloads.slice(7).map(x => x.url)).toEqual([])
+    expect(preloads.slice(5).map(x => x.url)).toEqual([])
+  })
+
+  it('keeps the previous page prefetched so turning back is not a blank screen', async () => {
+    const {adapter, preloads} = createAdapter()
+
+    await adapter.open({...manifest, pageCount: 6})
+    await adapter.goTo({
+      schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+      kind: 'PAGE',
+      page: 3,
+      offset: 0,
+      contentFingerprint: manifest.contentFingerprint,
+    })
+
+    expect(preloads.filter(x => x.url === 'page-2').length).toBe(1)
+    expect(preloads.find(x => x.url === 'page-2')!.cancel).not.toHaveBeenCalled()
   })
 
   it('moves next, previous and clamps locator page boundaries', async () => {
@@ -111,8 +129,10 @@ describe('FixedPageAdapter', () => {
     const firstPrefetch = preloads[0]
 
     await adapter.next()
+    // page-1 became the current page, so it leaves the window; page-2 is kept
+    // and page-0 joins it as the page behind.
     expect(firstPrefetch.cancel).toHaveBeenCalled()
-    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2', 'page-2'])
+    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2', 'page-0'])
 
     const latestPrefetch = preloads[preloads.length - 1]
     adapter.destroy()

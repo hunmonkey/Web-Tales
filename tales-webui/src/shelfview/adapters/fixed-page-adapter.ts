@@ -22,7 +22,7 @@ export const SHELFVIEW_PREFETCH_PAGE_COUNT = 4
 export class FixedPageAdapter implements ReaderAdapter {
   private manifest: ShelfViewManifest | undefined
   private currentPageIndex = 0
-  private prefetchHandles: ShelfViewPagePreload[] = []
+  private prefetchHandles = new Map<string, ShelfViewPagePreload>()
 
   constructor(
     private readonly resolvePageUrl: ShelfViewPageUrlResolver = shelfViewPageUrl,
@@ -130,26 +130,48 @@ export class FixedPageAdapter implements ReaderAdapter {
     this.prefetchNextPage()
   }
 
+  /**
+   * Keeps a window of pages loading around the current one. Turning a page used
+   * to cancel every handle and reissue the overlapping ones, which threw away
+   * downloads that were already in flight; the ones that stay inside the new
+   * window are reused instead, and only the pages that fell out are cancelled.
+   * The window reaches one page backwards so returning to check something does
+   * not start from a blank screen.
+   */
   private prefetchNextPage(): void {
-    this.cancelPrefetch()
-
-    if (!this.manifest) return
+    if (!this.manifest) {
+      this.cancelPrefetch()
+      return
+    }
 
     const pageCount = this.getPagesCount()
-    for (let offset = 1; offset <= SHELFVIEW_PREFETCH_PAGE_COUNT; offset++) {
-      const nextPageIndex = this.currentPageIndex + offset
-      if (nextPageIndex >= pageCount) return
+    const wanted = new Map<string, number>()
+    for (let offset = -1; offset <= SHELFVIEW_PREFETCH_PAGE_COUNT; offset++) {
+      if (offset === 0) continue
 
-      const nextPageUrl = this.resolvePageUrl(this.manifest, nextPageIndex)
-      if (!nextPageUrl) return
+      const pageIndex = this.currentPageIndex + offset
+      if (pageIndex < 0 || pageIndex >= pageCount) continue
 
-      this.prefetchHandles.push(this.preloadPage(nextPageUrl))
+      const url = this.resolvePageUrl(this.manifest, pageIndex)
+      if (url) wanted.set(url, pageIndex)
     }
+
+    const kept = new Map<string, ShelfViewPagePreload>()
+    this.prefetchHandles.forEach((handle, url) => {
+      if (wanted.has(url)) kept.set(url, handle)
+      else handle.cancel()
+    })
+
+    wanted.forEach((_pageIndex, url) => {
+      if (!kept.has(url)) kept.set(url, this.preloadPage(url))
+    })
+
+    this.prefetchHandles = kept
   }
 
   private cancelPrefetch(): void {
     this.prefetchHandles.forEach(handle => handle.cancel())
-    this.prefetchHandles = []
+    this.prefetchHandles = new Map()
   }
 
   private requireManifest(): ShelfViewManifest {
@@ -166,13 +188,18 @@ export class FixedPageAdapter implements ReaderAdapter {
 
 export function defaultShelfViewPagePreloader(url: string): ShelfViewPagePreload {
   const image = new Image()
+  // Match the fetch mode the canvas display path uses, so a prefetched page is
+  // reused there instead of being requested a second time.
+  image.crossOrigin = 'use-credentials'
   image.src = url
 
   return {
     cancel() {
       image.onload = null
       image.onerror = null
-      image.src = ''
+      // Not `src = ''`: an empty string resolves to the document URL, so the
+      // browser would fetch the page itself as an image instead of stopping.
+      image.removeAttribute('src')
     },
   }
 }

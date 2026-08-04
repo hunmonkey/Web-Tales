@@ -118,6 +118,7 @@ export interface ShelfViewFixedPagePreferenceSettings {
   textAlign?: ShelfViewTextAlign,
   textFontWeight?: number,
   textBrightness?: number,
+  textUnwrapLines?: boolean,
 }
 
 export interface ShelfViewPreferenceDto {

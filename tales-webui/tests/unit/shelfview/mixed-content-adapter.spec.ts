@@ -49,6 +49,30 @@ const manifest: ShelfViewManifest = {
 }
 
 describe('MixedContentAdapter', () => {
+  it('groups paragraphs into pages for a text item once a page budget is set', async () => {
+    const adapter = createAdapter()
+
+    await adapter.open(manifest)
+    expect(adapter.getCurrentContentCount()).toBe(2)
+
+    // A budget wide enough for both paragraphs turns the item into one page,
+    // so paging leaves the item instead of stopping at every paragraph.
+    adapter.setPagination(500)
+    expect(adapter.getCurrentContentCount()).toBe(1)
+    expect(adapter.getCurrentContentIndex()).toBe(0)
+
+    await adapter.next()
+    expect(adapter.isCurrentFixedPage()).toBe(true)
+
+    await adapter.previous()
+    expect(adapter.isCurrentText()).toBe(true)
+    expect(adapter.getCurrentContentCount()).toBe(1)
+
+    // Clearing the budget restores the original one-paragraph-per-page reading.
+    adapter.setPagination(0)
+    expect(adapter.getCurrentContentCount()).toBe(2)
+  })
+
   it('opens mixed items in manifest order and moves from text to fixed page content', async () => {
     const adapter = createAdapter()
 

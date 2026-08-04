@@ -9,6 +9,23 @@ import {
   shelfViewVisiblePageIndexes,
 } from '@/shelfview/functions/fixed-page-view'
 
+describe('ShelfView wide page spreads', () => {
+  it('shows a wide page alone and never pairs it as the second half', () => {
+    const wide = new Set([2])
+
+    // The wide page itself takes the whole stage.
+    expect(shelfViewVisiblePageIndexes(2, 6, 'DOUBLE_PAGE', 'LTR', false, wide)).toEqual([2])
+    // The spread before it is untouched and stops short of the wide page.
+    expect(shelfViewVisiblePageIndexes(1, 6, 'DOUBLE_PAGE', 'LTR', false, wide)).toEqual([0, 1])
+    // A wide page sitting where a right-hand half would go is left out.
+    expect(shelfViewVisiblePageIndexes(1, 6, 'DOUBLE_PAGE', 'LTR', false, new Set([1]))).toEqual([1])
+    // The page after it starts a fresh spread instead of inheriting the offset.
+    expect(shelfViewVisiblePageIndexes(3, 6, 'DOUBLE_PAGE', 'LTR', false, wide)).toEqual([3, 4])
+    // Without the hint the pairing is unchanged.
+    expect(shelfViewVisiblePageIndexes(2, 6, 'DOUBLE_PAGE', 'LTR')).toEqual([2, 3])
+  })
+})
+
 describe('ShelfView fixed page view helpers', () => {
   it('keeps single page mode on the current page', () => {
     expect(shelfViewVisiblePageIndexes(2, 5, 'SINGLE_PAGE', 'LTR')).toEqual([2])

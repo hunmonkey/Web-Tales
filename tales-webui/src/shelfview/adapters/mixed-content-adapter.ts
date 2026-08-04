@@ -25,6 +25,7 @@ export class MixedContentAdapter implements ReaderAdapter {
   private items: ShelfViewManifestItem[] = []
   private currentItemIndex = 0
   private currentAdapter: MixedItemAdapter | undefined
+  private charsPerPage = 0
 
   constructor(
     private readonly loadTextContent: ShelfViewTextContentLoader,
@@ -50,9 +51,27 @@ export class MixedContentAdapter implements ReaderAdapter {
     await this.openItem(0)
   }
 
+  /**
+   * Hands the page budget to the text items so a TXT inside an archive is read
+   * in screenfuls like a standalone TXT. A budget of zero keeps the original
+   * one-paragraph-per-page behaviour, which is what the other layouts want.
+   */
+  setPagination(charsPerPage: number): void {
+    this.charsPerPage = Number.isFinite(charsPerPage) && charsPerPage > 0 ? Math.floor(charsPerPage) : 0
+
+    const adapter = this.currentAdapter
+    if (adapter instanceof TextReflowAdapter) adapter.setPagination(this.charsPerPage)
+  }
+
   async next(): Promise<void> {
     const adapter = this.requireCurrentAdapter()
-    if (adapter.canGoNext()) {
+    const paginated = this.currentPaginatedText(adapter)
+    if (paginated) {
+      if (paginated.canGoNextPage()) {
+        await paginated.nextPage()
+        return
+      }
+    } else if (adapter.canGoNext()) {
       await adapter.next()
       return
     }
@@ -61,7 +80,13 @@ export class MixedContentAdapter implements ReaderAdapter {
 
   async previous(): Promise<void> {
     const adapter = this.requireCurrentAdapter()
-    if (adapter.canGoPrevious()) {
+    const paginated = this.currentPaginatedText(adapter)
+    if (paginated) {
+      if (paginated.canGoPreviousPage()) {
+        await paginated.previousPage()
+        return
+      }
+    } else if (adapter.canGoPrevious()) {
       await adapter.previous()
       return
     }
@@ -95,6 +120,12 @@ export class MixedContentAdapter implements ReaderAdapter {
 
   async goToCurrentItemContentIndex(contentIndex: number): Promise<void> {
     const adapter = this.requireCurrentAdapter()
+    const paginated = this.currentPaginatedText(adapter)
+    if (paginated) {
+      await paginated.goToPage(contentIndex)
+      return
+    }
+
     const locator = adapter.getCurrentLocator()
 
     if (locator.kind === 'PAGE') {
@@ -137,14 +168,18 @@ export class MixedContentAdapter implements ReaderAdapter {
   }
 
   getCurrentContentIndex(): number {
-    const locator = this.requireCurrentAdapter().getCurrentLocator()
+    const adapter = this.requireCurrentAdapter()
+    const paginated = this.currentPaginatedText(adapter)
+    if (paginated) return paginated.getCurrentPageIndex()
+
+    const locator = adapter.getCurrentLocator()
     return locator.kind === 'PAGE' ? locator.page : locator.paragraph
   }
 
   getCurrentContentCount(): number {
     const adapter = this.requireCurrentAdapter()
     if (adapter instanceof FixedPageAdapter) return adapter.getPagesCount()
-    return adapter.getParagraphsCount()
+    return this.currentPaginatedText(adapter)?.getPageCount() ?? adapter.getParagraphsCount()
   }
 
   getCurrentTextLocator(): ShelfViewTextLocator | undefined {
@@ -177,12 +212,16 @@ export class MixedContentAdapter implements ReaderAdapter {
 
   canGoPrevious(): boolean {
     const adapter = this.requireCurrentAdapter()
-    return adapter.canGoPrevious() || this.currentItemIndex > 0
+    const paginated = this.currentPaginatedText(adapter)
+    const withinItem = paginated ? paginated.canGoPreviousPage() : adapter.canGoPrevious()
+    return withinItem || this.currentItemIndex > 0
   }
 
   canGoNext(): boolean {
     const adapter = this.requireCurrentAdapter()
-    return adapter.canGoNext() || this.currentItemIndex < this.items.length - 1
+    const paginated = this.currentPaginatedText(adapter)
+    const withinItem = paginated ? paginated.canGoNextPage() : adapter.canGoNext()
+    return withinItem || this.currentItemIndex < this.items.length - 1
   }
 
   destroy(): void {
@@ -210,7 +249,17 @@ export class MixedContentAdapter implements ReaderAdapter {
 
     const adapter = new TextReflowAdapter(this.loadTextContent)
     await adapter.open(toItemManifest(manifest, item))
+    adapter.setPagination(this.charsPerPage)
     this.currentAdapter = adapter
+  }
+
+  /**
+   * The current item as a paginated text adapter, or undefined when it is a
+   * fixed-page item or text without a page budget. Returning the adapter rather
+   * than a boolean keeps the union intact for the callers that fall through.
+   */
+  private currentPaginatedText(adapter: MixedItemAdapter): TextReflowAdapter | undefined {
+    return adapter instanceof TextReflowAdapter && this.charsPerPage > 0 ? adapter : undefined
   }
 
   private async goToLastLocationInCurrentItem(): Promise<void> {
@@ -220,7 +269,10 @@ export class MixedContentAdapter implements ReaderAdapter {
       return
     }
 
-    await this.goToCurrentItemContentIndex(adapter.getParagraphsCount() - 1)
+    const paginated = this.currentPaginatedText(adapter)
+    await this.goToCurrentItemContentIndex(
+      (paginated?.getPageCount() ?? adapter.getParagraphsCount()) - 1,
+    )
   }
 
   private itemMatchesLocator(

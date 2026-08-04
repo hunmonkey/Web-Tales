@@ -1,5 +1,6 @@
 export type ShelfViewApiErrorCode =
   | 'BAD_REQUEST'
+  | 'UNAUTHENTICATED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'PAYLOAD_TOO_LARGE'
@@ -30,6 +31,11 @@ function codeFromStatus(status?: number): ShelfViewApiErrorCode {
   switch (status) {
     case 400:
       return 'BAD_REQUEST'
+    // A session that expired mid-read is recoverable by signing in again, so it
+    // must not be folded into the generic "server unreachable" bucket where the
+    // only offered action is a retry that can never succeed.
+    case 401:
+      return 'UNAUTHENTICATED'
     case 403:
       return 'FORBIDDEN'
     case 404:

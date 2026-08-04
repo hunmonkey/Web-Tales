@@ -48,6 +48,7 @@ describe('ShelfView reader display settings', () => {
       textAlign: 'CENTER' as any,
       textFontWeight: 376,
       textBrightness: 0.42,
+      textUnwrapLines: false,
     })).toEqual({
       textTheme: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textTheme,
       textFontFamily: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textFontFamily,
@@ -60,7 +61,10 @@ describe('ShelfView reader display settings', () => {
       textParagraphSpacing: 2.6,
       textAlign: SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textAlign,
       textFontWeight: 400,
-      textBrightness: 0.8,
+      // The brightness filter now dims the reading surface, so it reaches
+      // further down than the old glyph-only floor of 0.8.
+      textBrightness: 0.5,
+      textUnwrapLines: false,
     })
   })
 

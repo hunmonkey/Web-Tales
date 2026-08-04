@@ -36,6 +36,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import {
+  SHELFVIEW_CANVAS_CPU_MAX_PIXELS,
   SHELFVIEW_CANVAS_IMAGE_MAX_PIXELS,
   ShelfViewCanvasImageProcessingMode,
   shelfViewAdaptiveMonochromeImageData,
@@ -118,6 +119,13 @@ export default Vue.extend({
         if (this.mode === 'WEBGL_SHARPEN' && shelfViewRenderWebglSharpen(canvas, image, width, height)) {
           this.$emit('processed')
           return
+        }
+
+        // Everything below here is a synchronous per-pixel pass on the main
+        // thread, so a large page falls back to the untouched original rather
+        // than stalling the page turn.
+        if (!shelfViewCanvasImageWithinPixelBudget(width, height, SHELFVIEW_CANVAS_CPU_MAX_PIXELS)) {
+          throw new Error('Canvas image is over the CPU filter budget')
         }
 
         canvas.width = width

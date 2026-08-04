@@ -6,6 +6,15 @@ export type ShelfViewCanvasImageProcessingMode =
 
 export const SHELFVIEW_CANVAS_IMAGE_MAX_PIXELS = 12000000
 
+/**
+ * The 2D filters run a per-pixel convolution on the main thread, so a page near
+ * the overall budget freezes the tab for hundreds of milliseconds on every page
+ * turn. Past this size the original image is shown untouched instead: a page
+ * that arrives instantly beats a sharpened one that stutters. The GPU path keeps
+ * the larger budget because it does not block the main thread.
+ */
+export const SHELFVIEW_CANVAS_CPU_MAX_PIXELS = 4000000
+
 export function shelfViewCanvasImageWithinPixelBudget(
   width: number,
   height: number,

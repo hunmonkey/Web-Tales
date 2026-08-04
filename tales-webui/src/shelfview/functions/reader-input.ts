@@ -9,10 +9,29 @@ export type ShelfViewReaderInputAction =
   | 'TOGGLE_FULLSCREEN'
   | 'TOGGLE_CHROME'
   | 'SHOW_SHORTCUTS'
+  | 'TOGGLE_CONTENTS'
+  | 'TOGGLE_BOOKMARKS'
+  | 'TOGGLE_SETTINGS'
+  | 'FOCUS_PAGE_JUMP'
+  | 'ZOOM_IN'
+  | 'ZOOM_OUT'
+  | 'ZOOM_RESET'
 
 export interface ShelfViewTouchPoint {
   x: number,
   y: number,
+}
+
+/**
+ * What the stage was doing while a touch gesture ran. A page that is wider than
+ * the stage is panned by dragging it, so the same drag must not also turn the
+ * page. The mouse path already makes that distinction through the pan pointer
+ * handlers; touch has no pan handler of its own because the stage scrolls
+ * natively, so the distinction has to be made here instead.
+ */
+export interface ShelfViewTouchStageState {
+  canPanHorizontally: boolean,
+  scrolledHorizontally: boolean,
 }
 
 export function shelfViewReaderKeyboardAction(
@@ -44,6 +63,28 @@ export function shelfViewReaderKeyboardAction(
     case '?':
     case 'F1':
       return 'SHOW_SHORTCUTS'
+    // The letters below match the ones the fallback readers already use, so a
+    // reader moving between the two readers does not have to relearn them.
+    case 't':
+    case 'T':
+      return 'TOGGLE_CONTENTS'
+    case 'b':
+    case 'B':
+      return 'TOGGLE_BOOKMARKS'
+    case 's':
+    case 'S':
+      return 'TOGGLE_SETTINGS'
+    case 'g':
+    case 'G':
+      return 'FOCUS_PAGE_JUMP'
+    case '+':
+    case '=':
+      return 'ZOOM_IN'
+    case '-':
+    case '_':
+      return 'ZOOM_OUT'
+    case '0':
+      return 'ZOOM_RESET'
     default:
       return undefined
   }
@@ -53,7 +94,10 @@ export function shelfViewTouchAction(
   start: ShelfViewTouchPoint,
   end: ShelfViewTouchPoint,
   readingDirection: ShelfViewFixedPageReadingDirection,
+  stage?: ShelfViewTouchStageState,
 ): ShelfViewReaderInputAction | undefined {
+  if (stage && (stage.canPanHorizontally || stage.scrolledHorizontally)) return undefined
+
   const deltaX = end.x - start.x
   const deltaY = end.y - start.y
   const absX = Math.abs(deltaX)

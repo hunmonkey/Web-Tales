@@ -3,6 +3,7 @@
     <v-slide-y-transition>
       <v-toolbar
         v-if="showToolbars"
+        dark
         dense elevation="1"
         class="settings full-width"
         style="position: fixed; top: 0;z-index: 14"
@@ -971,7 +972,13 @@ export default Vue.extend({
 </script>
 <style src="@d-i-t-a/reader/dist/reader.css"/>
 <style scoped>
+/* The reader chrome stays dark in both application themes so it never glows
+   next to the page (Rule_UIUX 1-8, 1-9). The reading themes below keep their
+   own literal colours, which rule 1-9 allows. */
 .settings {
+  background-color: var(--sv-chrome-elevated) !important;
+  border-bottom: 1px solid var(--sv-chrome-border);
+  color: var(--sv-chrome-text);
   z-index: 2;
 }
 

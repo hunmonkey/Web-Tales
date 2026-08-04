@@ -81,12 +81,20 @@ export function normalizeFixedPageRotation(
     : 0
 }
 
+/**
+ * Comics carry the occasional double-spread illustration saved as one wide
+ * image. Pairing it with a neighbour squeezes both halves and flips the left and
+ * right sides of every spread after it, so a wide page is shown on its own and
+ * never taken as the second half of a spread. Wide pages are discovered as the
+ * images load, because the manifest does not carry page dimensions.
+ */
 export function shelfViewVisiblePageIndexes(
   currentPageIndex: number,
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
   readingDirection: ShelfViewFixedPageReadingDirection,
   coverSingle = false,
+  widePageIndexes: ReadonlySet<number> = new Set(),
 ): number[] {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return []
@@ -99,9 +107,14 @@ export function shelfViewVisiblePageIndexes(
   if (layout === 'SINGLE_PAGE') return [current]
   if (layout === 'DOUBLE_PAGE' && coverSingle && current === 0) return [0]
 
-  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
+  const candidate = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
+  const spreadStart = widePageIndexes.has(current) || (candidate !== current && widePageIndexes.has(candidate))
+    ? current
+    : candidate
+  if (widePageIndexes.has(spreadStart)) return [spreadStart]
+
   const spread = [spreadStart]
-  if (spreadStart + 1 < normalizedPageCount) spread.push(spreadStart + 1)
+  if (spreadStart + 1 < normalizedPageCount && !widePageIndexes.has(spreadStart + 1)) spread.push(spreadStart + 1)
 
   return readingDirection === 'RTL' ? spread.reverse() : spread
 }

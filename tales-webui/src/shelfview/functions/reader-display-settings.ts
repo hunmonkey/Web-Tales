@@ -37,7 +37,13 @@ export interface ShelfViewTextDisplaySettings {
   textAlign: ShelfViewTextAlign,
   textFontWeight: number,
   textBrightness: number,
+  textUnwrapLines: boolean,
 }
+
+// The brightness filter now dims the reading surface, not just the glyphs, so
+// it can go far enough down to be usable in a dark room.
+export const TEXT_BRIGHTNESS_MIN = 0.5
+export const TEXT_BRIGHTNESS_MAX = 1.2
 
 const FIXED_PAGE_SCALE_MIN = 50
 const FIXED_PAGE_SCALE_MAX = 300
@@ -55,6 +61,7 @@ export const SHELFVIEW_TEXT_DISPLAY_DEFAULTS: ShelfViewTextDisplaySettings = {
   textAlign: 'LEFT',
   textFontWeight: 400,
   textBrightness: 1,
+  textUnwrapLines: false,
 }
 
 export const SHELFVIEW_FIXED_PAGE_DISPLAY_DEFAULTS: ShelfViewFixedPageDisplaySettings = {
@@ -104,7 +111,8 @@ export function shelfViewNormalizeTextDisplaySettings(
     textParagraphSpacing: roundNumber(clampNumber(settings.textParagraphSpacing, 0.6, 2.6), 2),
     textAlign: SHELFVIEW_TEXT_ALIGNS.includes(settings.textAlign) ? settings.textAlign : SHELFVIEW_TEXT_DISPLAY_DEFAULTS.textAlign,
     textFontWeight: Math.round(clampNumber(settings.textFontWeight, 300, 700) / 50) * 50,
-    textBrightness: roundNumber(clampNumber(settings.textBrightness, 0.8, 1.2), 2),
+    textBrightness: roundNumber(clampNumber(settings.textBrightness, TEXT_BRIGHTNESS_MIN, TEXT_BRIGHTNESS_MAX), 2),
+    textUnwrapLines: settings.textUnwrapLines === true,
   }
 }
 

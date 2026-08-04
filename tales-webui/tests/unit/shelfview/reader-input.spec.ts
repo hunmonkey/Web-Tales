@@ -29,12 +29,33 @@ describe('ShelfView reader input helpers', () => {
     expect(shelfViewReaderKeyboardAction('x', 'LTR')).toBeUndefined()
   })
 
+  it('maps the tool and zoom keys the fallback readers already use', () => {
+    expect(shelfViewReaderKeyboardAction('t', 'LTR')).toBe('TOGGLE_CONTENTS')
+    expect(shelfViewReaderKeyboardAction('T', 'LTR')).toBe('TOGGLE_CONTENTS')
+    expect(shelfViewReaderKeyboardAction('b', 'LTR')).toBe('TOGGLE_BOOKMARKS')
+    expect(shelfViewReaderKeyboardAction('s', 'LTR')).toBe('TOGGLE_SETTINGS')
+    expect(shelfViewReaderKeyboardAction('g', 'LTR')).toBe('FOCUS_PAGE_JUMP')
+    expect(shelfViewReaderKeyboardAction('+', 'LTR')).toBe('ZOOM_IN')
+    expect(shelfViewReaderKeyboardAction('=', 'LTR')).toBe('ZOOM_IN')
+    expect(shelfViewReaderKeyboardAction('-', 'LTR')).toBe('ZOOM_OUT')
+    expect(shelfViewReaderKeyboardAction('0', 'LTR')).toBe('ZOOM_RESET')
+  })
+
   it('maps horizontal touch swipes and ignores vertical scroll gestures', () => {
     expect(shelfViewTouchAction({x: 200, y: 100}, {x: 40, y: 104}, 'LTR')).toBe('NEXT')
     expect(shelfViewTouchAction({x: 40, y: 100}, {x: 200, y: 104}, 'LTR')).toBe('PREVIOUS')
     expect(shelfViewTouchAction({x: 200, y: 100}, {x: 40, y: 104}, 'RTL')).toBe('PREVIOUS')
     expect(shelfViewTouchAction({x: 40, y: 100}, {x: 200, y: 104}, 'RTL')).toBe('NEXT')
     expect(shelfViewTouchAction({x: 100, y: 100}, {x: 120, y: 260}, 'LTR')).toBeUndefined()
+  })
+
+  it('does not turn the page when the swipe panned a zoomed page', () => {
+    const swipeLeft = (stage: {canPanHorizontally: boolean, scrolledHorizontally: boolean}) =>
+      shelfViewTouchAction({x: 200, y: 100}, {x: 40, y: 104}, 'LTR', stage)
+
+    expect(swipeLeft({canPanHorizontally: false, scrolledHorizontally: false})).toBe('NEXT')
+    expect(swipeLeft({canPanHorizontally: true, scrolledHorizontally: false})).toBeUndefined()
+    expect(swipeLeft({canPanHorizontally: false, scrolledHorizontally: true})).toBeUndefined()
   })
 
   it('maps only short center taps to chrome toggle', () => {

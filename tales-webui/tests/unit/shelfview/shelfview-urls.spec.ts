@@ -24,8 +24,9 @@ const manifest: ShelfViewManifest = {
 
 describe('ShelfView URL helpers', () => {
   it('resolves relative page endpoint templates against the API origin', () => {
+    // The version query splits the browser cache when a book file is replaced.
     expect(shelfViewPageUrl(manifest, 0, 'http://api.test')).toBe(
-      'http://api.test/api/v1/books/book-1/pages/0?zero_based=true',
+      'http://api.test/api/v1/books/book-1/pages/0?zero_based=true&v=tales-file-state%3Abook-1',
     )
   })
 
@@ -39,7 +40,7 @@ describe('ShelfView URL helpers', () => {
 
   it('resolves page indexes without converting them to one-based numbers', () => {
     expect(shelfViewPageUrl(manifest, 1, 'http://api.test')).toBe(
-      'http://api.test/api/v1/books/book-1/pages/1?zero_based=true',
+      'http://api.test/api/v1/books/book-1/pages/1?zero_based=true&v=tales-file-state%3Abook-1',
     )
   })
 
@@ -51,7 +52,7 @@ describe('ShelfView URL helpers', () => {
         thumbnailEndpointTemplate: '/api/v1/books/book-1/pages/{pageOneBased}/thumbnail',
       },
     }, 1, 'http://api.test')).toBe(
-      'http://api.test/api/v1/books/book-1/pages/2/thumbnail',
+      'http://api.test/api/v1/books/book-1/pages/2/thumbnail?v=tales-file-state%3Abook-1',
     )
   })
 })
