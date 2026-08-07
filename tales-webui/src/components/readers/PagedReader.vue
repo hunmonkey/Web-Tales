@@ -331,15 +331,21 @@ export default Vue.extend({
   object-position: center;
 }
 
+/* `vh` is the address-bar-hidden viewport on Chrome for Android, so every fit
+   rule below overshot the visible screen by 40-90px and cut the bottom of the
+   page. `svh` is the visible height; the plain `vh` line stays first as the
+   fallback for browsers without `svh`. */
 .img-fit-width {
   width: 100vw;
   min-height: 100vh;
+  min-height: 100svh;
   align-self: flex-start;
 }
 
 .img-double-fit-width {
   width: 50vw;
   min-height: 100vh;
+  min-height: 100svh;
   align-self: flex-start;
 }
 
@@ -360,17 +366,21 @@ export default Vue.extend({
 
 .img-fit-height {
   min-height: 100vh;
+  min-height: 100svh;
   height: 100vh;
+  height: 100svh;
 }
 
 .img-fit-screen {
   width: 100vw;
   height: 100vh;
+  height: 100svh;
 }
 
 .img-double-fit-screen {
   max-width: 50vw;
   height: 100vh;
+  height: 100svh;
 }
 
 .pre-render {

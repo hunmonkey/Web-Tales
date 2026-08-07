@@ -560,6 +560,7 @@
       @scroll="onReaderStageScroll"
       @touchstart="onReaderTouchStart"
       @touchend="onReaderTouchEnd"
+      @touchcancel="onReaderTouchCancel"
     >
       <v-progress-circular
         v-if="loading"
@@ -825,9 +826,11 @@
       </span>
 
       <!-- The page number changes with the font size on a TXT, so a percentage
-           is the only figure a reader can carry between sessions. -->
+           is the only figure a reader can carry between sessions. It steps aside
+           for the zoom buttons on a fixed-page book, where the page counter says
+           the same thing and the toolbar still carries the percentage. -->
       <span
-        v-if="progressPercentLabel"
+        v-if="progressPercentLabel && !fixedPageControlsVisible"
         class="shelfview-reader-shell__progress"
         data-testid="shelfview-reader-dock-progress"
       >{{ progressPercentLabel }}</span>
@@ -841,6 +844,32 @@
       >
         <v-icon>mdi-chevron-right</v-icon>
       </v-btn>
+
+      <!-- Enlarging a scan used to mean opening the settings panel and dragging
+           the page-scale slider, then closing it again, for every page. On a
+           phone that is the difference between reading a scan and giving up on
+           it, so the two steps sit next to paging instead. -->
+      <template v-if="fixedPageControlsVisible">
+        <v-btn
+          icon
+          :disabled="!canZoomFixedPageOut"
+          :aria-label="$t('shelfview_reader.page_scale_decrease')"
+          data-testid="shelfview-reader-dock-zoom-out"
+          @click="zoomFixedPageOut"
+        >
+          <v-icon>mdi-magnify-minus-outline</v-icon>
+        </v-btn>
+
+        <v-btn
+          icon
+          :disabled="!canZoomFixedPageIn"
+          :aria-label="$t('shelfview_reader.page_scale_increase')"
+          data-testid="shelfview-reader-dock-zoom-in"
+          @click="zoomFixedPageIn"
+        >
+          <v-icon>mdi-magnify-plus-outline</v-icon>
+        </v-btn>
+      </template>
 
       <!-- On a narrow screen the toolbar controls scroll sideways behind a
            hidden scrollbar and the settings button is the one that falls off the
@@ -2427,6 +2456,23 @@ export default Vue.extend({
     readerIncognito(): boolean {
       return this.$route.query.incognito?.toString().toLowerCase() === 'true'
     },
+    /**
+     * A spread splits the stage in two, which on an upright phone leaves each
+     * page about 194px wide: too narrow to read a scanned speech bubble. The
+     * layout is only withheld from the list, never saved, so a book read as a
+     * spread on a desktop opens as a spread again the moment the screen is wide
+     * enough.
+     */
+    doublePageFitsScreen(): boolean {
+      return !this.$vuetify.breakpoint.xsOnly ||
+        this.$vuetify.breakpoint.width > this.$vuetify.breakpoint.height
+    },
+    canZoomFixedPageIn(): boolean {
+      return this.normalizedFixedPageScale(this.fixedPageScale + FIXED_PAGE_WHEEL_SCALE_STEP) !== this.fixedPageScale
+    },
+    canZoomFixedPageOut(): boolean {
+      return this.normalizedFixedPageScale(this.fixedPageScale - FIXED_PAGE_WHEEL_SCALE_STEP) !== this.fixedPageScale
+    },
     availableReaderLayouts(): ShelfViewFixedPageLayout[] {
       if (this.manifest?.kind === 'TEXT_REFLOW' || this.mixedContentAdapter?.isCurrentText()) {
         const layouts: ShelfViewFixedPageLayout[] = ['SINGLE_PAGE']
@@ -2435,7 +2481,7 @@ export default Vue.extend({
       }
 
       const layouts: ShelfViewFixedPageLayout[] = ['SINGLE_PAGE']
-      if (this.manifest?.capabilities.doublePage) layouts.push('DOUBLE_PAGE')
+      if (this.manifest?.capabilities.doublePage && this.doublePageFitsScreen) layouts.push('DOUBLE_PAGE')
       if (this.manifest?.capabilities.continuousScroll) layouts.push('CONTINUOUS_SCROLL')
       return layouts
     },
@@ -2484,10 +2530,18 @@ export default Vue.extend({
       return this.textControlsVisible && !!this.selectionRect && !this.anyChromePanelOpen
     },
     selectionActionsStyle(): Record<string, string> {
-      return {
-        top: `${this.selectionRect?.top ?? 0}px`,
-        left: `${this.selectionRect?.left ?? 0}px`,
+      const top = `${this.selectionRect?.top ?? 0}px`
+
+      // The three Korean labels together are wider than a phone screen, and the
+      // left edge was the only side ever clamped, so selecting a word in the
+      // middle of a line pushed "look up" and "read aloud" off the right edge
+      // with no way to reach them. On a narrow screen the strip spans the width
+      // and wraps instead; only its vertical position follows the selection.
+      if (this.$vuetify.breakpoint.xsOnly) {
+        return {top, left: '8px', right: '8px'}
       }
+
+      return {top, left: `${this.selectionRect?.left ?? 0}px`}
     },
     progressPercentLabel(): string {
       if (!this.adapter || this.pagesCount < 1) return ''
@@ -5081,6 +5135,9 @@ export default Vue.extend({
       })
     },
     applyReaderViewportChange() {
+      // Turning the phone upright can take the spread layout off the list, and
+      // nothing else re-checks that after the reader has opened.
+      this.normalizeReaderLayout()
       this.recomputeTextPagination()
       this.$nextTick(() => this.restoreCurrentVisibleContent())
     },
@@ -5265,11 +5322,31 @@ export default Vue.extend({
       }
       this.touchStartScrollLeft = (this.$refs.readerStage as HTMLElement | undefined)?.scrollLeft
     },
+    /**
+     * Chrome turns a long press into a text selection and cancels the touch, but
+     * the start point used to survive that, so the next touch was measured from
+     * a stale origin.
+     */
+    onReaderTouchCancel() {
+      this.touchStart = undefined
+      this.touchStartScrollLeft = undefined
+    },
     async onReaderTouchEnd(e: TouchEvent) {
       const touch = e.changedTouches[0]
       if (!this.touchStart || !touch) return
 
       if ((e.touches?.length ?? 0) > 0) {
+        this.touchStart = undefined
+        this.touchStartScrollLeft = undefined
+        return
+      }
+
+      // The mouse path has always checked this, but `onReaderPointerDown` bails
+      // out on anything that is not a mouse, so on a phone only this path runs
+      // and the check was missing. Dragging a selection handle sideways cleared
+      // the 48px swipe threshold and turned the page out from under the
+      // selection the reader was making.
+      if (this.readerPointerSelectionActive()) {
         this.touchStart = undefined
         this.touchStartScrollLeft = undefined
         return
@@ -5326,10 +5403,17 @@ export default Vue.extend({
       const readerStage = this.$refs.readerStage as HTMLElement | undefined
       if (!readerStage) return {canPanHorizontally: false, scrolledHorizontally: false}
 
+      // `scrollLeft` is negative in a right-to-left box, so both edges are
+      // measured as distances rather than compared against zero.
+      const maxScrollLeft = readerStage.scrollWidth - readerStage.clientWidth
+      const scrolled = Math.abs(readerStage.scrollLeft)
+
       return {
-        canPanHorizontally: readerStage.scrollWidth > readerStage.clientWidth,
+        canPanHorizontally: maxScrollLeft > 0,
         scrolledHorizontally: this.touchStartScrollLeft !== undefined &&
           readerStage.scrollLeft !== this.touchStartScrollLeft,
+        atHorizontalStart: scrolled <= 1,
+        atHorizontalEnd: scrolled >= maxScrollLeft - 1,
       }
     },
     openEndPromptForContinuousScrollEnd(e: WheelEvent) {
@@ -5377,12 +5461,19 @@ export default Vue.extend({
       if (!readerStage) return undefined
 
       const rect = readerStage.getBoundingClientRect()
-      // A page wider than the stage is panned with the side zones, so tapping
-      // them must not also turn the page. Measuring the real overflow keeps
-      // paging alive for a page that merely got taller, which a scale threshold
-      // used to switch off without telling anyone.
-      const pagingEnabled = this.tapPagingEnabled &&
-        readerStage.scrollWidth <= readerStage.clientWidth
+      // SV-1083 keeps the side zones for panning while the page is wider than
+      // the stage, which is why tap paging switches off there. That still holds
+      // while there is somewhere left to pan; what it also did was strand a
+      // reader who had panned all the way across a zoomed scan, because from
+      // there neither tapping nor swiping moved on (ADR-0018 Decision 6). So the
+      // zones go back to paging only once the page has run out of travel.
+      const maxScrollLeft = readerStage.scrollWidth - readerStage.clientWidth
+      const scrolledLeft = Math.abs(readerStage.scrollLeft)
+      const pagingEnabled = this.tapPagingEnabled && (
+        maxScrollLeft <= 0 ||
+        scrolledLeft <= 1 ||
+        scrolledLeft >= maxScrollLeft - 1
+      )
 
       return shelfViewTapAction(
         {x: start.x - rect.left, y: start.y - rect.top},
@@ -5636,10 +5727,10 @@ export default Vue.extend({
           this.focusPageJumpInput()
           break
         case 'ZOOM_IN':
-          this.stepFixedPageScale(FIXED_PAGE_WHEEL_SCALE_STEP)
+          this.zoomFixedPageIn()
           break
         case 'ZOOM_OUT':
-          this.stepFixedPageScale(-FIXED_PAGE_WHEEL_SCALE_STEP)
+          this.zoomFixedPageOut()
           break
         case 'ZOOM_RESET':
           this.stepFixedPageScale(undefined)
@@ -5652,6 +5743,12 @@ export default Vue.extend({
      * three panels deep, which left trackpad and keyboard readers with no way
      * to enlarge a panel.
      */
+    zoomFixedPageIn() {
+      this.stepFixedPageScale(FIXED_PAGE_WHEEL_SCALE_STEP)
+    },
+    zoomFixedPageOut() {
+      this.stepFixedPageScale(-FIXED_PAGE_WHEEL_SCALE_STEP)
+    },
     stepFixedPageScale(step: number | undefined) {
       if (!this.fixedPageControlsVisible) return
 
@@ -5737,15 +5834,30 @@ function isFiniteNumber(value: unknown): value is number {
 
 .shelfview-reader-shell {
   background: var(--sv-chrome-bg);
-  height: 100vh;
+  height: var(--sv-viewport-height);
   overflow: hidden;
   width: 100%;
+
+  /* The height every full-screen rule in this reader measures against. Chrome
+     for Android resolves `100vh` against the viewport with the address bar
+     hidden, so a phone showing the bar gets a shell 40-90px taller than the
+     screen: the bottom dock lands behind the bar and "fit to screen" cuts the
+     page. `100svh` is the small viewport, which also stays put while the bar
+     slides in and out, so the layout no longer jumps mid-scroll. Browsers
+     without `svh` keep the previous value through the fallback below. */
+  --sv-viewport-height: 100vh;
 
   /* How much vertical space the fit rules must leave for the chrome. The 72px
      baseline covers the toolbar and the default 16px stage padding; the
      variable adds whatever the bottom dock and the thumbnail strip reserve on
      top of that padding, so "fit to screen" keeps meaning it. */
   --sv-stage-bottom-chrome: 0px;
+}
+
+@supports (height: 100svh) {
+  .shelfview-reader-shell {
+    --sv-viewport-height: 100svh;
+  }
 }
 
 .shelfview-reader-shell--thumbnails {
@@ -5832,6 +5944,7 @@ function isFiniteNumber(value: unknown): value is number {
   flex-direction: column;
   max-width: min(360px, 94vw);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 20px 24px;
   position: fixed;
   right: 0;
@@ -6200,7 +6313,7 @@ function isFiniteNumber(value: unknown): value is number {
    inside the stage. */
 .shelfview-reader-shell__pages--rotated-quarter .shelfview-reader-shell__page--fit-screen {
   max-height: calc(100% * var(--sv-fixed-page-scale, 1));
-  max-width: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
+  max-width: calc((var(--sv-viewport-height) - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
 }
 
 .shelfview-reader-shell__pages--rotated-quarter .shelfview-reader-shell__page--fit-width {
@@ -6212,20 +6325,35 @@ function isFiniteNumber(value: unknown): value is number {
 .shelfview-reader-shell__pages--rotated-quarter .shelfview-reader-shell__page--fit-height {
   height: auto;
   max-height: 100%;
-  width: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
+  width: calc((var(--sv-viewport-height) - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
 }
 
+/* The 28px gap looks wide for 28px dots, but it is what keeps the invisible
+   48px pads below from overlapping each other. Overlapping pads would be worse
+   than the small targets they replace, because the later sibling paints on top
+   and would swallow taps meant for the one before it. */
 .shelfview-reader-shell__highlight-colors {
   display: flex;
-  gap: 6px;
+  gap: 28px;
   margin: 6px 0;
 }
 
 .shelfview-reader-shell__highlight-color {
   border: 1px solid var(--sv-chrome-border-strong);
   border-radius: 999px;
-  height: 20px;
-  width: 20px;
+  height: 28px;
+  position: relative;
+  width: 28px;
+}
+
+/* The swatch stays a dot on purpose, but the old 20px target was far under what
+   a finger can hit, and picking the wrong colour writes straight to the server
+   with no undo. The invisible pad makes the target 48px without enlarging the
+   dot, and leaves 8px of dead space between neighbours. */
+.shelfview-reader-shell__highlight-color::after {
+  content: '';
+  inset: -10px;
+  position: absolute;
 }
 
 .shelfview-reader-shell__highlight-color--selected {
@@ -6329,7 +6457,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__page--fit-screen {
-  max-height: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
+  max-height: calc((var(--sv-viewport-height) - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
   max-width: calc(100% * var(--sv-fixed-page-scale, 1));
 }
 
@@ -6340,7 +6468,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 .shelfview-reader-shell__page--fit-height {
-  height: calc((100vh - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
+  height: calc((var(--sv-viewport-height) - 72px - var(--sv-stage-bottom-chrome, 0px) - (var(--sv-fixed-page-margin, 16px) - 16px) * 2) * var(--sv-fixed-page-scale, 1));
   max-width: 100%;
   width: auto;
 }
@@ -6490,12 +6618,20 @@ function isFiniteNumber(value: unknown): value is number {
   box-shadow: var(--sv-chrome-shadow);
   color: var(--sv-chrome-text);
   display: flex;
-  gap: 4px;
+  gap: 8px;
   left: 50%;
-  padding: 4px 8px;
+  padding: 4px 10px;
   position: fixed;
   transform: translateX(-50%);
   z-index: 2;
+}
+
+/* Vuetify sizes an icon button at 36px, which is below the 48px a thumb needs,
+   and the dock used to pack them 4px apart. Turning a comic meant hitting
+   "next" dozens of times, so this is where mis-taps hurt most. */
+.shelfview-reader-shell__page-dock .v-btn--icon {
+  height: 48px;
+  width: 48px;
 }
 
 .shelfview-reader-shell--thumbnails .shelfview-reader-shell__page-dock {
@@ -6600,6 +6736,7 @@ function isFiniteNumber(value: unknown): value is number {
   color: var(--sv-chrome-text);
   max-width: min(360px, 92vw);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 20px;
   position: fixed;
   right: 0;
@@ -6628,7 +6765,7 @@ function isFiniteNumber(value: unknown): value is number {
   display: flex;
   font: inherit;
   gap: 10px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 10px 8px;
   text-align: left;
   width: 100%;
@@ -6759,6 +6896,10 @@ function isFiniteNumber(value: unknown): value is number {
   color: var(--sv-chrome-text);
   max-width: min(380px, 94vw);
   overflow-y: auto;
+  /* Without this, reaching the end of the panel hands the scroll to the
+     document, where one more pull triggers Chrome's pull-to-refresh and reloads
+     the reader along with any position that had not been saved yet. */
+  overscroll-behavior: contain;
   padding: 20px;
   position: fixed;
   right: 0;
@@ -6884,8 +7025,8 @@ function isFiniteNumber(value: unknown): value is number {
   align-items: flex-start;
   border-bottom: 1px solid var(--sv-chrome-border);
   display: flex;
-  gap: 8px;
-  min-height: 44px;
+  gap: 12px;
+  min-height: 48px;
   padding: 6px 0;
 }
 
@@ -7053,8 +7194,11 @@ function isFiniteNumber(value: unknown): value is number {
     min-width: 44px;
   }
 
+  /* Zero gap put "next" and "settings" edge to edge, so a thumb aiming at one
+     regularly opened the other. The labels are already hidden below, which is
+     what actually buys the width back. */
   .shelfview-reader-shell__page-controls {
-    gap: 0;
+    gap: 4px;
     max-width: 72vw;
   }
 
@@ -7064,8 +7208,22 @@ function isFiniteNumber(value: unknown): value is number {
     display: none;
   }
 
-  .shelfview-reader-shell__overflow {
+  /* At full width these panels covered the page completely, so changing line
+     height or brightness meant closing the panel to see what changed and
+     reopening it to adjust again. As a bottom sheet the top third of the page
+     stays visible, and the close button lands within thumb reach instead of at
+     the very top of a 6.9" screen. */
+  .shelfview-reader-shell__overflow,
+  .shelfview-reader-shell__text-settings {
+    border-inline-start: 0;
+    border-radius: var(--tales-radius-lg) var(--tales-radius-lg) 0 0;
+    border-top: 1px solid var(--sv-chrome-border);
+    bottom: 0;
+    left: 0;
+    max-height: 62svh;
     max-width: 100vw;
+    right: 0;
+    top: auto;
     width: 100vw;
   }
 
@@ -7108,9 +7266,94 @@ function isFiniteNumber(value: unknown): value is number {
       40px;
   }
 
-  .shelfview-reader-shell__text-settings {
-    max-width: 100vw;
-    width: 100vw;
+  /* Paired with the full-width placement in `selectionActionsStyle`. */
+  .shelfview-reader-shell__selection-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* The dock carries paging, zoom and settings, so at 360px the 48px targets
+     need the tighter gap to stay inside the screen (rule 7-3). */
+  .shelfview-reader-shell__page-dock {
+    gap: 4px;
+    max-width: calc(100vw - 16px);
+    padding: 4px 6px;
+  }
+
+  /* Vuetify's small icon button is 28px. In the bookmark list "edit note" and
+     "delete" sit side by side, and delete goes straight to the server, so a
+     mis-tap there costs a bookmark. */
+  .shelfview-reader-shell__bookmarks-drawer .v-btn--icon.v-size--small,
+  .shelfview-reader-shell__text-settings .v-btn--icon.v-size--small {
+    height: 44px;
+    width: 44px;
+  }
+
+  .shelfview-reader-shell__text-settings .v-slider--horizontal {
+    min-height: 48px;
+  }
+}
+
+/* A phone turned sideways is roughly 915x400: too wide for the block above, so
+   it used to fall back to the desktop chrome while having less than half the
+   height. Toolbar, dock and thumbnail strip then ate most of the screen and the
+   page came out smaller than it was in portrait, which is the opposite of why
+   anyone turns the phone. This block reuses the same compaction the narrow
+   block applies, keyed on height instead of width. */
+@media (max-height: 500px) {
+  .shelfview-reader-shell__title {
+    max-width: 28vw;
+  }
+
+  .shelfview-reader-shell__control-toggle-label {
+    display: none;
+  }
+
+  .shelfview-reader-shell__stage {
+    padding: 8px;
+  }
+
+  .shelfview-reader-shell__stage--fixed {
+    padding: var(--sv-fixed-page-margin, 8px);
+  }
+
+  .shelfview-reader-shell__thumbnail-strip {
+    height: 56px;
+  }
+
+  .shelfview-reader-shell--thumbnails {
+    --sv-stage-bottom-chrome: 56px;
+  }
+
+  .shelfview-reader-shell--page-dock {
+    --sv-stage-bottom-chrome: 44px;
+  }
+
+  .shelfview-reader-shell--page-dock.shelfview-reader-shell--thumbnails {
+    --sv-stage-bottom-chrome: 100px;
+  }
+
+  .shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage,
+  .shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage--fixed {
+    padding-bottom: 64px;
+  }
+
+  .shelfview-reader-shell--page-dock .shelfview-reader-shell__stage,
+  .shelfview-reader-shell--page-dock .shelfview-reader-shell__stage--fixed {
+    padding-bottom: 52px;
+  }
+
+  .shelfview-reader-shell--page-dock.shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage,
+  .shelfview-reader-shell--page-dock.shelfview-reader-shell--thumbnails .shelfview-reader-shell__stage--fixed {
+    padding-bottom: 108px;
+  }
+
+  .shelfview-reader-shell__page-dock {
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .shelfview-reader-shell--thumbnails .shelfview-reader-shell__page-dock {
+    bottom: calc(56px + max(8px, env(safe-area-inset-bottom, 0px)));
   }
 }
 </style>

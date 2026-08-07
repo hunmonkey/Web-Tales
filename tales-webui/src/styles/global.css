@@ -93,6 +93,19 @@ html {
     font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Roboto, sans-serif !important;
 }
 
+/* Vuetify hard-codes `min-height: 100vh` here, which Chrome for Android
+   resolves against the address-bar-hidden viewport. Every short page therefore
+   carried 40-90px of leftover scroll and the address bar kept sliding in and
+   out. `svh` is the visible height; Vuetify's own `vh` rule remains the
+   fallback for browsers without `svh`.
+
+   The parent is in the selector only to outrank Vuetify's own single-class rule,
+   because its component styles are injected on demand and their position
+   relative to this file is not guaranteed. */
+.v-application .v-application--wrap {
+    min-height: 100svh;
+}
+
 .link-none {
     text-decoration: none;
 }
@@ -396,6 +409,34 @@ html {
     .dashboard-section {
         border-radius: 18px;
         padding: 16px 8px 8px;
+    }
+}
+
+/* A phone held sideways is about 915x400, so it is too wide for the block above
+   yet only half as tall as a laptop. Without a height rule the sign-in card
+   keeps its desktop padding and the primary button drops below the fold. */
+@media (max-height: 500px) {
+    .auth-shell,
+    .startup-shell,
+    .welcome-shell {
+        padding: 12px 16px;
+    }
+
+    /* `.startup-shell` lays out as a column, where `align-items` is the
+       horizontal axis; moving it would shove the logo to the left edge. */
+    .auth-shell,
+    .welcome-shell {
+        align-items: flex-start;
+    }
+
+    .auth-shell__logo,
+    .welcome-shell__logo {
+        margin-bottom: 12px;
+    }
+
+    .auth-card,
+    .welcome-shell__card {
+        padding: 16px 18px;
     }
 }
 

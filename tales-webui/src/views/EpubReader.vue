@@ -1019,7 +1019,10 @@ export default Vue.extend({
 }
 
 .scrolltab-content {
+  /* `vh` is the address-bar-hidden viewport on Chrome for Android, so this cap
+     never fired on a phone and the panel ran past the bottom of the screen. */
   max-height: calc(100vh - 48px);
+  max-height: calc(100svh - 48px);
 }
 
 .hidden {

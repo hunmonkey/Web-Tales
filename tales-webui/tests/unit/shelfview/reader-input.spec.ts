@@ -1,4 +1,5 @@
 import {
+  ShelfViewTouchStageState,
   shelfViewCenterTapAction,
   shelfViewReaderKeyboardAction,
   shelfViewShouldIgnoreShortcutTarget,
@@ -56,6 +57,25 @@ describe('ShelfView reader input helpers', () => {
     expect(swipeLeft({canPanHorizontally: false, scrolledHorizontally: false})).toBe('NEXT')
     expect(swipeLeft({canPanHorizontally: true, scrolledHorizontally: false})).toBeUndefined()
     expect(swipeLeft({canPanHorizontally: false, scrolledHorizontally: true})).toBeUndefined()
+  })
+
+  it('turns the page when a zoomed page is swiped past the edge it already reached', () => {
+    const swipe = (from: number, to: number, stage: ShelfViewTouchStageState) =>
+      shelfViewTouchAction({x: from, y: 100}, {x: to, y: 104}, 'LTR', stage)
+
+    const zoomedAtEnd = {canPanHorizontally: true, scrolledHorizontally: false, atHorizontalStart: false, atHorizontalEnd: true}
+    const zoomedAtStart = {canPanHorizontally: true, scrolledHorizontally: false, atHorizontalStart: true, atHorizontalEnd: false}
+
+    // Swiping left asks for what is further right; at the right edge there is
+    // nothing left to pan to, so it becomes a page turn.
+    expect(swipe(200, 40, zoomedAtEnd)).toBe('NEXT')
+    expect(swipe(40, 200, zoomedAtEnd)).toBeUndefined()
+
+    expect(swipe(40, 200, zoomedAtStart)).toBe('PREVIOUS')
+    expect(swipe(200, 40, zoomedAtStart)).toBeUndefined()
+
+    // A swipe that actually panned the page stays a pan even at an edge.
+    expect(swipe(200, 40, {...zoomedAtEnd, scrolledHorizontally: true})).toBeUndefined()
   })
 
   it('maps only short center taps to chrome toggle', () => {

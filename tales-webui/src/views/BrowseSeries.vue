@@ -87,7 +87,7 @@
         <v-col cols="4" sm="4" md="auto" lg="auto" xl="auto">
           <item-card
             v-if="series.hasOwnProperty('id')"
-            width="212"
+            :width="$vuetify.breakpoint.xsOnly ? 128 : 212"
             :item="series"
             thumbnail-only
             no-link

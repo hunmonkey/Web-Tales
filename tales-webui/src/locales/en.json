@@ -296,6 +296,8 @@
     "width": "Width",
     "margin": "Margin",
     "page_scale": "Page scale",
+    "page_scale_decrease": "Zoom out",
+    "page_scale_increase": "Zoom in",
     "rotate_degrees": "Rotate page {degrees}°",
     "page_gap": "Page gap",
     "cover_single": "Keep cover alone in double page",
@@ -1174,6 +1176,9 @@
   },
   "login": {
     "create_user_account": "Create user account",
+    "error_after_sign_in": "Signed in, but the library could not be loaded. Please try again in a moment.",
+    "error_invalid_credentials": "That email or password is not correct.",
+    "error_server_unreachable": "Could not reach the server. Please check your connection.",
     "login": "Sign in",
     "unclaimed_html": "This Tales server is not yet active, you need to create a user account to be able to access it.<br/><br/>Choose an <strong>email</strong> and <strong>password</strong> and click on <strong>Create user account</strong>."
   },

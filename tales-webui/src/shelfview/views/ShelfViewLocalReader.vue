@@ -237,7 +237,11 @@ export default Vue.extend({
 
 <style scoped>
 .shelfview-local-reader {
+  /* `vh` is the address-bar-hidden viewport on Chrome for Android, so it is
+     40-90px taller than what a phone actually shows. `svh` is the visible
+     height; the plain `vh` line stays as the fallback. */
   min-height: 100vh;
+  min-height: 100svh;
   background: var(--sv-chrome-bg);
   color: var(--sv-chrome-text);
   display: flex;
@@ -303,6 +307,7 @@ export default Vue.extend({
 .shelfview-local-reader__page {
   max-width: 100%;
   max-height: calc(100vh - 88px);
+  max-height: calc(100svh - 88px);
   object-fit: contain;
   box-shadow: var(--sv-chrome-shadow);
 }

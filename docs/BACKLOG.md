@@ -597,3 +597,97 @@ against the code instead. Six items were not implemented and are recorded in
 - Two-device position conflict, EPUB inside the shell, real offline reading,
   automatic margin trimming, and touch zoom (which collides with the SV-1066 and
   SV-1072 centre tap) each need an owner decision first.
+
+## Mobile usability on a Galaxy S25 Ultra, reported 2026-08-07
+
+Owner report: sign-in, finding a book and the reader are all uncomfortable on a
+phone. A six-area audit found the discomfort was not a pile of separate gaps but
+three missing foundations: every full-screen height was measured in `vh`, the
+only breakpoint in the app was `max-width: 600px`, and touch targets across the
+reader sat between 20px and 36px.
+
+### Foundations
+
+- [x] SV-1120 Measure full-screen heights against the small viewport. Chrome for
+  Android resolves `vh` against the address-bar-hidden viewport, so the reader
+  shell, its four fit-to-screen `calc()`s, the control menu, both fallback
+  readers and Vuetify's `.v-application--wrap` were all 40-90px taller than the
+  screen. The reader now carries a `--sv-viewport-height` token; the rest use the
+  two-declaration `vh`/`svh` fallback `global.css` already used.
+- [x] SV-1121 Add height-based breakpoints. A phone held sideways is 915x400, too
+  wide for `max-width: 600px`, so it fell back to desktop chrome at half the
+  height. `@media (max-height: 500px)` compacts the reader chrome and the
+  sign-in card. `.startup-shell` is excluded from the `align-items` change
+  because it lays out as a column.
+- [x] SV-1122 Bring reader touch targets to 48px: bottom dock buttons (36px,
+  4px apart), control-menu rows (42px, touching), contents links and bookmark
+  rows (44px), and the highlight swatches (20px, now a 28px dot with an
+  invisible 48px pad and a gap wide enough that the pads cannot overlap). The
+  toolbar's `gap: 0` on narrow screens goes back to 4px.
+- [x] SV-1123 Withhold the double-page layout on an upright narrow screen, where
+  each half is about 194px. Only the available list changes, so the saved
+  preference is untouched and a wide screen still opens the book as a spread.
+  `applyReaderViewportChange` now re-normalises, so rotating corrects it.
+
+### Reader interaction
+
+- [x] SV-1124 Let a zoomed page turn again. Refines SV-1080 and SV-1083 rather
+  than reversing them: a drag that actually panned is still never a page turn,
+  but a swipe or a side-zone tap pages once the stage has run out of travel in
+  that direction. `ShelfViewTouchStageState` gains `atHorizontalStart` and
+  `atHorizontalEnd`; the SV-1080 regression test still passes unchanged.
+- [x] SV-1125 Put zoom in and zoom out in the bottom dock, reusing
+  `stepFixedPageScale`. This is an interim answer to ADR-0018 Decision 6, not a
+  choice between its options: it adds no gesture, so it does not touch the
+  SV-1066/SV-1072 centre tap, and pinch zoom stays open as the recommendation.
+  Double-tap was deliberately not attempted for the same reason. The dock's
+  progress percentage steps aside for the two buttons on a fixed-page book,
+  where the page counter says the same thing and the toolbar still shows it.
+- [x] SV-1126 Make the settings and overflow panels bottom sheets on a narrow
+  screen. At full width they covered the page, so line height or brightness had
+  to be judged with the text hidden, and the only close button sat at the top of
+  a 6.9" screen. Adds `overscroll-behavior: contain` to both panels and the three
+  drawers, so reaching the end of a list no longer hands the scroll to the
+  document where a further pull triggers pull-to-refresh and drops an unsaved
+  reading position.
+- [x] SV-1129 Guard the touch path against text selection. `onReaderPointerDown`
+  returns early for anything that is not a mouse, so on a phone only the touch
+  path runs and it never had the selection check the mouse path has: widening a
+  selection by 48px turned the page out from under it. Adds `@touchcancel`, which
+  Chrome fires when a long press becomes a selection, and pins the selection
+  toolbar across the width on a narrow screen, where only its left edge had been
+  clamped and the dictionary and read-aloud buttons fell off the right.
+
+### Getting to a book
+
+- [x] SV-1127 Book, oneshot and series detail: the cover was a fixed 212px inside
+  a 129px column, which pushed the page into a sideways scroll (rule 7-3); the
+  primary Read button was `small`, 28px; both Read buttons carried the same
+  label with only a mouse-only `title` to tell them apart, so the wrong one
+  silently stopped saving progress; and a Korean file name with no spaces ran
+  out of its column.
+- [x] SV-1128 Sign-in: the email field had no `type`/`inputmode`, so Android
+  opened a keyboard without an "@" and auto-capitalised the address; the password
+  field had no reveal control although the password-change dialog already has
+  one; and a failed sign-in showed English developer text on a screen that forces
+  Korean. Only the credentials call is now wrapped, so a failure after
+  authentication is not reported as a wrong password.
+
+### Deliberately not done in this pass
+
+- Third-priority polish is recorded but unimplemented: `@media (hover: hover)`
+  around the card hover styles, a bookmark-delete confirmation, desktop-only
+  scrollbar rules, a maskable PWA icon, a `theme-color` meta and 44px pagination.
+- SV-1130 edge-to-edge (`viewport-fit=cover`) is not a one-line change and needs
+  an ADR. Verification of the audit finding corrected the analysis: without the
+  meta tag Chrome insets the layout viewport inside the system bars, so nothing
+  is currently drawn under the gesture bar. Adding it turns the whole app
+  edge-to-edge and every top bar, drawer and dashboard inset needs review. The
+  `env(safe-area-inset-*)` calls already in the reader therefore resolve to their
+  fallbacks today rather than being broken in a visible way.
+- The body-width slider's 520px floor still does nothing on a 412px screen while
+  its label keeps changing. Lowering the floor needs a migration of stored
+  preferences.
+- `EpubReader.vue` keeps its two inline `height: 100vh` values on the D2Reader
+  container; only its `.scrolltab-content` cap moved to `svh`. The third-party
+  reader sizes its iframe from those and changing them needs EPUB testing.

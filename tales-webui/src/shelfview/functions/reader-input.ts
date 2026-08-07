@@ -32,6 +32,10 @@ export interface ShelfViewTouchPoint {
 export interface ShelfViewTouchStageState {
   canPanHorizontally: boolean,
   scrolledHorizontally: boolean,
+  /** True when the stage cannot scroll any further towards its start edge. */
+  atHorizontalStart?: boolean,
+  /** True when the stage cannot scroll any further towards its end edge. */
+  atHorizontalEnd?: boolean,
 }
 
 export function shelfViewReaderKeyboardAction(
@@ -96,7 +100,8 @@ export function shelfViewTouchAction(
   readingDirection: ShelfViewFixedPageReadingDirection,
   stage?: ShelfViewTouchStageState,
 ): ShelfViewReaderInputAction | undefined {
-  if (stage && (stage.canPanHorizontally || stage.scrolledHorizontally)) return undefined
+  // A drag that actually moved the page was a pan, whatever else it looked like.
+  if (stage?.scrolledHorizontally) return undefined
 
   const deltaX = end.x - start.x
   const deltaY = end.y - start.y
@@ -106,6 +111,16 @@ export function shelfViewTouchAction(
   if (absX < 48 || absX < absY * 1.2) return undefined
 
   const swipedLeft = deltaX < 0
+
+  // Zooming a scan is the usual way to read one on a phone, and while zoomed
+  // the sideways swipe is also how the page is panned. Refusing every swipe
+  // then left no way to turn the page at all, so a turn is allowed once the
+  // stage has nothing left to scroll in the direction the swipe is heading.
+  if (stage?.canPanHorizontally) {
+    if (swipedLeft && !stage.atHorizontalEnd) return undefined
+    if (!swipedLeft && !stage.atHorizontalStart) return undefined
+  }
+
   if (readingDirection === 'RTL') return swipedLeft ? 'PREVIOUS' : 'NEXT'
   return swipedLeft ? 'NEXT' : 'PREVIOUS'
 }

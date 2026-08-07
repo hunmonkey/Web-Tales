@@ -87,12 +87,23 @@ export default Vue.extend({
   box-shadow: var(--sv-chrome-shadow);
   list-style: none;
   margin: 0;
+  /* `vh` is the address-bar-hidden viewport on Chrome for Android, so the cap
+     never fired on a phone and long menus ran off the bottom of the screen
+     without ever showing a scrollbar. `svh` is the visible height. */
   max-height: calc(100vh - 64px);
+  max-height: calc(100svh - 64px);
   min-width: 216px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px;
   position: fixed;
   z-index: 4;
+}
+
+/* The rows used to touch each other, so a thumb aiming at "fit to screen"
+   landed on "fit to width" and silently changed the page scale. */
+.shelfview-control-menu li + li {
+  margin-top: 4px;
 }
 
 .shelfview-control-menu__title {
@@ -114,7 +125,7 @@ export default Vue.extend({
   display: flex;
   font-size: 14px;
   gap: 10px;
-  min-height: 42px;
+  min-height: 48px;
   padding: 8px 10px;
   text-align: left;
   width: 100%;

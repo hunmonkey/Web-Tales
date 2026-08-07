@@ -18,23 +18,34 @@
           />
 
           <div v-if="!hideLogin">
+            <!-- Without type/inputmode an Android keyboard opens without an "@"
+                 key and auto-capitalises the first letter, so every sign-in
+                 starts with a symbol-layer detour and a typo to undo. -->
             <v-text-field
               v-model="form.login"
               :label="$t('common.email')"
               :error-messages="getErrors('login')"
               :autocomplete="hideLogin ? '' : 'username'"
+              type="email"
+              inputmode="email"
+              autocapitalize="none"
+              spellcheck="false"
               outlined
               autofocus
               @blur="$v.form.login.$touch()"
             />
 
+            <!-- Same reveal control the password-change dialog already uses. On
+                 a soft keyboard there is no other way to check what was typed. -->
             <v-text-field
               v-model="form.password"
               :label="$t('common.password')"
               :error-messages="getErrors('password')"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
+              :append-icon="showPassword ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"
               :autocomplete="hideLogin ? '' : 'current-password'"
               outlined
+              @click:append="showPassword = !showPassword"
               @input="$v.form.password.$touch()"
               @blur="$v.form.password.$touch()"
             />
@@ -128,6 +139,7 @@ export default Vue.extend({
         login: '',
         password: '',
       },
+      showPassword: false,
       snackbar: false,
       snackText: '',
       unclaimed: false,
@@ -208,6 +220,9 @@ export default Vue.extend({
     },
     async performLogin() {
       if (this.isUserValid()) {
+        // Only the credentials call is wrapped here. The dispatches after it run
+        // once the account is already signed in, so reporting their failures as
+        // a wrong password would send the reader off retyping a correct one.
         try {
           await this.$store.dispatch(
             'getMeWithAuth',
@@ -216,7 +231,14 @@ export default Vue.extend({
               password: this.form.password,
               rememberMe: this.rememberMe,
             })
+        } catch (e) {
+          this.showSnack(this.$t(e?.status === 401
+            ? 'login.error_invalid_credentials'
+            : 'login.error_server_unreachable').toString())
+          return
+        }
 
+        try {
           await this.$store.dispatch('getLibraries')
           await this.$store.dispatch('getClientSettingsGlobal')
           await this.$store.dispatch('getClientSettingsUser')
@@ -228,7 +250,7 @@ export default Vue.extend({
             await this.$router.push({name: 'home'})
           }
         } catch (e) {
-          this.showSnack(e?.message)
+          this.showSnack(this.$t('login.error_after_sign_in').toString())
         }
       }
     },

@@ -296,6 +296,8 @@
     "width": "본문 폭",
     "margin": "여백",
     "page_scale": "페이지 확대",
+    "page_scale_decrease": "페이지 축소",
+    "page_scale_increase": "페이지 확대",
     "rotate_degrees": "페이지 회전 {degrees}도",
     "page_gap": "페이지 간격",
     "cover_single": "두 쪽 보기에서 표지는 단독으로 보기",
@@ -1174,6 +1176,9 @@
   },
   "login": {
     "create_user_account": "사용자 계정 만들기",
+    "error_after_sign_in": "로그인은 되었지만 서재를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "error_invalid_credentials": "이메일 또는 비밀번호가 맞지 않습니다.",
+    "error_server_unreachable": "서버에 연결하지 못했습니다. 네트워크 상태를 확인해 주세요.",
     "login": "로그인",
     "unclaimed_html": "Tales 서버가 아직 활성화 되지 않았습니다. 접속하려면 사용자 계정을 만들어야 합니다.<strong>이메일과 암호</strong>를 설정하고 <strong>사용자 계정 만들기</strong>를 클릭합니다."
   },

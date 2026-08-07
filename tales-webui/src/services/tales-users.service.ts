@@ -46,7 +46,12 @@ export default class TalesUsersService {
       } else {
         msg += `: ${e.message}`
       }
-      throw new Error(msg)
+      // The message above is English developer text and must not reach a reader
+      // (Rule_UIUX 6-1). It stays for logs; the status is what lets the sign-in
+      // screen choose a translated explanation instead.
+      const error = new Error(msg) as Error & { status?: number }
+      error.status = e.response?.status
+      throw error
     }
   }
 

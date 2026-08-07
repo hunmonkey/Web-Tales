@@ -119,7 +119,7 @@
         <v-col cols="4" sm="4" md="auto" lg="auto" xl="auto">
           <item-card
             v-if="book.hasOwnProperty('id')"
-            width="212"
+            :width="$vuetify.breakpoint.xsOnly ? 128 : 212"
             :item="book"
             thumbnail-only
             no-link
@@ -262,8 +262,10 @@
       <template v-if="$vuetify.breakpoint.xsOnly">
         <v-row class="align-center">
           <v-col cols="auto">
+            <!-- `small` is 28px, which is barely half of what a thumb needs for
+                 the one button this whole screen exists to offer. -->
             <v-btn color="accent"
-                   small
+                   large
                    :title="$t('browse_book.read_book')"
                    :to="{name: readRouteName, params: { bookId: book.id}, query: { context: context.origin, contextId: context.id}}"
                    :disabled="!canRead"
@@ -274,13 +276,16 @@
           </v-col>
 
           <v-col cols="auto">
-            <v-btn small
+            <!-- Both buttons used to read "읽기"; the only thing separating them
+                 was a `title` tooltip, which a touch screen never shows. Picking
+                 the wrong one silently stops saving reading progress. -->
+            <v-btn large
                    :title="$t('browse_book.read_incognito')"
                    :to="{name: readRouteName, params: { bookId: book.id}, query: { context: context.origin, contextId: context.id, incognito: true}}"
                    :disabled="!canRead"
             >
               <v-icon left small>mdi-incognito</v-icon>
-              {{ $t('common.read') }}
+              {{ $t('browse_book.read_incognito') }}
             </v-btn>
           </v-col>
 
@@ -495,7 +500,7 @@
 
       <v-row class="align-center text-caption">
         <v-col class="py-1 text-uppercase" cols="4" sm="3" md="2" xl="1">{{ $t('browse_book.file') }}</v-col>
-        <v-col class="py-1" cols="8" sm="9" md="10" xl="11">{{ book.url }}</v-col>
+        <v-col class="py-1 metadata-value" cols="8" sm="9" md="10" xl="11">{{ book.url }}</v-col>
       </v-row>
 
       <v-row class="align-center text-caption">
@@ -872,4 +877,10 @@ export default Vue.extend({
 </script>
 
 <style scoped>
+/* A Korean file name has no spaces to break at, so on a 412px screen it ran out
+   of its column and scrolled the whole page sideways. Vuetify 2 has no
+   text-break utility, hence the local class. */
+.metadata-value {
+  word-break: break-all;
+}
 </style>
