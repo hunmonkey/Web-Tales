@@ -43,24 +43,6 @@
         </v-tooltip>
       </v-btn>
 
-      <v-btn icon @click="addToCollection" v-if="isAdmin && (kind === 'series' || (kind === 'books' && oneshots))" :aria-label="$t('menu.add_to_collection')">
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-icon v-on="on">mdi-playlist-plus</v-icon>
-          </template>
-          <span>{{ $t('menu.add_to_collection') }}</span>
-        </v-tooltip>
-      </v-btn>
-
-      <v-btn icon @click="addToReadList" v-if="isAdmin && (kind === 'books' || kind === 'series')" :aria-label="$t('menu.add_to_readlist')">
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on }">
-            <v-icon v-on="on">mdi-book-plus-multiple</v-icon>
-          </template>
-          <span>{{ $t('menu.add_to_readlist') }}</span>
-        </v-tooltip>
-      </v-btn>
-
       <v-btn icon @click="bulkEdit" v-if="isAdmin && kind === 'books'" :aria-label="$t('menu.bulk_edit_metadata')">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
@@ -108,7 +90,7 @@ export default Vue.extend({
     },
     /**
      * The kind of items this toolbar acts on.
-     * @values books, series, collections, readlists
+     * @values books, series
      */
     kind: {
       type: String,
@@ -140,12 +122,6 @@ export default Vue.extend({
     },
     markUnread () {
       this.$emit('mark-unread')
-    },
-    addToCollection () {
-      this.$emit('add-to-collection')
-    },
-    addToReadList () {
-      this.$emit('add-to-readlist')
     },
     edit () {
       this.$emit('edit')

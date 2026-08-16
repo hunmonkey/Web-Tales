@@ -12,8 +12,7 @@
             <rtl-icon icon="mdi-arrow-left" rtl="mdi-arrow-right"/>
           </v-btn>
         </template>
-        <span v-if="contextCollection">{{ $t('common.go_to_collection') }}</span>
-        <span v-else>{{ $t('common.go_to_library') }}</span>
+        <span>{{ $t('common.go_to_library') }}</span>
       </v-tooltip>
 
       <series-actions-menu v-if="series"
@@ -47,7 +46,6 @@
       @select-all="selectedBooks = books"
       @mark-read="markSelectedRead"
       @mark-unread="markSelectedUnread"
-      @add-to-readlist="addToReadList"
       @bulk-edit="bulkEditMultipleBooks"
       @edit="editMultipleBooks"
       @delete="deleteBooks"
@@ -442,23 +440,6 @@
         </v-col>
       </v-row>
 
-      <v-row>
-        <v-col>
-          <collections-expansion-panels :collections="collections">
-            <template v-slot:prepend="props">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <v-btn icon class="me-2" v-on="on" @click="removeFromCollection(props.collection.id)" :aria-label="$t('common.remove_from_collection')">
-                    <v-icon>mdi-playlist-remove</v-icon>
-                  </v-btn>
-                </template>
-                <span>{{ $t('browse_series.remove_from_collection') }}</span>
-              </v-tooltip>
-            </template>
-          </collections-expansion-panels>
-        </v-col>
-      </v-row>
-
       <v-divider class="mt-4 mb-1"/>
 
       <empty-state
@@ -502,7 +483,6 @@
 <script lang="ts">
 import MultiSelectBar from '@/components/bars/MultiSelectBar.vue'
 import ToolbarSticky from '@/components/bars/ToolbarSticky.vue'
-import CollectionsExpansionPanels from '@/components/CollectionsExpansionPanels.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ItemBrowser from '@/components/ItemBrowser.vue'
 import ItemCard from '@/components/ItemCard.vue'
@@ -515,9 +495,6 @@ import {
   BOOK_ADDED,
   BOOK_CHANGED,
   BOOK_DELETED,
-  COLLECTION_ADDED,
-  COLLECTION_CHANGED,
-  COLLECTION_DELETED,
   LIBRARY_DELETED,
   READPROGRESS_CHANGED,
   READPROGRESS_DELETED,
@@ -545,7 +522,7 @@ import {authorRoles, authorRolesSeries} from '@/types/author-roles'
 import VueHorizontal from 'vue-horizontal'
 import RtlIcon from '@/components/RtlIcon.vue'
 import {throttle} from 'lodash'
-import {BookSseDto, CollectionSseDto, LibrarySseDto, ReadProgressSseDto, SeriesSseDto} from '@/types/tales-sse'
+import {BookSseDto, LibrarySseDto, ReadProgressSseDto, SeriesSseDto} from '@/types/tales-sse'
 import {ItemContext} from '@/types/items'
 import {Context, ContextOrigin} from '@/types/context'
 import {RawLocation} from 'vue-router/types/router'
@@ -595,7 +572,6 @@ export default Vue.extend({
     ItemCard,
     EmptyState,
     MultiSelectBar,
-    CollectionsExpansionPanels,
     FilterDrawer,
     FilterList,
     FilterPanels,
@@ -630,7 +606,6 @@ export default Vue.extend({
       filterModeUnwatch: null as any,
       pageUnwatch: null as any,
       pageSizeUnwatch: null as any,
-      collections: [] as CollectionDto[],
       drawer: false,
       filterOptions: {
         tag: [] as NameValue[],
@@ -784,14 +759,8 @@ export default Vue.extend({
     displayedRoles(): string[] {
       return authorRolesSeries.filter(x => this.authorsByRole[x])
     },
-    contextCollection(): boolean {
-      return this.context.origin === ContextOrigin.COLLECTION
-    },
     parentLocation(): RawLocation {
-      if (this.contextCollection)
-        return {name: 'browse-collection', params: {collectionId: this.context.id}}
-      else
-        return {name: 'browse-libraries', params: {libraryId: this.series.libraryId}}
+      return {name: 'browse-libraries', params: {libraryId: this.series.libraryId}}
     },
   },
   props: {
@@ -816,9 +785,6 @@ export default Vue.extend({
     this.$eventHub.$on(READPROGRESS_CHANGED, this.readProgressChanged)
     this.$eventHub.$on(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$on(LIBRARY_DELETED, this.libraryDeleted)
-    this.$eventHub.$on(COLLECTION_ADDED, this.collectionChanged)
-    this.$eventHub.$on(COLLECTION_CHANGED, this.collectionChanged)
-    this.$eventHub.$on(COLLECTION_DELETED, this.collectionChanged)
   },
   beforeDestroy() {
     this.$eventHub.$off(SERIES_CHANGED, this.seriesChanged)
@@ -829,9 +795,6 @@ export default Vue.extend({
     this.$eventHub.$off(READPROGRESS_CHANGED, this.readProgressChanged)
     this.$eventHub.$off(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$off(LIBRARY_DELETED, this.libraryDeleted)
-    this.$eventHub.$off(COLLECTION_ADDED, this.collectionChanged)
-    this.$eventHub.$off(COLLECTION_CHANGED, this.collectionChanged)
-    this.$eventHub.$off(COLLECTION_DELETED, this.collectionChanged)
   },
   async mounted() {
     this.pageSize = this.$store.state.persistedState.browsingPageSize || this.pageSize
@@ -857,7 +820,6 @@ export default Vue.extend({
       this.totalPages = 1
       this.totalElements = null
       this.books = []
-      this.collections = []
 
       this.loadSeries(to.params.seriesId)
 
@@ -980,12 +942,6 @@ export default Vue.extend({
         this.reloadSeries()
       }
     },
-    collectionChanged(event: CollectionSseDto) {
-      if (event.seriesIds.includes(this.seriesId) || this.collections.map(x => x.id).includes(event.collectionId)) {
-        this.$talesSeries.getCollections(this.seriesId)
-          .then(v => this.collections = v)
-      }
-    },
     reloadPage: throttle(function (this: any) {
       this.loadPage(this.seriesId, this.page, this.sortActive)
     }, 1000),
@@ -1000,9 +956,6 @@ export default Vue.extend({
           // for the cases where we can't change the origin target route because we don't have the full BookDto
           if (this.series.oneshot) this.$router.replace({name: 'browse-oneshot', params: {seriesId: this.seriesId}})
         })
-      this.$talesSeries.getCollections(seriesId)
-        .then(v => this.collections = v)
-
       // parse query params to get context and contextId
       if (this.$route.query.contextId && this.$route.query.context
         && Object.values(ContextOrigin).includes(this.$route.query.context as ContextOrigin)) {
@@ -1109,9 +1062,6 @@ export default Vue.extend({
     bulkEditMultipleBooks() {
       this.$store.dispatch('dialogUpdateBulkBooks', this.$_.sortBy(this.selectedBooks, ['metadata.numberSort']))
     },
-    addToReadList() {
-      this.$store.dispatch('dialogAddBooksToReadList', this.selectedBooks.map(b => b.id))
-    },
     async markSelectedRead() {
       await Promise.all(this.selectedBooks.map(b =>
         this.$talesBooks.updateReadProgress(b.id, {completed: true}),
@@ -1126,14 +1076,6 @@ export default Vue.extend({
     },
     deleteBooks() {
       this.$store.dispatch('dialogDeleteBook', this.selectedBooks)
-    },
-    removeFromCollection(collectionId: string) {
-      const col = this.collections.find(x => x.id == collectionId)
-      const modified = Object.assign({}, {seriesIds: col?.seriesIds.filter(x => x != this.seriesId)})
-      if (modified!.seriesIds!.length == 0)
-        this.$talesCollections.deleteCollection(col!.id)
-      else
-        this.$talesCollections.patchCollection(col!.id, modified)
     },
   },
 })

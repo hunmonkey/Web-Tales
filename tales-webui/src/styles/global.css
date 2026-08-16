@@ -149,24 +149,20 @@ html {
     background: var(--tales-app-background);
 }
 
-.app-shell__topbar.v-app-bar {
-    backdrop-filter: blur(18px);
-    background-color: var(--tales-topbar) !important;
-    border-bottom: 1px solid var(--tales-border) !important;
-    box-shadow: none !important;
+/* The app bar is gone (SV-1201); this is the only control that reopens the
+   drawer. It sits clear of the notch and rounded corners on a phone. */
+.app-shell__menu-button.v-btn--fixed {
+    background: var(--tales-surface);
+    border: 1px solid var(--tales-border);
+    margin-top: env(safe-area-inset-top, 0px);
+    margin-inline-start: env(safe-area-inset-left, 0px);
+    z-index: 6;
 }
 
-.app-shell__topbar .v-toolbar__content {
-    gap: 12px;
-}
-
-.app-shell__topbar-brand {
-    flex: 0 0 auto;
-}
-
+/* The search box moved from the app bar into the top of the drawer (SV-1200),
+   so it now fills the drawer width instead of centring inside a wide bar. */
 .app-shell__search {
-    margin-inline: auto;
-    max-width: 720px;
+    padding: 12px 12px 4px;
 }
 
 .app-shell__search .v-input__slot {
@@ -185,11 +181,6 @@ html {
 .app-shell__drawer.v-navigation-drawer {
     background: var(--tales-surface);
     border-inline-end: 1px solid var(--tales-border) !important;
-}
-
-.app-shell__brand {
-    min-height: 78px;
-    padding: 14px 20px !important;
 }
 
 .app-shell__nav {
@@ -381,11 +372,6 @@ html {
 }
 
 @media (max-width: 600px) {
-    .app-shell__topbar .v-toolbar__content {
-        gap: 6px;
-        padding-inline: 8px;
-    }
-
     .auth-shell,
     .startup-shell,
     .welcome-shell {

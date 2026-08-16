@@ -129,14 +129,6 @@
                                      :series="item"
                                      :menu.sync="actionMenuState"
                 />
-                <collection-actions-menu v-if="computedItem.type() === ItemTypes.COLLECTION"
-                                         :collection="item"
-                                         :menu.sync="actionMenuState"
-                />
-                <read-list-actions-menu v-if="computedItem.type() === ItemTypes.READLIST"
-                                        :read-list="item"
-                                        :menu.sync="actionMenuState"
-                />
               </div>
             </v-overlay>
           </v-fade-transition>
@@ -187,34 +179,25 @@
 
 <script lang="ts">
 import BookActionsMenu from '@/components/menus/BookActionsMenu.vue'
-import CollectionActionsMenu from '@/components/menus/CollectionActionsMenu.vue'
 import SeriesActionsMenu from '@/components/menus/SeriesActionsMenu.vue'
 import {getReadProgress, getReadProgressPercentage} from '@/functions/book-progress'
 import {ReadStatus} from '@/types/enum-books'
 import {createItem, Item, ItemContext, ItemTitle, ItemTypes} from '@/types/items'
 import Vue from 'vue'
 import {RawLocation} from 'vue-router'
-import ReadListActionsMenu from '@/components/menus/ReadListActionsMenu.vue'
 import {BookDto} from '@/types/tales-books'
 import {SeriesDto} from '@/types/tales-series'
 import {
   THUMBNAILBOOK_ADDED,
   THUMBNAILBOOK_DELETED,
-  THUMBNAILCOLLECTION_ADDED,
-  THUMBNAILCOLLECTION_DELETED,
-  THUMBNAILREADLIST_ADDED,
-  THUMBNAILREADLIST_DELETED,
   THUMBNAILSERIES_ADDED,
   THUMBNAILSERIES_DELETED,
 } from '@/types/events'
 import {
   ThumbnailBookSseDto,
-  ThumbnailCollectionSseDto,
-  ThumbnailReadListSseDto,
   ThumbnailSeriesSseDto,
 } from '@/types/tales-sse'
 import {coverBase64} from '@/types/image'
-import {ReadListDto} from '@/types/tales-readlists'
 import OneShotActionsMenu from '@/components/menus/OneshotActionsMenu.vue'
 import {CLIENT_SETTING} from '@/types/tales-clientsettings'
 import {
@@ -226,10 +209,10 @@ import {
 
 export default Vue.extend({
   name: 'ItemCard',
-  components: {OneShotActionsMenu, BookActionsMenu, SeriesActionsMenu, CollectionActionsMenu, ReadListActionsMenu},
+  components: {OneShotActionsMenu, BookActionsMenu, SeriesActionsMenu},
   props: {
     item: {
-      type: Object as () => BookDto | SeriesDto | CollectionDto | ReadListDto,
+      type: Object as () => BookDto | SeriesDto,
       required: true,
     },
     itemContext: {
@@ -300,11 +283,7 @@ export default Vue.extend({
     this.$eventHub.$on(THUMBNAILSERIES_ADDED, this.thumbnailSeriesChanged)
     this.$eventHub.$on(THUMBNAILSERIES_DELETED, this.thumbnailSeriesChanged)
 
-    this.$eventHub.$on(THUMBNAILREADLIST_ADDED, this.thumbnailReadListChanged)
-    this.$eventHub.$on(THUMBNAILREADLIST_DELETED, this.thumbnailReadListChanged)
 
-    this.$eventHub.$on(THUMBNAILCOLLECTION_ADDED, this.thumbnailCollectionChanged)
-    this.$eventHub.$on(THUMBNAILCOLLECTION_DELETED, this.thumbnailCollectionChanged)
   },
   beforeDestroy() {
     this.$eventHub.$off(THUMBNAILBOOK_ADDED, this.thumbnailBookChanged)
@@ -313,11 +292,7 @@ export default Vue.extend({
     this.$eventHub.$off(THUMBNAILSERIES_ADDED, this.thumbnailSeriesChanged)
     this.$eventHub.$off(THUMBNAILSERIES_DELETED, this.thumbnailSeriesChanged)
 
-    this.$eventHub.$off(THUMBNAILREADLIST_ADDED, this.thumbnailReadListChanged)
-    this.$eventHub.$off(THUMBNAILREADLIST_DELETED, this.thumbnailReadListChanged)
 
-    this.$eventHub.$off(THUMBNAILCOLLECTION_ADDED, this.thumbnailCollectionChanged)
-    this.$eventHub.$off(THUMBNAILCOLLECTION_DELETED, this.thumbnailCollectionChanged)
   },
   computed: {
     isStretch(): boolean {
@@ -335,7 +310,7 @@ export default Vue.extend({
     overlay(): boolean {
       return this.onEdit !== undefined || this.onSelected !== undefined || this.showFab || this.actionMenu
     },
-    computedItem(): Item<BookDto | SeriesDto | CollectionDto | ReadListDto> {
+    computedItem(): Item<BookDto | SeriesDto> {
       let item = this.item
       if ('libraryId' in this.item && this.$store.getters.getLibraryById((this.item as any).libraryId).unavailable)
         item = {...item, deleted: true}
@@ -413,16 +388,6 @@ export default Vue.extend({
     },
     thumbnailSeriesChanged(event: ThumbnailSeriesSseDto) {
       if (event.selected && this.computedItem.type() === ItemTypes.SERIES && event.seriesId === this.item.id) {
-        this.thumbnailCacheBust = '?' + this.$_.random(1000)
-      }
-    },
-    thumbnailReadListChanged(event: ThumbnailReadListSseDto) {
-      if (event.selected && this.computedItem.type() === ItemTypes.READLIST && event.readListId === this.item.id) {
-        this.thumbnailCacheBust = '?' + this.$_.random(1000)
-      }
-    },
-    thumbnailCollectionChanged(event: ThumbnailCollectionSseDto) {
-      if (event.selected && this.computedItem.type() === ItemTypes.COLLECTION && event.collectionId === this.item.id) {
         this.thumbnailCacheBust = '?' + this.$_.random(1000)
       }
     },

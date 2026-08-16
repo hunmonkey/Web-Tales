@@ -13,9 +13,6 @@
         <v-list-item @click="refreshMetadata" v-if="isAdmin">
           <v-list-item-title>{{ $t('menu.refresh_metadata') }}</v-list-item-title>
         </v-list-item>
-        <v-list-item @click="addToReadList" v-if="isAdmin">
-          <v-list-item-title>{{ $t('menu.add_to_readlist') }}</v-list-item-title>
-        </v-list-item>
         <v-list-item @click="markRead" v-if="!isRead">
           <v-list-item-title>{{ $t('menu.mark_read') }}</v-list-item-title>
         </v-list-item>
@@ -74,9 +71,6 @@ export default Vue.extend({
     },
     refreshMetadata () {
       this.$talesBooks.refreshMetadata(this.book)
-    },
-    addToReadList () {
-      this.$store.dispatch('dialogAddBooksToReadList', [this.book.id])
     },
     async markRead () {
       const readProgress = { completed: true } as ReadProgressUpdateDto

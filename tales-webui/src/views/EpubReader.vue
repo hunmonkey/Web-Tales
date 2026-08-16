@@ -743,10 +743,6 @@ export default Vue.extend({
           id: this.$route.query.contextId as string,
         }
         this.book.context = this.context
-        if (this?.context.origin === ContextOrigin.READLIST) {
-          this.contextName = (await (this.$talesReadLists.getOneReadList(this.context.id))).name
-          document.title = `Tales - ${this.contextName} - ${this.book.metadata.title}`
-        }
       } else {
         document.title = `Tales - ${this.bookTitle}`
       }
@@ -836,20 +832,12 @@ export default Vue.extend({
       if (this.alwaysFullscreen) this.enterFullscreen()
 
       try {
-        if (this?.context.origin === ContextOrigin.READLIST) {
-          this.siblingNext = await this.$talesReadLists.getBookSiblingNext(this.context.id, bookId)
-        } else {
-          this.siblingNext = await this.$talesBooks.getBookSiblingNext(bookId)
-        }
+        this.siblingNext = await this.$talesBooks.getBookSiblingNext(bookId)
       } catch (e) {
         this.siblingNext = {} as BookDto
       }
       try {
-        if (this?.context.origin === ContextOrigin.READLIST) {
-          this.siblingPrevious = await this.$talesReadLists.getBookSiblingPrevious(this.context.id, bookId)
-        } else {
-          this.siblingPrevious = await this.$talesBooks.getBookSiblingPrevious(bookId)
-        }
+        this.siblingPrevious = await this.$talesBooks.getBookSiblingPrevious(bookId)
       } catch (e) {
         this.siblingPrevious = {} as BookDto
       }

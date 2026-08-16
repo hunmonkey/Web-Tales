@@ -1,15 +1,14 @@
-import {bookThumbnailUrl, collectionThumbnailUrl, readListThumbnailUrl, seriesThumbnailUrl} from '@/functions/urls'
+import {bookThumbnailUrl, seriesThumbnailUrl} from '@/functions/urls'
 import {RawLocation} from 'vue-router/types/router'
 import {BookDto} from '@/types/tales-books'
 import {SeriesDto} from '@/types/tales-series'
 import i18n from '@/i18n'
 import {MediaStatus} from '@/types/enum-books'
 import {getFileSize} from '@/functions/file'
-import {ReadListDto} from '@/types/tales-readlists'
 import {getBookReadRouteFromMedia} from '@/functions/book-format'
 
 export enum ItemTypes {
-  BOOK, SERIES, COLLECTION, READLIST
+  BOOK, SERIES
 }
 
 export enum ItemContext {
@@ -26,12 +25,8 @@ export interface ItemTitle {
   to: RawLocation,
 }
 
-export function createItem(item: BookDto | SeriesDto | CollectionDto | ReadListDto): Item<BookDto | SeriesDto | CollectionDto | ReadListDto> {
-  if ('bookIds' in item) {
-    return new ReadListItem(item)
-  } else if ('seriesIds' in item) {
-    return new CollectionItem(item)
-  } else if ('seriesId' in item) {
+export function createItem(item: BookDto | SeriesDto): Item<BookDto | SeriesDto> {
+  if ('seriesId' in item) {
     return new BookItem(item)
   } else if ('libraryId' in item) {
     return new SeriesItem(item)
@@ -233,64 +228,6 @@ export class SeriesItem extends Item<SeriesDto> {
       name: this.item.oneshot ? 'browse-oneshot' : 'browse-series', params: {seriesId: this.item.id.toString()},
       query: {context: this.item?.context?.origin, contextId: this.item?.context?.id},
     }
-  }
-
-  fabTo(): RawLocation {
-    return undefined as unknown as RawLocation
-  }
-}
-
-export class CollectionItem extends Item<CollectionDto> {
-  thumbnailUrl(): string {
-    return collectionThumbnailUrl(this.item.id)
-  }
-
-  type(): ItemTypes {
-    return ItemTypes.COLLECTION
-  }
-
-  title(context: ItemContext[]): ItemTitle | ItemTitle[] {
-    return {
-      title: this.item.name,
-      to: this.to(),
-    }
-  }
-
-  body(context: ItemContext[] = []): string {
-    return `<span>${i18n.tc('dialog.add_to_collection.card_collection_subtitle', this.item.seriesIds.length)}</span>`
-  }
-
-  to(): RawLocation {
-    return {name: 'browse-collection', params: {collectionId: this.item.id.toString()}}
-  }
-
-  fabTo(): RawLocation {
-    return undefined as unknown as RawLocation
-  }
-}
-
-export class ReadListItem extends Item<ReadListDto> {
-  thumbnailUrl(): string {
-    return readListThumbnailUrl(this.item.id)
-  }
-
-  type(): ItemTypes {
-    return ItemTypes.READLIST
-  }
-
-  title(context: ItemContext[]): ItemTitle | ItemTitle[] {
-    return {
-      title: this.item.name,
-      to: this.to(),
-    }
-  }
-
-  body(context: ItemContext[] = []): string {
-    return `<span>${i18n.tc('dialog.add_to_readlist.card_readlist_subtitle', this.item.bookIds.length)}</span>`
-  }
-
-  to(): RawLocation {
-    return {name: 'browse-readlist', params: {readListId: this.item.id.toString()}}
   }
 
   fabTo(): RawLocation {

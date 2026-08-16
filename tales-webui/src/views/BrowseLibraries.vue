@@ -34,8 +34,6 @@
       @select-all="selectedSeries = series"
       @mark-read="markSelectedRead"
       @mark-unread="markSelectedUnread"
-      @add-to-collection="addToCollection"
-      @add-to-readlist="addToReadList"
       @edit="editMultipleSeries"
       @delete="deleteSeries"
     />
@@ -870,16 +868,6 @@ export default Vue.extend({
         this.$talesSeries.markAsUnread(s.id),
       ))
       this.selectedSeries = []
-    },
-    addToCollection() {
-      this.$store.dispatch('dialogAddSeriesToCollection', this.selectedSeries.map(s => s.id))
-    },
-    async addToReadList() {
-      const conditions = this.selectedSeries.map(s => new SearchConditionSeriesId(new SearchOperatorIs(s.id)))
-      const books = await this.$talesBooks.getBooksList({
-        condition: new SearchConditionAnyOfBook(conditions),
-      } as BookSearch, {unpaged: true})
-      this.$store.dispatch('dialogAddBooksToReadList', books.content.map(b => b.id))
     },
     async editSingleSeries(series: SeriesDto) {
       if (series.oneshot) {

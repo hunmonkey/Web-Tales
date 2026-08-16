@@ -13,12 +13,6 @@
         <v-list-item @click="refreshMetadata" v-if="isAdmin">
           <v-list-item-title>{{ $t('menu.refresh_metadata') }}</v-list-item-title>
         </v-list-item>
-        <v-list-item @click="addToCollection" v-if="isAdmin">
-          <v-list-item-title>{{ $t('menu.add_to_collection') }}</v-list-item-title>
-        </v-list-item>
-        <v-list-item @click="addToReadList" v-if="isAdmin">
-          <v-list-item-title>{{ $t('menu.add_to_readlist') }}</v-list-item-title>
-        </v-list-item>
         <v-list-item @click="markRead" v-if="!isRead">
           <v-list-item-title>{{ $t('menu.mark_read') }}</v-list-item-title>
         </v-list-item>
@@ -89,15 +83,6 @@ export default Vue.extend({
     refreshMetadata() {
       if (this.book) this.$talesBooks.refreshMetadata(this.book)
       this.$talesSeries.refreshMetadata(this.series)
-    },
-    addToCollection() {
-      this.$store.dispatch('dialogAddSeriesToCollection', [this.seriesId])
-    },
-    async addToReadList() {
-      if (!this.book && !this.localBookId) this.localBookId = (await this.$talesBooks.getBooksList({
-        condition: new SearchConditionSeriesId(new SearchOperatorIs(this.seriesId)),
-      } as BookSearch)).content[0].id
-      this.$store.dispatch('dialogAddBooksToReadList', [this.book?.id || this.localBookId])
     },
     async markRead() {
       await this.$talesSeries.markAsRead(this.seriesId)

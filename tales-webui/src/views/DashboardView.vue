@@ -6,8 +6,6 @@
       @unselect-all="selectedSeries = []"
       @mark-read="markSelectedSeriesRead"
       @mark-unread="markSelectedSeriesUnread"
-      @add-to-collection="addToCollection"
-      @add-to-readlist="addSeriesBooksToReadList"
       @edit="editMultipleSeries"
       @delete="deleteSeries"
     />
@@ -19,8 +17,6 @@
       @unselect-all="selectedBooks = []"
       @mark-read="markSelectedBooksRead"
       @mark-unread="markSelectedBooksUnread"
-      @add-to-readlist="addToReadList"
-      @add-to-collection="addOneshotsToCollection"
       @edit="editMultipleBooks"
       @bulk-edit="bulkEditMultipleBooks"
       @delete="deleteBooks"
@@ -630,14 +626,6 @@ export default Vue.extend({
       ))
       this.selectedSeries = []
     },
-    addToCollection() {
-      this.$store.dispatch('dialogAddSeriesToCollection', this.selectedSeries.map(s => s.id))
-      this.selectedSeries = []
-    },
-    addOneshotsToCollection() {
-      this.$store.dispatch('dialogAddSeriesToCollection', this.selectedBooks.map(b => b.seriesId))
-      this.selectedBooks = []
-    },
     async editMultipleSeries() {
       if (this.selectedSeries.every(s => s.oneshot)) {
         const books = await Promise.all(this.selectedSeries.map(s => this.$talesBooks.getBooksList({
@@ -664,17 +652,6 @@ export default Vue.extend({
     },
     bulkEditMultipleBooks() {
       this.$store.dispatch('dialogUpdateBulkBooks', this.selectedBooks)
-    },
-    addToReadList() {
-      this.$store.dispatch('dialogAddBooksToReadList', this.selectedBooks.map(b => b.id))
-      this.selectedBooks = []
-    },
-    async addSeriesBooksToReadList() {
-      const conditions = this.selectedSeries.map(s => new SearchConditionSeriesId(new SearchOperatorIs(s.id)))
-      const books = await this.$talesBooks.getBooksList({
-        condition: new SearchConditionAnyOfBook(conditions),
-      } as BookSearch, {unpaged: true})
-      this.$store.dispatch('dialogAddBooksToReadList', books.content.map(b => b.id))
     },
     async markSelectedBooksRead() {
       await Promise.all(this.selectedBooks.map(b =>

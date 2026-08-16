@@ -16,22 +16,6 @@
         <v-icon>mdi-book-multiple</v-icon>
       </v-btn>
 
-      <v-btn
-        v-if="collectionsCount > 0"
-        :to="{name: 'browse-collections', params: {libraryId: libraryId}}"
-      >
-        <span class="caption">{{ $t('library_navigation.collections') }}</span>
-        <v-icon>mdi-layers-triple</v-icon>
-      </v-btn>
-
-      <v-btn
-        v-if="readListsCount > 0"
-        :to="{name: 'browse-readlists', params: {libraryId: libraryId}}"
-      >
-        <span class="caption">{{ $t('library_navigation.readlists') }}</span>
-        <v-icon>mdi-bookmark-multiple-outline</v-icon>
-      </v-btn>
-
     </v-bottom-navigation>
 
     <template
@@ -51,42 +35,18 @@
         {{ $t('library_navigation.browse_books') }}
       </v-btn>
 
-      <v-btn
-        v-if="collectionsCount > 0"
-        :to="{name: 'browse-collections', params: {libraryId: libraryId}}"
-        text
-        class="mx-1"
-      >
-        {{ $t('library_navigation.collections') }}
-      </v-btn>
-
-      <v-btn
-        v-if="readListsCount > 0"
-        :to="{name: 'browse-readlists', params: {libraryId: libraryId}}"
-        text
-        class="mx-1"
-      >
-        {{ $t('library_navigation.readlists') }}
-      </v-btn>
-
     </template>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
-import {COLLECTION_ADDED, COLLECTION_DELETED, READLIST_ADDED, READLIST_DELETED} from '@/types/events'
-import {LIBRARIES_ALL} from '@/types/library'
-import {LibraryDto} from '@/types/tales-libraries'
 
+// Only the series and books tabs remain (SV-1204d/e). The collection and
+// read-list tabs each needed a count query and two SSE subscriptions to decide
+// whether to show themselves; with those gone this component is pure links.
 export default Vue.extend({
   name: 'LibraryNavigation',
-  data: () => {
-    return {
-      collectionsCount: 0,
-      readListsCount: 0,
-    }
-  },
   props: {
     libraryId: {
       type: String,
@@ -95,59 +55,6 @@ export default Vue.extend({
     bottomNavigation: {
       type: Boolean,
       default: false,
-    },
-  },
-  watch: {
-    libraryId: {
-      handler(val) {
-        this.loadReadListCounts(val)
-        this.loadCollectionCounts(val)
-      },
-      immediate: true,
-    },
-    '$store.getters.getLibrariesPinned': {
-      handler(val) {
-        if (this.libraryId === LIBRARIES_ALL) {
-          this.loadCollectionCounts(this.libraryId)
-          this.loadReadListCounts(this.libraryId)
-        }
-      },
-    },
-  },
-  created() {
-    this.$eventHub.$on(COLLECTION_ADDED, this.collectionAdded)
-    this.$eventHub.$on(COLLECTION_DELETED, this.collectionDeleted)
-    this.$eventHub.$on(READLIST_ADDED, this.readListAdded)
-    this.$eventHub.$on(READLIST_DELETED, this.readListDeleted)
-  },
-  beforeDestroy() {
-    this.$eventHub.$off(COLLECTION_ADDED, this.collectionAdded)
-    this.$eventHub.$off(COLLECTION_DELETED, this.collectionDeleted)
-    this.$eventHub.$off(READLIST_ADDED, this.readListAdded)
-    this.$eventHub.$off(READLIST_DELETED, this.readListDeleted)
-  },
-  methods: {
-    readListAdded() {
-      if(this.readListsCount === 0) this.loadReadListCounts(this.libraryId)
-    },
-    readListDeleted() {
-      if(this.readListsCount === 1) this.loadReadListCounts(this.libraryId)
-    },
-    collectionAdded() {
-      if(this.collectionsCount === 0) this.loadCollectionCounts(this.libraryId)
-    },
-    collectionDeleted() {
-      if(this.collectionsCount === 1) this.loadCollectionCounts(this.libraryId)
-    },
-    async loadCollectionCounts(libraryId: string) {
-      const lib = libraryId !== LIBRARIES_ALL ? [libraryId] : this.$store.getters.getLibrariesPinned.map((it: LibraryDto) => it.id)
-      this.$talesCollections.getCollections(lib, {size: 0})
-      .then(v => this.collectionsCount = v.totalElements)
-    },
-    async loadReadListCounts(libraryId: string) {
-      const lib = libraryId !== LIBRARIES_ALL ? [libraryId] : this.$store.getters.getLibrariesPinned.map((it: LibraryDto) => it.id)
-      await this.$talesReadLists.getReadLists(lib, {size: 0})
-        .then(v => this.readListsCount = v.totalElements)
     },
   },
 })

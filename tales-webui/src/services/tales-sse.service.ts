@@ -4,15 +4,9 @@ import {
   BOOK_CHANGED,
   BOOK_DELETED,
   BOOK_IMPORTED,
-  COLLECTION_ADDED,
-  COLLECTION_CHANGED,
-  COLLECTION_DELETED,
   LIBRARY_ADDED,
   LIBRARY_CHANGED,
   LIBRARY_DELETED,
-  READLIST_ADDED,
-  READLIST_CHANGED,
-  READLIST_DELETED,
   READPROGRESS_CHANGED,
   READPROGRESS_DELETED,
   READPROGRESS_SERIES_CHANGED,
@@ -22,10 +16,6 @@ import {
   SERIES_DELETED, SESSION_EXPIRED,
   THUMBNAILBOOK_ADDED,
   THUMBNAILBOOK_DELETED,
-  THUMBNAILCOLLECTION_ADDED,
-  THUMBNAILCOLLECTION_DELETED,
-  THUMBNAILREADLIST_ADDED,
-  THUMBNAILREADLIST_DELETED,
   THUMBNAILSERIES_ADDED,
   THUMBNAILSERIES_DELETED,
 } from '@/types/events'
@@ -71,16 +61,6 @@ export default class TalesSseService {
 
     this.eventSource.addEventListener('BookImported', (event: any) => this.emit(BOOK_IMPORTED, event))
 
-    // Collections
-    this.eventSource.addEventListener('CollectionAdded', (event: any) => this.emit(COLLECTION_ADDED, event))
-    this.eventSource.addEventListener('CollectionChanged', (event: any) => this.emit(COLLECTION_CHANGED, event))
-    this.eventSource.addEventListener('CollectionDeleted', (event: any) => this.emit(COLLECTION_DELETED, event))
-
-    // Read Lists
-    this.eventSource.addEventListener('ReadListAdded', (event: any) => this.emit(READLIST_ADDED, event))
-    this.eventSource.addEventListener('ReadListChanged', (event: any) => this.emit(READLIST_CHANGED, event))
-    this.eventSource.addEventListener('ReadListDeleted', (event: any) => this.emit(READLIST_DELETED, event))
-
     // Read Progress
     this.eventSource.addEventListener('ReadProgressChanged', (event: any) => this.emit(READPROGRESS_CHANGED, event))
     this.eventSource.addEventListener('ReadProgressDeleted', (event: any) => this.emit(READPROGRESS_DELETED, event))
@@ -94,11 +74,7 @@ export default class TalesSseService {
     this.eventSource.addEventListener('ThumbnailSeriesAdded', (event: any) => this.emit(THUMBNAILSERIES_ADDED, event))
     this.eventSource.addEventListener('ThumbnailSeriesDeleted', (event: any) => this.emit(THUMBNAILSERIES_DELETED, event))
 
-    this.eventSource.addEventListener('ThumbnailReadListAdded', (event: any) => this.emit(THUMBNAILREADLIST_ADDED, event))
-    this.eventSource.addEventListener('ThumbnailReadListDeleted', (event: any) => this.emit(THUMBNAILREADLIST_DELETED, event))
 
-    this.eventSource.addEventListener('ThumbnailSeriesCollectionAdded', (event: any) => this.emit(THUMBNAILCOLLECTION_ADDED, event))
-    this.eventSource.addEventListener('ThumbnailSeriesCollectionDeleted', (event: any) => this.emit(THUMBNAILCOLLECTION_DELETED, event))
 
     this.eventSource.addEventListener('TaskQueueStatus', (event: any) => this.updateTaskCount(event))
 

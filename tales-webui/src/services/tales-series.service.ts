@@ -88,18 +88,6 @@ export default class TalesSeriesService {
     }
   }
 
-  async getCollections(seriesId: string): Promise<CollectionDto[]> {
-    try {
-      return (await this.http.get(`${API_SERIES}/${seriesId}/collections`)).data
-    } catch (e) {
-      let msg = 'An error occurred while trying to retrieve collections'
-      if (e.response.data.message) {
-        msg += `: ${e.response.data.message}`
-      }
-      throw new Error(msg)
-    }
-  }
-
   async analyzeSeries(series: SeriesDto) {
     try {
       await this.http.post(`${API_SERIES}/${series.id}/analyze`)

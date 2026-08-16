@@ -11,8 +11,7 @@
             <rtl-icon icon="mdi-arrow-left" rtl="mdi-arrow-right"/>
           </v-btn>
         </template>
-        <span v-if="contextReadList">{{ $t('common.go_to_readlist') }}</span>
-        <span v-else>{{ $t('common.go_to_series') }}</span>
+        <span>{{ $t('common.go_to_series') }}</span>
       </v-tooltip>
 
       <!--   Action menu   -->
@@ -26,17 +25,6 @@
 
       <v-spacer/>
 
-      <!--   Context notification for navigation   -->
-      <v-alert
-        v-if="contextReadList && $vuetify.breakpoint.mdAndUp"
-        type="info"
-        text
-        dense
-        border="right"
-        class="mb-0"
-      >{{ $t('browse_book.navigation_within_readlist', {name: contextName}) }}
-      </v-alert>
-
       <!--   Navigate to previous book   -->
       <v-btn
         icon
@@ -47,7 +35,7 @@
         <rtl-icon icon="mdi-chevron-left" rtl="mdi-chevron-right"/>
       </v-btn>
 
-      <!--   List of all books in context (series/readlist) for navigation   -->
+      <!--   List of all books in the series for navigation   -->
       <v-menu bottom
               offset-y
               :max-height="$vuetify.breakpoint.height * .7"
@@ -69,11 +57,7 @@
               :to="{ name: book.oneshot ? 'browse-oneshot' : 'browse-book', params: { seriesId: book.seriesId, bookId: book.id }, query: { context: context.origin, contextId: context.id}  }"
             >
               <v-list-item-title class="text-wrap text-body-2">
-                <template v-if="contextReadList && !book.oneshot">{{ book.seriesTitle }} {{ book.metadata.number }}:
-                  {{ book.metadata.title }}
-                </template>
-                <template v-else-if="contextReadList && book.oneshot">{{ book.metadata.title }}</template>
-                <template v-else>{{ book.metadata.number }} - {{ book.metadata.title }}</template>
+                {{ book.metadata.number }} - {{ book.metadata.title }}
               </v-list-item-title>
             </v-list-item>
           </v-list-item-group>
@@ -92,19 +76,6 @@
     </toolbar-sticky>
 
     <v-container fluid class="pa-6">
-      <!--   Context notification for navigation   -->
-      <v-row>
-        <v-alert
-          v-if="contextReadList && $vuetify.breakpoint.smAndDown"
-          type="info"
-          text
-          dense
-          border="right"
-          class="mb-0"
-        >{{ $t('browse_book.navigation_within_readlist', {name: contextName}) }}
-        </v-alert>
-      </v-row>
-
       <v-row>
         <v-col cols="4" sm="4" md="auto" lg="auto" xl="auto">
           <item-card
@@ -348,23 +319,6 @@
         </v-col>
       </v-row>
 
-      <v-row>
-        <v-col>
-          <read-lists-expansion-panels :read-lists="readLists">
-            <template v-slot:prepend="props">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <v-btn icon class="me-2" v-on="on" @click="removeFromReadList(props.readlist.id)" :aria-label="$t('common.remove_from_readlist')">
-                    <v-icon>mdi-book-remove</v-icon>
-                  </v-btn>
-                </template>
-                <span>{{ $t('browse_book.remove_from_readlist') }}</span>
-              </v-tooltip>
-            </template>
-          </read-lists-expansion-panels>
-        </v-col>
-      </v-row>
-
       <v-row v-if="book.metadata.links.length > 0" class="align-center text-caption">
         <v-col class="py-1 text-uppercase" cols="4" sm="3" md="2" xl="1">{{ $t('browse_book.links') }}</v-col>
         <v-col class="py-1" cols="8" sm="9" md="10" xl="11">
@@ -458,14 +412,10 @@ import {
   BOOK_CHANGED,
   BOOK_DELETED,
   LIBRARY_DELETED,
-  READLIST_ADDED,
-  READLIST_CHANGED,
-  READLIST_DELETED,
   READPROGRESS_CHANGED,
   READPROGRESS_DELETED,
 } from '@/types/events'
 import Vue from 'vue'
-import ReadListsExpansionPanels from '@/components/ReadListsExpansionPanels.vue'
 import {BookDto, BookFormat} from '@/types/tales-books'
 import {Context, ContextOrigin} from '@/types/context'
 import ReadMore from '@/components/ReadMore.vue'
@@ -473,14 +423,13 @@ import VueHorizontal from 'vue-horizontal'
 import {authorRoles} from '@/types/author-roles'
 import {convertErrorCodes} from '@/functions/error-codes'
 import RtlIcon from '@/components/RtlIcon.vue'
-import {BookSseDto, LibrarySseDto, ReadListSseDto, ReadProgressSseDto} from '@/types/tales-sse'
+import {BookSseDto, LibrarySseDto, ReadProgressSseDto} from '@/types/tales-sse'
 import {RawLocation} from 'vue-router/types/router'
-import {ReadListDto} from '@/types/tales-readlists'
 import {BookSearch, SearchConditionSeriesId, SearchConditionTag, SearchOperatorIs} from '@/types/tales-search'
 
 export default Vue.extend({
   name: 'BrowseBook',
-  components: {ReadMore, ToolbarSticky, ItemCard, BookActionsMenu, ReadListsExpansionPanels, VueHorizontal, RtlIcon},
+  components: {ReadMore, ToolbarSticky, ItemCard, BookActionsMenu, VueHorizontal, RtlIcon},
   data: () => {
     return {
       MediaStatus,
@@ -492,7 +441,6 @@ export default Vue.extend({
       siblings: [] as BookDto[],
       siblingPrevious: {} as BookDto,
       siblingNext: {} as BookDto,
-      readLists: [] as ReadListDto[],
       readMore: false,
     }
   },
@@ -503,9 +451,6 @@ export default Vue.extend({
     this.$eventHub.$on(READPROGRESS_CHANGED, this.readProgressChanged)
     this.$eventHub.$on(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$on(LIBRARY_DELETED, this.libraryDeleted)
-    this.$eventHub.$on(READLIST_ADDED, this.readListChanged)
-    this.$eventHub.$on(READLIST_CHANGED, this.readListChanged)
-    this.$eventHub.$on(READLIST_DELETED, this.readListChanged)
   },
   beforeDestroy() {
     this.$eventHub.$off(BOOK_CHANGED, this.bookChanged)
@@ -513,9 +458,6 @@ export default Vue.extend({
     this.$eventHub.$off(READPROGRESS_CHANGED, this.readProgressChanged)
     this.$eventHub.$off(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$off(LIBRARY_DELETED, this.libraryDeleted)
-    this.$eventHub.$off(READLIST_ADDED, this.readListChanged)
-    this.$eventHub.$off(READLIST_CHANGED, this.readListChanged)
-    this.$eventHub.$off(READLIST_DELETED, this.readListChanged)
   },
   props: {
     bookId: {
@@ -588,17 +530,11 @@ export default Vue.extend({
     nextId(): string {
       return this.siblingNext?.id?.toString() || '0'
     },
-    contextReadList(): boolean {
-      return this.context.origin === ContextOrigin.READLIST
-    },
     mediaComment(): string {
       return convertErrorCodes(this.book.media.comment)
     },
     parentLocation(): RawLocation {
-      if (this.contextReadList)
-        return {name: 'browse-readlist', params: {readListId: this.context.id}}
-      else
-        return {name: 'browse-series', params: {seriesId: this.book.seriesId}}
+      return {name: 'browse-series', params: {seriesId: this.book.seriesId}}
     },
     displayedRoles(): string[] {
       const allRoles = this.$_.uniq([...authorRoles, ...(this.book.metadata.authors.map(x => x.role))])
@@ -612,12 +548,6 @@ export default Vue.extend({
     libraryDeleted(event: LibrarySseDto) {
       if (event.libraryId === this.book.libraryId) {
         this.$router.push({name: 'home'})
-      }
-    },
-    readListChanged(event: ReadListSseDto) {
-      if (event.bookIds.includes(this.bookId) || this.readLists.map(x => x.id).includes(event.readListId)) {
-        this.$talesBooks.getReadLists(this.bookId)
-          .then(v => this.readLists = v)
       }
     },
     bookChanged(event: BookSseDto) {
@@ -647,46 +577,23 @@ export default Vue.extend({
           id: this.$route.query.contextId as string,
         }
         this.book.context = this.context
-        this.$talesReadLists.getOneReadList(this.context.id)
-          .then(v => this.contextName = v.name)
       }
 
-      // Get siblings depending on origin
-      if (this?.context.origin === ContextOrigin.READLIST) {
-        this.$talesReadLists.getBooks(this.context.id, {unpaged: true} as PageRequest)
-          .then(v => this.siblings = v.content)
-      } else {
-        this.$talesBooks.getBooksList({
-          condition: new SearchConditionSeriesId(new SearchOperatorIs(this.book.seriesId)),
-        } as BookSearch, {unpaged: true, sort: ['metadata.numberSort']})
-          .then(v => this.siblings = v.content)
-      }
-
-      this.$talesBooks.getReadLists(this.bookId)
-        .then(v => this.readLists = v)
+      this.$talesBooks.getBooksList({
+        condition: new SearchConditionSeriesId(new SearchOperatorIs(this.book.seriesId)),
+      } as BookSearch, {unpaged: true, sort: ['metadata.numberSort']})
+        .then(v => this.siblings = v.content)
 
       if (this.$_.has(this.book, 'metadata.title')) {
         document.title = `Tales - ${getBookTitleCompact(this.book.metadata.title, this.book.seriesTitle, this.book.oneshot ? undefined : this.book.metadata.number)}`
       }
 
-      if (this?.context.origin === ContextOrigin.READLIST) {
-        this.$talesReadLists.getBookSiblingNext(this.context.id, bookId)
-          .then(v => this.siblingNext = v)
-          .catch(e => this.siblingNext = {} as BookDto)
-      } else {
-        this.$talesBooks.getBookSiblingNext(bookId)
-          .then(v => this.siblingNext = v)
-          .catch(e => this.siblingNext = {} as BookDto)
-      }
-      if (this?.context.origin === ContextOrigin.READLIST) {
-        this.$talesReadLists.getBookSiblingPrevious(this.context.id, bookId)
-          .then(v => this.siblingPrevious = v)
-          .catch(e => this.siblingPrevious = {} as BookDto)
-      } else {
-        this.$talesBooks.getBookSiblingPrevious(bookId)
-          .then(v => this.siblingPrevious = v)
-          .catch(e => this.siblingPrevious = {} as BookDto)
-      }
+      this.$talesBooks.getBookSiblingNext(bookId)
+        .then(v => this.siblingNext = v)
+        .catch(e => this.siblingNext = {} as BookDto)
+      this.$talesBooks.getBookSiblingPrevious(bookId)
+        .then(v => this.siblingPrevious = v)
+        .catch(e => this.siblingPrevious = {} as BookDto)
     },
     analyze() {
       this.$talesBooks.analyzeBook(this.book)
@@ -696,14 +603,6 @@ export default Vue.extend({
     },
     editBook() {
       this.$store.dispatch('dialogUpdateBooks', this.book)
-    },
-    removeFromReadList(readListId: string) {
-      const rl = this.readLists.find(x => x.id == readListId)
-      const modified = Object.assign({}, {bookIds: rl?.bookIds.filter(x => x != this.bookId)})
-      if (modified!.bookIds!.length == 0)
-        this.$talesReadLists.deleteReadList(rl!.id)
-      else
-        this.$talesReadLists.patchReadList(rl!.id, modified)
     },
   },
 })

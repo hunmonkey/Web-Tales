@@ -63,12 +63,9 @@ import Vue, {PropType} from 'vue'
 import {SeriesThumbnailDto} from '@/types/tales-series'
 import {
   bookThumbnailUrlByThumbnailId,
-  collectionThumbnailUrlByThumbnailId,
-  readListThumbnailUrlByThumbnailId,
   seriesThumbnailUrlByThumbnailId,
 } from '@/functions/urls'
 import {BookThumbnailDto} from '@/types/tales-books'
-import {ReadListThumbnailDto} from '@/types/tales-readlists'
 import {Dimension} from '@/types/image'
 import {getFileSize} from '@/functions/file'
 
@@ -81,7 +78,7 @@ export default Vue.extend({
         if (value instanceof File) {
           return true
         }
-        return 'id' in value && 'type' in value && 'selected' in value && ('seriesId' in value || 'bookId' in value || 'readListId' in value || 'collectionId' in value)
+        return 'id' in value && 'type' in value && 'selected' in value && ('seriesId' in value || 'bookId' in value)
       },
     },
     selected: {
@@ -158,10 +155,6 @@ export default Vue.extend({
         return seriesThumbnailUrlByThumbnailId(this.item.seriesId, this.item.id)
       } else if ('bookId' in this.item) {
         return bookThumbnailUrlByThumbnailId(this.item.bookId, this.item.id)
-      } else if ('readListId' in this.item) {
-        return readListThumbnailUrlByThumbnailId(this.item.readListId, this.item.id)
-      } else if ('collectionId' in this.item) {
-        return collectionThumbnailUrlByThumbnailId(this.item.collectionId, this.item.id)
       } else {
         throw new Error('The given item type is not known!')
       }

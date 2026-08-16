@@ -13,16 +13,6 @@ export interface BookSseDto {
   libraryId: string,
 }
 
-export interface CollectionSseDto {
-  collectionId: string,
-  seriesIds: string[],
-}
-
-export interface ReadListSseDto {
-  readListId: string,
-  bookIds: string[],
-}
-
 export interface ReadProgressSseDto {
   bookId: string,
   userId: string,
@@ -41,16 +31,6 @@ export interface ThumbnailBookSseDto {
 
 export interface ThumbnailSeriesSseDto {
   seriesId: string,
-  selected: boolean,
-}
-
-export interface ThumbnailReadListSseDto {
-  readListId: string,
-  selected: boolean,
-}
-
-export interface ThumbnailCollectionSseDto {
-  collectionId: string,
   selected: boolean,
 }
 

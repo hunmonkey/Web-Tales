@@ -8,7 +8,6 @@ import {
   PageDto,
   ReadProgressUpdateDto,
 } from '@/types/tales-books'
-import {ReadListDto} from '@/types/tales-readlists'
 import {R2Progression} from '@/types/readium'
 import {BookSearch} from '@/types/tales-search'
 
@@ -113,18 +112,6 @@ export default class TalesBooksService {
       return (await this.http.get(`${API_BOOKS}/${bookId}/pages`)).data
     } catch (e) {
       let msg = 'An error occurred while trying to retrieve book pages'
-      if (e.response.data.message) {
-        msg += `: ${e.response.data.message}`
-      }
-      throw new Error(msg)
-    }
-  }
-
-  async getReadLists(bookId: string): Promise<ReadListDto[]> {
-    try {
-      return (await this.http.get(`${API_BOOKS}/${bookId}/readlists`)).data
-    } catch (e) {
-      let msg = 'An error occurred while trying to retrieve read lists'
       if (e.response.data.message) {
         msg += `: ${e.response.data.message}`
       }

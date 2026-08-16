@@ -33,7 +33,6 @@
       @select-all="selectedBooks = books"
       @mark-read="markSelectedRead"
       @mark-unread="markSelectedUnread"
-      @add-to-readlist="addToReadList"
       @bulk-edit="bulkEditMultipleBooks"
       @edit="editMultipleBooks"
       @delete="deleteBooks"
@@ -664,9 +663,6 @@ export default Vue.extend({
         this.$talesBooks.deleteReadProgress(b.id),
       ))
       this.selectedBooks = []
-    },
-    addToReadList() {
-      this.$store.dispatch('dialogAddBooksToReadList', this.selectedBooks.map(b => b.id))
     },
     editSingleBook(book: BookDto) {
       this.$store.dispatch('dialogUpdateBooks', book)

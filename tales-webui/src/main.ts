@@ -13,23 +13,16 @@ import actuator from './plugins/actuator.plugin'
 import httpPlugin from './plugins/http.plugin'
 import talesBooks from './plugins/tales-books.plugin'
 import talesClaim from './plugins/tales-claim.plugin'
-import talesCollections from './plugins/tales-collections.plugin'
-import talesReadLists from './plugins/tales-readlists.plugin'
 import talesFileSystem from './plugins/tales-filesystem.plugin'
 import talesLibraries from './plugins/tales-libraries.plugin'
 import talesReferential from './plugins/tales-referential.plugin'
 import talesSeries from './plugins/tales-series.plugin'
 import talesUsers from './plugins/tales-users.plugin'
-import talesTransientBooks from './plugins/tales-transientbooks.plugin'
 import talesSse from './plugins/tales-sse.plugin'
 import talesTasks from './plugins/tales-tasks.plugin'
 import talesOauth2 from './plugins/tales-oauth2.plugin'
 import talesLogin from './plugins/tales-login.plugin'
-import talesPageHashes from './plugins/tales-pagehashes.plugin'
-import talesMetrics from './plugins/tales-metrics.plugin'
 import talesHistory from './plugins/tales-history.plugin'
-import talesAnnouncements from './plugins/tales-announcements.plugin'
-import talesReleases from './plugins/tales-releases.plugin'
 import talesSettings from './plugins/tales-settings.plugin'
 import talesFonts from './plugins/tales-fonts.plugin'
 import shelfViewManifest from './shelfview/plugins/shelfview-manifest.plugin'
@@ -65,12 +58,9 @@ Vue.use(logger)
 Vue.use(talesSettings, {store: store, http: Vue.prototype.$http})
 Vue.use(talesFileSystem, {http: Vue.prototype.$http})
 Vue.use(talesSeries, {http: Vue.prototype.$http})
-Vue.use(talesCollections, {http: Vue.prototype.$http})
-Vue.use(talesReadLists, {http: Vue.prototype.$http})
 Vue.use(talesBooks, {http: Vue.prototype.$http})
 Vue.use(talesReferential, {http: Vue.prototype.$http})
 Vue.use(talesClaim, {http: Vue.prototype.$http})
-Vue.use(talesTransientBooks, {http: Vue.prototype.$http})
 Vue.use(talesUsers, {store: store, http: Vue.prototype.$http})
 Vue.use(talesLibraries, {store: store, http: Vue.prototype.$http})
 Vue.use(talesSse, {eventHub: Vue.prototype.$eventHub, store: store})
@@ -78,11 +68,7 @@ Vue.use(actuator, {http: Vue.prototype.$http})
 Vue.use(talesTasks, {http: Vue.prototype.$http})
 Vue.use(talesOauth2, {http: Vue.prototype.$http})
 Vue.use(talesLogin, {http: Vue.prototype.$http})
-Vue.use(talesPageHashes, {http: Vue.prototype.$http})
-Vue.use(talesMetrics, {http: Vue.prototype.$http})
 Vue.use(talesHistory, {http: Vue.prototype.$http})
-Vue.use(talesAnnouncements, {http: Vue.prototype.$http})
-Vue.use(talesReleases, {http: Vue.prototype.$http})
 Vue.use(talesFonts, {http: Vue.prototype.$http})
 Vue.use(shelfViewManifest, {http: Vue.prototype.$http})
 Vue.use(shelfViewState, {http: Vue.prototype.$http})

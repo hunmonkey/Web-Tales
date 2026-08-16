@@ -691,3 +691,316 @@ reader sat between 20px and 36px.
 - `EpubReader.vue` keeps its two inline `height: 100vh` values on the D2Reader
   container; only its `.scrolltab-content` cap moved to `svh`. The third-party
   reader sizes its iframe from those and changing them needs EPUB testing.
+
+## Full application redesign, requested 2026-08-16
+
+Owner request: reduce the application to a folder tree and a reader. Keep the
+side-menu-plus-main-area shape, keep the viewer's full feature set, delete
+everything else, and restyle what remains with minimal icon and colour use.
+
+Owner decisions taken in the same session:
+
+1. "Folder" means the existing path-backed library. No new virtual folder model.
+2. Removal reaches the backend API, not only the frontend screens.
+3. Search moves to the top of the side menu; the app bar goes away.
+4. This slice is planning only — nothing is implemented until the ticket list
+   and `docs/ADR/ADR-0019-reduce-to-folder-and-reader-app.md` are approved.
+
+Follow-up decisions, later the same day:
+
+5. Keep reading stays, as its own side-menu entry — five entries, not four.
+   The dashboard's recommendation shelves still go.
+6. Library pinning and reordering stay.
+7. OPDS is removed entirely, not just its collection and read-list feeds.
+8. Losing existing collections and read lists is accepted. No export is built;
+   a pre-migration database backup is the only safeguard.
+
+One measurement corrected the earlier plan: removing OPDS does **not** make the
+read-list or collection removals cheaper. Only 2 of the 58 read-list files and 2
+of the 23 collection files live under `interfaces/api/opds`. The three removals
+are independent.
+
+ADR-0019 is **Proposed, not Accepted**. Phase D breaks public API compatibility
+and deletes user data, so no SV-123x ticket starts before the owner accepts it.
+
+### Phase A — Shell and screen reduction (frontend only, revertible)
+
+- [x] SV-1200 Rebuilt the side menu around five entries: keep reading, folders,
+  users, preferences, sign out. Search moved from the app bar to the top of the
+  drawer; `.app-shell__search` lost its bar centring and gained drawer padding.
+  Pinned and unpinned library groups and `ReorderLibraries` stayed (owner
+  decision 6). Removed: the brand block with its task progress bar, the import
+  group, the media-management group, the settings group and the account group,
+  together with `taskCount`, `taskCountByType`, the four `expand*` flags they
+  drove, and the orphaned `.app-shell__brand` rule. The routes behind the
+  removed entries still exist and are unreachable from the menu until SV-1204.
+  `libraries` in `computed` was already unused before this ticket and was left
+  alone per the surgical-change rule. Files: `views/HomeView.vue`,
+  `styles/global.css`.
+- [x] SV-1201 Deleted the `v-app-bar` and made the main area start empty. The
+  `/` route no longer redirects to `dashboard`: the parent route lost its name
+  and redirect, and a new `path: ''` child named `home` renders
+  `views/EmptyMainView.vue`. Guards that fall back to `{name: 'home'}` now land
+  on the empty area rather than on the dashboard. Removing the bar took the
+  drawer toggle with it, so a fixed menu button was added that hides itself
+  while the drawer is open — the only icon this phase adds, with
+  `navigation.open_menu` as its accessible name. Orphans removed with it:
+  `LogoMark` from this view, `toggleDrawer`, the `.app-shell__topbar*` rules and
+  their 600px media-query block.
+  Left as-is and worth knowing: `noLibraryGuard` / `noLibraryNorPinGuard` still
+  guard `dashboard` and the browse routes, so a server with no libraries no
+  longer shows `welcome` on arrival — the user sees the empty area until they
+  pick a menu entry. That follows the owner's "empty until selected" rule, but
+  it does mean first-run guidance now depends on the folder entry.
+- [x] SV-1202 Folder create, rename and delete from the side menu. No API was
+  added: `dialogAddLibrary`, `LibraryEditDialog` and `LibraryActionsMenu`
+  already covered all three, and the delete dialog already demands the library
+  name for confirmation. The change is the exposure: the `+` icon button became
+  a labelled "Add library" entry under the folder list, per `CLAUDE.md`'s rule
+  that admin actions must be recognisable controls rather than bare icons.
+  Pinning and reordering stay wired.
+- [x] SV-1204a Deleted the five screens with no dependants: metrics,
+  announcements, updates, history and self authentication activity. Each was
+  referenced only by `router.ts`. `AuthenticationActivityTable` survives because
+  `SettingsUsers.vue` uses it too; only the standalone self-activity view went.
+  Orphans that fell with them: the `tales-announcements`, `tales-releases` and
+  `tales-metrics` plugins/services/types, their `main.ts` registrations, the
+  `json-feed` types, and the `announcements`, `actuatorInfo`, `releases` and
+  `booksToCheck` store state with their getters and mutations. `$actuator`
+  itself stays — `ServerManagement.vue` uses it for shutdown and the log file.
+  `tests/unit/views/MetricsView.spec.ts` was deleted because its subject no
+  longer exists; no assertion was weakened to make a suite pass.
+  Side effect worth recording: `HomeView.created` made four admin requests on
+  every sign-in (actuator info, a books-to-check search, announcements,
+  releases) and all four fed screens or badges that are now gone. Signing in as
+  an admin now issues none of them, which is most of what SV-1221 was for.
+- [x] SV-1203 Merged preferences into one screen, **implemented before SV-1200**
+  rather than after it. Doing it in backlog order would have meant either
+  deleting the drawer's theme and locale selects with nowhere for them to go, or
+  writing a throwaway link from a new "preferences" menu entry to whichever of
+  the three old screens the user was allowed to see. Moving a control is one
+  action; splitting it across two tickets only manufactures an intermediate
+  state where the app is worse.
+  New `views/PreferencesView.vue` at `/settings` with three tabs — display
+  (theme, locale), account, and an admin-only server tab that composes the
+  existing `UISettings`, `ServerSettings` and `ServerManagement` components. No
+  new locale keys: the tab labels reuse `common.ui`, `account_settings.my_account`
+  and `server.tab_title`, so none of the 38 locale files were touched.
+  `settings-server`, `settings-ui` and `account-me` became redirects so existing
+  bookmarks survive, following the `/libraries/:id/recommended` precedent.
+  `views/SettingsServer.vue` was deleted — it was a two-component wrapper that
+  this change orphaned. `checkRoute` moved from `includes('/settings/')` to
+  `startsWith('/settings')` so the new path still matched while the settings
+  group existed.
+- [ ] SV-1204 **Split during implementation.** Written as one ticket, it turned
+  out to span 40 files referencing collections and 51 referencing read lists —
+  well past the 800-line split threshold in `CLAUDE.md`. Now:
+  - [x] SV-1204a metrics, announcements, updates, history, self auth activity
+  - [x] SV-1204b import. `ImportBooks`, `ImportReadList`, `FileImportRow`, the
+        two transient-book dialogs, `FileNameChooserDialog`, and the
+        `tales-transientbooks` plugin/service/types. `DropZone` and
+        `FileBrowserDialog` stayed — five edit dialogs and `LibraryEditDialog`
+        still use them.
+  - [x] SV-1204c media management. The five views, `PageHashKnownCard`,
+        `PageHashUnknownCard`, `PageHashMatchesTable`, the `tales-pagehashes`
+        plugin/service/types, `enum-pagehashes`, and three now-orphaned URL
+        builders in `functions/urls.ts` (`transientBookPageUrl` fell here too,
+        orphaned by SV-1204b). `ThumbnailExplorerDialog` stayed — `DivinaReader`
+        uses it. `components/PagesTable.vue` is referenced by nothing and was
+        already dead before this work, so it was left alone per the
+        surgical-change rule; it is a candidate for a separate cleanup.
+  - [ ] SV-1204d collections. Split again on contact with the code: deleting the
+        type first would break every reference at once, so this goes
+        entry-points → screens → plumbing, each step compiling on its own.
+    - [x] SV-1204d-1 entry points. The two routes; the `COLLECTIONS` case in
+          `getLibraryRoute` (the enum value stays so a stored preference still
+          parses, and now falls through to the default); the collections tab and
+          its count/SSE plumbing in `LibraryNavigation`; "add to collection" in
+          `SeriesActionsMenu`, `OneshotActionsMenu` and `MultiSelectBar`; and the
+          `@add-to-collection` listeners and handlers in `BrowseLibraries`,
+          `BrowseReadList`, `DashboardView` and `SearchView`. Collections are now
+          unreachable from the UI while the code still compiles.
+    - [x] SV-1204d-2 screens and components. Deleted `BrowseCollections`,
+          `BrowseCollection`, `CollectionsExpansionPanels`, both dialogs and
+          `CollectionActionsMenu`, and stripped collections out of
+          `BrowseSeries`, `BrowseOneshot`, `ItemCard` and `ReusableDialogs`
+          (panels, remove-from-collection actions, SSE subscriptions, context
+          links, thumbnail-SSE handling and the union types).
+          Two dead links surfaced while doing it and were fixed in the same
+          step, because SV-1204d-1 had removed their routes: `SearchBox` pushed
+          `{name: 'browse-collection'}` when a collection result was clicked,
+          and `SearchView` still rendered a whole collections shelf whose cards
+          route through `CollectionItem.to()` — the same dead route. Both
+          sections are gone. Collections are now absent from the UI entirely,
+          not merely unreachable.
+    - [x] SV-1204d-3 plumbing. The `tales-collections` plugin/service/types and
+          its `main.ts` registration; six store state fields with their six
+          mutations and six actions; the three COLLECTION and two
+          THUMBNAILCOLLECTION events and their `tales-sse.service` listeners and
+          `tales-sse` DTOs; `CollectionItem`, `ItemTypes.COLLECTION` and the
+          `createItem` branch; `persisted-state`'s collection filter;
+          `tales-series.service.getCollections`; the two `urls.ts` thumbnail
+          builders; `ThumbnailCard`'s collection branch; the dead
+          `browse-collection(s)` entries in the `document.title` guard; and
+          `ContextOrigin.COLLECTION`.
+          `LIBRARY_ROUTE.COLLECTIONS` is deliberately kept: unlike the others it
+          is a *persisted user preference*, and removing the enum value would
+          break parsing for anyone whose stored library route is COLLECTIONS.
+          It falls through to the browse default.
+    - **Excluded on purpose:** `importComicInfoCollection` in
+      `types/tales-libraries.ts` and `LibraryEditDialog`. It is a backend library
+      DTO field, not a frontend concern; dropping it from the form would change
+      what the client sends on library create/update. It belongs to Phase D with
+      the backend, not to a frontend-only ticket.
+  - [x] SV-1204e read lists. Complete.
+    - [x] Entry points **and** their callers in one step, applying the SV-1204d-2
+          lesson: both routes, the `READLISTS` case in `getLibraryRoute`, the
+          `document.title` guard, the `LibraryNavigation` tab, "add to read
+          list" in three action menus and `MultiSelectBar`, the handlers in
+          `BrowseBooks`/`BrowseLibraries`/`BrowseSeries`/`DashboardView`, and —
+          in the same pass, so no dead link ever existed — the read-list result
+          and routing in `SearchBox`, the read-list shelf in `SearchView`, and
+          `ReadListItem` in `types/items.ts`.
+    - [x] `BrowseBook`: the read-list branch of sibling navigation collapsed to
+          the series branch. Prev/next and the book-list menu still work inside
+          a series; only the read-list context is gone.
+    - [x] `BrowseOneshot`: its sibling navigation was read-list-only
+          (`v-if="context.origin === ContextOrigin.READLIST"` on every control),
+          because a oneshot's series holds a single book. That whole cluster —
+          prev button, book-list menu, next button, context alerts, and the
+          `siblings`/`siblingNext`/`siblingPrevious`/`contextName` state behind
+          it — is therefore gone rather than simplified.
+    - [x] `ItemCard`, `ReusableDialogs`, and deletion of `BrowseReadLists`,
+          `BrowseReadList`, `ReadListsExpansionPanels`, both dialogs,
+          `ReadListActionsMenu` and `ReadListMatchRow` (the last already
+          orphaned by SV-1204b, which should have taken it).
+    - [x] Plumbing: `tales-readlists` plugin/service/types and its `main.ts`
+          registration; `tales-books.service.getReadLists`; six store state
+          fields with six mutations and six actions; the three `READLIST_*` and
+          two `THUMBNAILREADLIST_*` events with their SSE listeners and DTOs;
+          `ThumbnailCard`'s read-list branch; three `urls.ts` builders;
+          `persisted-state`'s read-list filter; and `ContextOrigin.READLIST`.
+          The three readers' sibling navigation (`ShelfViewReaderShell`,
+          `DivinaReader`, `EpubReader`) now takes the series path only;
+          `DivinaReader` also loses its "set current page as read-list poster"
+          menu entry.
+    - Keep `LIBRARY_ROUTE.READLISTS` for the same reason `COLLECTIONS` was kept:
+      it is a persisted user preference. `ContextOrigin.READLIST` can go with
+      the plumbing, like `ContextOrigin.COLLECTION` did.
+  Backend endpoints stay reachable throughout, so each sub-ticket is a
+  `git revert` away from reversible.
+- [ ] SV-1205 Reduce `DashboardView.vue` (774 lines) to the resume block only.
+  **Assumption confirmed by the owner on 2026-08-17**: "이어보기는 유지" means the
+  resume block; the recommendation shelves go.
+  Scope established by reading the file:
+  - Keep: the `dashboard__heading`, the `dashboard-resume` section and its seven
+    `resumeBook*` computeds, `resumeThumbnailCacheBust`, and the
+    `BOOK_*`/`READPROGRESS_*`/`THUMBNAILBOOK_*` subscriptions that refresh them.
+  - Keep `loaderKeepReadingBooks` — this is the catch. `resumeBook` is
+    `loaderKeepReadingBooks?.items[0]`, so the resume block is a view onto that
+    loader, not independent state. Its `hasSection(RecommendedViewSection.KEEP_READING)`
+    guard must become unconditional once the view config is gone.
+  - Remove: the six other loaders (on-deck, recently added books/series,
+    recently updated series, recently released, recently read); the
+    `sections`/`SectionConfig`/`SectionType` machinery and `RecommendedViewSection`
+    usage; the shelf `v-for` with its skeleton and `horizontal-scroller` blocks;
+    the edit-view FAB and `EditRecommendedDialog`; and the two `multi-select-bar`
+    instances with `selectedSeries`/`selectedBooks` and every handler they feed
+    (mark read/unread, edit, bulk edit, delete) — all of which exist to act on
+    shelf cards.
+  - Decide while implementing: `empty-state` is currently gated on `allEmpty`,
+    which is computed across all seven loaders. With one loader left it should
+    mean "nothing in progress".
+  - Check afterwards whether `ItemBrowser`, `ItemCardSkeleton` and
+    `HorizontalScroller` still have consumers elsewhere before assuming they are
+    orphaned; `SearchView` and the browse views also use them.
+
+### Phase B — Visual redesign (revertible)
+
+- [ ] SV-1210 Define the reduced palette and icon set. `Rule_UIUX` 1-3 already
+  caps a screen at four colour groups; this ticket makes that explicit as tokens
+  and removes decorative colour from the shell. Icons stay only where a label
+  cannot replace them.
+- [ ] SV-1211 Restyle the folder contents: series and book cards, list density,
+  empty and loading states. `Rule_UIUX` 1-1 forbids a blank moment during
+  loading, so the empty main area and a loading main area must be visually
+  distinct.
+- [ ] SV-1212 Align the reader chrome with the new visual language without
+  removing any control. Every viewer setting — fit, layout, rotation, image
+  filters, PDF handling, page number, bookmarks — must still be reachable; this
+  is a restyle, not a feature review.
+
+### Phase C — Speed (revertible)
+
+- [ ] SV-1220 Measure a baseline before claiming any improvement: production
+  bundle size per chunk, cold first paint, and time to first page of a book.
+  Record the numbers in `docs/AI_PROGRESS.md`. Without this, Phase A's bundle
+  reduction cannot be reported honestly.
+- [ ] SV-1221 Reduce startup work. `HomeView.created` currently fires four admin
+  requests (actuator info, books-to-check search, announcements, releases) on
+  every load; three of those belong to features Phase A deletes.
+- [ ] SV-1222 List and thumbnail loading policy for large folders, measured
+  against SV-1220's baseline.
+
+### Phase D — Backend removal (irreversible, needs ADR-0019 accepted)
+
+- [ ] SV-1230 Dependency survey before any deletion. Map each removal candidate
+  to its controller, service, repository, jOOQ tables, scanner hooks, tasks, SSE
+  events and tests. Measured coupling today: read lists touch 58 Kotlin files
+  (2 of them OPDS), collections 23 (2 OPDS), historical events 12, transient
+  books 5, OPDS 11 files of its own plus 11 referencing it. Output is a
+  per-feature removal order and a list of shared code that must not be deleted.
+  No code changes in this ticket.
+- [ ] SV-1231 Remove transient books and the import endpoints (5 files, the
+  most self-contained candidate — a rehearsal for the larger removals).
+- [ ] SV-1232 Remove metrics, announcements, releases and historical events.
+  Historical events are an audit trail other services publish to, so this is a
+  removal of publishers as well as of the reader.
+- [ ] SV-1233 Remove page hashes and the media-management endpoints (analysis,
+  missing posters, duplicate files, duplicate pages).
+- [ ] SV-1234 Remove collections (23 files).
+- [ ] SV-1235 Remove read lists (58 files). Last, and alone in its ticket:
+  `BookController` sibling navigation, OPDS feeds and thumbnail handling all
+  reference read lists, so book navigation needs a regression pass.
+- [ ] SV-1236 Remove OPDS completely: the `interfaces/api/opds` v1 and v2 feeds,
+  `OpdsGenerator`, `OpdsCommonController`, `OpdsLinkRel`, the OPDS entries in
+  `Constants`, `OpdsAuthenticationEntryPoint` and its `SecurityConfiguration`
+  chain, and the OPDS-specific `EtagFilterConfiguration`, `WebMvcConfiguration`
+  and XML message-converter wiring where nothing else needs them. Independent of
+  SV-1234/SV-1235; can run before or after either. Verify no `/opds` path stays
+  reachable and no XML converter is left registered for a removed content type.
+- [ ] SV-1237 Forward-only Flyway migrations dropping the now-unreachable
+  schema, one per feature area. Existing migrations are never edited.
+- [ ] SV-1238 Backup gate. The owner accepted the loss of existing collections
+  and read lists, so no export is built and the pre-migration database backup is
+  the only way back. This ticket takes and verifies that backup, and records in
+  `AI_PROGRESS.md` where it is and that a restore was actually tested — an
+  untested backup is not a safeguard. Blocks every SV-1237 migration deploy.
+
+### Phase E — Reader verification (revertible)
+
+- [ ] SV-1245 Decide the old readers' fate. `EpubReader.vue` cannot be deleted —
+  the ShelfView EPUB bridge hands off to it. `DivinaReader.vue` is the
+  documented fallback in `ARCHITECTURE.md` and the target of
+  `shelfViewReaderGuard` when the flag is off; deleting it means making the
+  ShelfView reader unconditional first.
+- [ ] SV-1246 Run the viewer regression checklist across ZIP, CBZ, PDF, image
+  directory, TXT, mixed ZIP and EPUB, covering fit, layout, rotation, filters,
+  page number and bookmarks. This is the ticket that proves requirement 4 —
+  "viewer stays feature-complete" — survived the redesign.
+
+### Questions answered 2026-08-16
+
+- Keep reading: **kept**, as its own side-menu entry (SV-1200, SV-1205). The app
+  no longer opens onto it.
+- Library pinning and reordering: **kept** (SV-1200, SV-1202).
+- OPDS: **removed entirely** (SV-1236).
+- Collection and read-list data loss: **accepted**, no export built. The backup
+  gate in SV-1238 is what stands in its place.
+
+### Still assumed rather than stated
+
+- SV-1205 assumes "이어보기는 유지" means the resume block, not the dashboard's
+  recommendation shelves. Confirm before implementing.
+- Whether the ShelfView reader becomes unconditional, which is what deleting
+  `DivinaReader.vue` would require, is still SV-1245's question.

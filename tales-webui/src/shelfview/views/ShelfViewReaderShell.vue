@@ -3159,9 +3159,7 @@ export default Vue.extend({
       requestId: number,
     ) {
       try {
-        const siblingNext = this.context.origin === ContextOrigin.READLIST
-          ? await this.$talesReadLists.getBookSiblingNext(this.context.id, bookId)
-          : await this.$talesBooks.getBookSiblingNext(bookId)
+        const siblingNext = await this.$talesBooks.getBookSiblingNext(bookId)
         if (requestId === this.setupRequestId) this.siblingNext = siblingNext
       } catch (e) {
         if (requestId === this.setupRequestId) this.siblingNext = undefined

@@ -11,9 +11,7 @@
             <rtl-icon icon="mdi-arrow-left" rtl="mdi-arrow-right"/>
           </v-btn>
         </template>
-        <span v-if="context.origin === ContextOrigin.READLIST">{{ $t('common.go_to_readlist') }}</span>
-        <span v-else-if="context.origin === ContextOrigin.COLLECTION">{{ $t('common.go_to_collection') }}</span>
-        <span v-else>{{ $t('common.go_to_library') }}</span>
+        <span>{{ $t('common.go_to_library') }}</span>
       </v-tooltip>
 
       <!--   Action menu   -->
@@ -28,93 +26,9 @@
 
       <v-spacer/>
 
-      <!--   Context notification for navigation   -->
-      <v-alert
-        v-if="context.origin === ContextOrigin.READLIST && $vuetify.breakpoint.mdAndUp"
-        type="info"
-        text
-        dense
-        border="right"
-        class="mb-0"
-      >{{ $t('browse_book.navigation_within_readlist', {name: contextName}) }}
-      </v-alert>
-
-      <!--   Navigate to previous book   -->
-      <v-btn
-        v-if="context.origin === ContextOrigin.READLIST"
-        icon
-        :disabled="$_.isEmpty(siblingPrevious)"
-        :to="{ name: siblingPrevious.oneshot ? 'browse-oneshot' : 'browse-book', params: { seriesId: siblingPrevious.seriesId, bookId: previousId }, query: { context: context.origin, contextId: context.id}  }"
-        :aria-label="$t('common.previous_book')"
-      >
-        <rtl-icon icon="mdi-chevron-left" rtl="mdi-chevron-right"/>
-      </v-btn>
-
-      <!--   List of all books in context (series/readlist) for navigation   -->
-      <v-menu
-        v-if="context.origin === ContextOrigin.READLIST"
-        bottom
-        offset-y
-        :max-height="$vuetify.breakpoint.height * .7"
-        :max-width="250"
-      >
-        <template v-slot:activator="{ on }">
-          <v-btn icon v-on="on" :aria-label="$t('common.book_list')">
-            <v-icon>mdi-menu</v-icon>
-          </v-btn>
-        </template>
-
-        <v-list
-          flat
-        >
-          <v-list-item-group color="primary">
-            <v-list-item
-              v-for="(book, i) in siblings"
-              :key="i"
-              :to="{ name: book.oneshot ? 'browse-oneshot' : 'browse-book', params: { seriesId: book.seriesId, bookId: book.id }, query: { context: context.origin, contextId: context.id}  }"
-            >
-              <v-list-item-title class="text-wrap text-body-2">
-                <template v-if="context.origin === ContextOrigin.READLIST && !book.oneshot">{{ book.seriesTitle }}
-                  {{ book.metadata.number }}:
-                  {{ book.metadata.title }}
-                </template>
-                <template v-else-if="context.origin === ContextOrigin.READLIST && book.oneshot">{{
-                    book.metadata.title
-                  }}
-                </template>
-                <template v-else>{{ book.metadata.number }} - {{ book.metadata.title }}</template>
-              </v-list-item-title>
-            </v-list-item>
-          </v-list-item-group>
-        </v-list>
-      </v-menu>
-
-      <!--   Navigate to next book   -->
-      <v-btn
-        v-if="context.origin === ContextOrigin.READLIST"
-        icon
-        :disabled="$_.isEmpty(siblingNext)"
-        :to="{ name: siblingNext.oneshot ? 'browse-oneshot' : 'browse-book', params: { seriesId: siblingNext.seriesId, bookId: nextId }, query: { context: context.origin, contextId: context.id}  }"
-        :aria-label="$t('common.next_book')"
-      >
-        <rtl-icon icon="mdi-chevron-right" rtl="mdi-chevron-left"/>
-      </v-btn>
     </toolbar-sticky>
 
     <v-container fluid class="pa-6">
-      <!--   Context notification for navigation   -->
-      <v-row>
-        <v-alert
-          v-if="context.origin === ContextOrigin.READLIST && $vuetify.breakpoint.smAndDown"
-          type="info"
-          text
-          dense
-          border="right"
-          class="mb-0"
-        >{{ $t('browse_book.navigation_within_readlist', {name: contextName}) }}
-        </v-alert>
-      </v-row>
-
       <v-row>
         <v-col cols="4" sm="4" md="auto" lg="auto" xl="auto">
           <item-card
@@ -421,33 +335,7 @@
 
 
       <v-row>
-        <v-col cols="12" class="pb-1">
-          <collections-expansion-panels :collections="collections">
-            <template v-slot:prepend="props">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <v-btn icon class="me-2" v-on="on" @click="removeFromCollection(props.collection.id)" :aria-label="$t('common.remove_from_collection')">
-                    <v-icon>mdi-playlist-remove</v-icon>
-                  </v-btn>
-                </template>
-                <span>{{ $t('browse_book.remove_from_collection') }}</span>
-              </v-tooltip>
-            </template>
-          </collections-expansion-panels>
-        </v-col>
-        <v-col cols="12" class="pt-1">
-          <read-lists-expansion-panels :read-lists="readLists">
-            <template v-slot:prepend="props">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on }">
-                  <v-btn icon class="me-2" v-on="on" @click="removeFromReadList(props.readlist.id)" :aria-label="$t('common.remove_from_readlist')">
-                    <v-icon>mdi-book-remove</v-icon>
-                  </v-btn>
-                </template>
-                <span>{{ $t('browse_book.remove_from_readlist') }}</span>
-              </v-tooltip>
-            </template>
-          </read-lists-expansion-panels>
+        <v-col cols="12">
         </v-col>
       </v-row>
 
@@ -542,20 +430,13 @@ import {MediaStatus, ReadStatus} from '@/types/enum-books'
 import {
   BOOK_CHANGED,
   BOOK_DELETED,
-  COLLECTION_ADDED,
-  COLLECTION_CHANGED,
-  COLLECTION_DELETED,
   LIBRARY_DELETED,
-  READLIST_ADDED,
-  READLIST_CHANGED,
-  READLIST_DELETED,
   READPROGRESS_CHANGED,
   READPROGRESS_DELETED,
   SERIES_CHANGED,
   SERIES_DELETED,
 } from '@/types/events'
 import Vue from 'vue'
-import ReadListsExpansionPanels from '@/components/ReadListsExpansionPanels.vue'
 import {BookDto, BookFormat} from '@/types/tales-books'
 import {Context, ContextOrigin} from '@/types/context'
 import ReadMore from '@/components/ReadMore.vue'
@@ -565,16 +446,12 @@ import {convertErrorCodes} from '@/functions/error-codes'
 import RtlIcon from '@/components/RtlIcon.vue'
 import {
   BookSseDto,
-  CollectionSseDto,
   LibrarySseDto,
-  ReadListSseDto,
   ReadProgressSseDto,
   SeriesSseDto,
 } from '@/types/tales-sse'
 import {RawLocation} from 'vue-router/types/router'
-import {ReadListDto} from '@/types/tales-readlists'
 import {Oneshot, SeriesDto} from '@/types/tales-series'
-import CollectionsExpansionPanels from '@/components/CollectionsExpansionPanels.vue'
 import OneshotActionsMenu from '@/components/menus/OneshotActionsMenu.vue'
 import {
   BookSearch,
@@ -593,8 +470,7 @@ export default Vue.extend({
   name: 'BrowseOneshot',
   components: {
     OneshotActionsMenu,
-    CollectionsExpansionPanels,
-    ReadMore, ToolbarSticky, ItemCard, ReadListsExpansionPanels, VueHorizontal, RtlIcon,
+    ReadMore, ToolbarSticky, ItemCard, VueHorizontal, RtlIcon,
   },
   data: () => {
     return {
@@ -609,12 +485,6 @@ export default Vue.extend({
       book: {} as BookDto,
       series: {} as SeriesDto,
       context: {} as Context,
-      siblings: [] as BookDto[],
-      siblingPrevious: {} as BookDto,
-      siblingNext: {} as BookDto,
-      contextName: '',
-      collections: [] as CollectionDto[],
-      readLists: [] as ReadListDto[],
       readMore: false,
     }
   },
@@ -627,12 +497,6 @@ export default Vue.extend({
     this.$eventHub.$on(READPROGRESS_CHANGED, this.readProgressChanged)
     this.$eventHub.$on(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$on(LIBRARY_DELETED, this.libraryDeleted)
-    this.$eventHub.$on(READLIST_ADDED, this.readListChanged)
-    this.$eventHub.$on(READLIST_CHANGED, this.readListChanged)
-    this.$eventHub.$on(READLIST_DELETED, this.readListChanged)
-    this.$eventHub.$on(COLLECTION_ADDED, this.collectionChanged)
-    this.$eventHub.$on(COLLECTION_CHANGED, this.collectionChanged)
-    this.$eventHub.$on(COLLECTION_DELETED, this.collectionChanged)
   },
   beforeDestroy() {
     this.$eventHub.$off(SERIES_CHANGED, this.seriesChanged)
@@ -642,12 +506,6 @@ export default Vue.extend({
     this.$eventHub.$off(READPROGRESS_CHANGED, this.readProgressChanged)
     this.$eventHub.$off(READPROGRESS_DELETED, this.readProgressChanged)
     this.$eventHub.$off(LIBRARY_DELETED, this.libraryDeleted)
-    this.$eventHub.$off(READLIST_ADDED, this.readListChanged)
-    this.$eventHub.$off(READLIST_CHANGED, this.readListChanged)
-    this.$eventHub.$off(READLIST_DELETED, this.readListChanged)
-    this.$eventHub.$off(COLLECTION_ADDED, this.collectionChanged)
-    this.$eventHub.$off(COLLECTION_CHANGED, this.collectionChanged)
-    this.$eventHub.$off(COLLECTION_DELETED, this.collectionChanged)
   },
   props: {
     seriesId: {
@@ -714,22 +572,11 @@ export default Vue.extend({
         } as Intl.DateTimeFormatOptions).format(this.book.readProgress.readDate)
       return undefined
     },
-    previousId(): string {
-      return this.siblingPrevious?.id?.toString() || '0'
-    },
-    nextId(): string {
-      return this.siblingNext?.id?.toString() || '0'
-    },
     mediaComment(): string {
       return convertErrorCodes(this.book.media.comment)
     },
     parentLocation(): RawLocation {
-      if (this.context.origin === ContextOrigin.READLIST)
-        return {name: 'browse-readlist', params: {readListId: this.context.id}}
-      else if (this.context.origin === ContextOrigin.COLLECTION)
-        return {name: 'browse-collection', params: {collectionId: this.context.id}}
-      else
-        return {name: 'browse-libraries', params: {libraryId: this.book.libraryId}}
+      return {name: 'browse-libraries', params: {libraryId: this.book.libraryId}}
     },
     displayedRoles(): string[] {
       const allRoles = this.$_.uniq([...authorRoles, ...(this.book.metadata.authors.map(x => x.role))])
@@ -746,18 +593,6 @@ export default Vue.extend({
     libraryDeleted(event: LibrarySseDto) {
       if (event.libraryId === this.book.libraryId) {
         this.$router.push({name: 'home'})
-      }
-    },
-    readListChanged(event: ReadListSseDto) {
-      if (event.bookIds.includes(this.book.id) || this.readLists.map(x => x.id).includes(event.readListId)) {
-        this.$talesBooks.getReadLists(this.book.id)
-          .then(v => this.readLists = v)
-      }
-    },
-    collectionChanged(event: CollectionSseDto) {
-      if (event.seriesIds.includes(this.seriesId) || this.collections.map(x => x.id).includes(event.collectionId)) {
-        this.$talesSeries.getCollections(this.seriesId)
-          .then(v => this.collections = v)
       }
     },
     seriesChanged(event: SeriesSseDto) {
@@ -784,8 +619,6 @@ export default Vue.extend({
     async loadSeries(seriesId: string) {
       this.$talesSeries.getOneSeries(seriesId)
         .then(v => this.series = v)
-      this.$talesSeries.getCollections(seriesId)
-        .then(v => this.collections = v)
 
       // parse query params to get context and contextId
       if (this.$route.query.contextId && this.$route.query.context
@@ -812,40 +645,12 @@ export default Vue.extend({
           id: this.$route.query.contextId as string,
         }
         this.book.context = this.context
-        if (this.context.origin === ContextOrigin.READLIST)
-          this.$talesReadLists.getOneReadList(this.context.id)
-            .then(v => this.contextName = v.name)
       }
-
-      // Get siblings depending on origin
-      if (this?.context.origin === ContextOrigin.READLIST) {
-        this.$talesReadLists.getBooks(this.context.id, {unpaged: true} as PageRequest)
-          .then(v => this.siblings = v.content)
-      } else {
-        this.siblings = {} as BookDto[]
-      }
-
-      this.$talesBooks.getReadLists(this.book.id)
-        .then(v => this.readLists = v)
 
       if (this.$_.has(this.book, 'metadata.title')) {
         document.title = `Tales - ${getBookTitleCompact(this.book.metadata.title, this.book.seriesTitle)}`
       }
 
-      if (this?.context.origin === ContextOrigin.READLIST) {
-        this.$talesReadLists.getBookSiblingNext(this.context.id, this.book.id)
-          .then(v => this.siblingNext = v)
-          .catch(e => this.siblingNext = {} as BookDto)
-      } else {
-        this.siblingNext = {} as BookDto
-      }
-      if (this?.context.origin === ContextOrigin.READLIST) {
-        this.$talesReadLists.getBookSiblingPrevious(this.context.id, this.book.id)
-          .then(v => this.siblingPrevious = v)
-          .catch(e => this.siblingPrevious = {} as BookDto)
-      } else {
-        this.siblingPrevious = {} as BookDto
-      }
     },
     analyze() {
       this.$talesBooks.analyzeBook(this.book)
@@ -855,22 +660,6 @@ export default Vue.extend({
     },
     editBook() {
       this.$store.dispatch('dialogUpdateOneshots', {series: this.series, book: this.book} as Oneshot)
-    },
-    removeFromReadList(readListId: string) {
-      const rl = this.readLists.find(x => x.id == readListId)
-      const modified = Object.assign({}, {bookIds: rl?.bookIds.filter(x => x != this.book.id)})
-      if (modified!.bookIds!.length == 0)
-        this.$talesReadLists.deleteReadList(rl!.id)
-      else
-        this.$talesReadLists.patchReadList(rl!.id, modified)
-    },
-    removeFromCollection(collectionId: string) {
-      const col = this.collections.find(x => x.id == collectionId)
-      const modified = Object.assign({}, {seriesIds: col?.seriesIds.filter(x => x != this.seriesId)})
-      if (modified!.seriesIds!.length == 0)
-        this.$talesCollections.deleteCollection(col!.id)
-      else
-        this.$talesCollections.patchCollection(col!.id, modified)
     },
   },
 })

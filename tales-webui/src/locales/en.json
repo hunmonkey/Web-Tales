@@ -1229,7 +1229,8 @@
   "navigation": {
     "home": "Home",
     "libraries": "Libraries",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "open_menu": "Open menu"
   },
   "no_libraries_pinned": {
     "title": "No pinned libraries",

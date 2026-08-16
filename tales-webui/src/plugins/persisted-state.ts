@@ -24,12 +24,6 @@ export const persistedModule: Module<any, any> = {
     epubreader: {},
     browsingPageSize: undefined as unknown as number,
     thumbnailsPageSize: undefined as unknown as number,
-    collection: {
-      filter: {},
-    },
-    readList: {
-      filter: {},
-    },
     library: {
       // DEPRECATED: this is the old filter, before criteria-dsl was introduced
       filter: {},
@@ -64,12 +58,6 @@ export const persistedModule: Module<any, any> = {
       } catch (e) {
       }
       return 1
-    },
-    getCollectionFilter: (state) => (id: string) => {
-      return state.collection.filter[id]
-    },
-    getReadListFilter: (state) => (id: string) => {
-      return state.readList.filter[id]
     },
     getLibraryFilter: (state) => (id: string) => {
       return state.library.filterDsl[id]
@@ -138,12 +126,6 @@ export const persistedModule: Module<any, any> = {
     },
     setThumbnailsPageSize(state, val) {
       state.thumbnailsPageSize = val
-    },
-    setCollectionFilter(state, {id, filter}) {
-      state.collection.filter[id] = filter
-    },
-    setReadListFilter(state, {id, filter}) {
-      state.readList.filter[id] = filter
     },
     setLibraryFilter(state, {id, filter}) {
       state.library.filterDsl[id] = filter

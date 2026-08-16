@@ -1,4 +1,3 @@
-import {PageHashKnownDto, PageHashUnknownDto} from '@/types/tales-pagehashes'
 
 const fullUrl = process.env.VUE_APP_TALES_API_URL
   ? process.env.VUE_APP_TALES_API_URL
@@ -57,38 +56,3 @@ export function seriesThumbnailUrlByThumbnailId(seriesId: string, thumbnailId: s
   return `${urls.originNoSlash}/api/v1/series/${seriesId}/thumbnails/${thumbnailId}`
 }
 
-export function collectionThumbnailUrl(collectionId: string): string {
-  return `${urls.originNoSlash}/api/v1/collections/${collectionId}/thumbnail`
-}
-
-export function collectionThumbnailUrlByThumbnailId(collectionId: string, thumbnailId: string) {
-  return `${urls.originNoSlash}/api/v1/collections/${collectionId}/thumbnails/${thumbnailId}`
-}
-
-export function readListThumbnailUrl(readListId: string): string {
-  return `${urls.originNoSlash}/api/v1/readlists/${readListId}/thumbnail`
-}
-
-export function readListFileUrl(readListId: string): string {
-  return `${urls.originNoSlash}/api/v1/readlists/${readListId}/file`
-}
-
-export function readListThumbnailUrlByThumbnailId(readListId: string, thumbnailId: string) {
-  return `${urls.originNoSlash}/api/v1/readlists/${readListId}/thumbnails/${thumbnailId}`
-}
-
-export function transientBookPageUrl(transientBookId: string, page: number): string {
-  return `${urls.originNoSlash}/api/v1/transient-books/${transientBookId}/pages/${page}`
-}
-
-export function pageHashUnknownThumbnailUrl(pageHash: PageHashUnknownDto, resize?: number): string {
-  let url = `${urls.originNoSlash}/api/v1/page-hashes/unknown/${pageHash.hash}/thumbnail`
-  if(resize) {
-    url += `?resize=${resize}`
-  }
-  return url
-}
-
-export function pageHashKnownThumbnailUrl(pageHash: PageHashKnownDto): string {
-  return `${urls.originNoSlash}/api/v1/page-hashes/${pageHash.hash}/thumbnail`
-}

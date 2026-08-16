@@ -88,42 +88,19 @@
           </v-list-item-content>
         </template>
 
-        <template v-if="data.item.type === 'collection'">
-          <v-img :src="collectionThumbnailUrl(data.item.id)"
-                 height="50"
-                 max-width="35"
-                 class="my-1 mx-3"
-          />
-          <v-list-item-content>
-            <v-list-item-title>{{ data.item.name }}</v-list-item-title>
-          </v-list-item-content>
-        </template>
-
-        <template v-if="data.item.type === 'readlist'">
-          <v-img :src="readListThumbnailUrl(data.item.id)"
-                 height="50"
-                 max-width="35"
-                 class="my-1 mx-3"
-          />
-          <v-list-item-content>
-            <v-list-item-title>{{ data.item.name }}</v-list-item-title>
-          </v-list-item-content>
-        </template>
-
       </template>
     </v-autocomplete>
   </div>
 </template>
 
 <script lang="ts">
-import {bookThumbnailUrl, collectionThumbnailUrl, readListThumbnailUrl, seriesThumbnailUrl} from '@/functions/urls'
+import {bookThumbnailUrl, seriesThumbnailUrl} from '@/functions/urls'
 import {debounce} from 'lodash'
 import Vue from 'vue'
 import {BookDto} from '@/types/tales-books'
 import {SeriesDto} from '@/types/tales-series'
 import {getReadProgress} from '@/functions/book-progress'
 import {ReadStatus} from '@/types/enum-books'
-import {ReadListDto} from '@/types/tales-readlists'
 import {
   BookSearch,
   SearchConditionOneShot,
@@ -141,8 +118,6 @@ export default Vue.extend({
       loading: false,
       series: [] as SeriesDto[],
       books: [] as BookDto[],
-      collections: [] as CollectionDto[],
-      readLists: [] as ReadListDto[],
       pageSize: 10,
     }
   },
@@ -159,11 +134,6 @@ export default Vue.extend({
           params: {seriesId: val.seriesId},
         })
         else if (val.type === 'book') this.$router.push({name: 'browse-book', params: {bookId: val.id}})
-        else if (val.type === 'collection') this.$router.push({
-          name: 'browse-collection',
-          params: {collectionId: val.id},
-        })
-        else if (val.type === 'readlist') this.$router.push({name: 'browse-readlist', params: {readListId: val.id}})
         else if (val.type === 'search') this.searchDetails()
 
         //@ts-ignore
@@ -190,14 +160,6 @@ export default Vue.extend({
           results.push({header: this.$t('common.books').toString().toUpperCase()})
           results.push(...this.books.map(o => ({...o, type: 'book'})))
         }
-        if (this.collections.length > 0) {
-          results.push({header: this.$t('common.collections').toString().toUpperCase()})
-          results.push(...this.collections.map(o => ({...o, type: 'collection'})))
-        }
-        if (this.readLists.length > 0) {
-          results.push({header: this.$t('common.readlists').toString().toUpperCase()})
-          results.push(...this.readLists.map(o => ({...o, type: 'readlist'})))
-        }
       }
       return results
     },
@@ -221,8 +183,6 @@ export default Vue.extend({
         this.books = (await this.$talesBooks.getBooksList({
           fullTextSearch: query,
         } as BookSearch, {size: this.pageSize})).content
-        this.collections = (await this.$talesCollections.getCollections(undefined, {size: this.pageSize}, query)).content
-        this.readLists = (await this.$talesReadLists.getReadLists(undefined, {size: this.pageSize}, query)).content
         this.showResults = true
         this.loading = false
       } else {
@@ -234,8 +194,6 @@ export default Vue.extend({
       this.showResults = false
       this.series = []
       this.books = []
-      this.collections = []
-      this.readLists = []
     },
     searchDetails() {
       const s = this.search
@@ -251,12 +209,6 @@ export default Vue.extend({
     },
     bookThumbnailUrl(bookId: string): string {
       return bookThumbnailUrl(bookId)
-    },
-    collectionThumbnailUrl(collectionId: string): string {
-      return collectionThumbnailUrl(collectionId)
-    },
-    readListThumbnailUrl(readListId: string): string {
-      return readListThumbnailUrl(readListId)
     },
   },
 })

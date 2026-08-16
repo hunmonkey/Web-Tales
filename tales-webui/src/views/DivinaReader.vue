@@ -73,9 +73,6 @@
               <v-list-item v-if="!book.oneshot" @click="setCurrentPageAsPoster(ItemTypes.SERIES)">
                 <v-list-item-title>{{ $t('bookreader.set_current_page_as_series_poster') }}</v-list-item-title>
               </v-list-item>
-              <v-list-item v-if="contextReadList" @click="setCurrentPageAsPoster(ItemTypes.READLIST)">
-                <v-list-item-title>{{ $t('bookreader.set_current_page_as_readlist_poster') }}</v-list-item-title>
-              </v-list-item>
             </v-list>
           </v-menu>
         </v-toolbar>
@@ -555,9 +552,6 @@ export default Vue.extend({
         [this.$t('bookreader.shortcuts.menus').toString()]: shortcutsMenus,
       }
     },
-    contextReadList(): boolean {
-      return this.context.origin === ContextOrigin.READLIST
-    },
     currentPage(): PageDtoWithUrl {
       return this.pages[this.page - 1]
     },
@@ -700,12 +694,7 @@ export default Vue.extend({
         this.book.context = this.context
       }
 
-      if (this?.context.origin === ContextOrigin.READLIST) {
-        this.contextName = (await (this.$talesReadLists.getOneReadList(this.context.id))).name
-        document.title = `Tales - ${this.contextName} - ${this.book.metadata.title}`
-      } else {
-        document.title = `Tales - ${this.bookTitle}`
-      }
+      document.title = `Tales - ${this.bookTitle}`
 
       // parse query params to get incognito mode
       this.incognito = !!(this.$route.query.incognito && this.$route.query.incognito.toString().toLowerCase() === 'true')
@@ -733,20 +722,12 @@ export default Vue.extend({
       }
 
       try {
-        if (this?.context.origin === ContextOrigin.READLIST) {
-          this.siblingNext = await this.$talesReadLists.getBookSiblingNext(this.context.id, bookId)
-        } else {
-          this.siblingNext = await this.$talesBooks.getBookSiblingNext(bookId)
-        }
+        this.siblingNext = await this.$talesBooks.getBookSiblingNext(bookId)
       } catch (e) {
         this.siblingNext = {} as BookDto
       }
       try {
-        if (this?.context.origin === ContextOrigin.READLIST) {
-          this.siblingPrevious = await this.$talesReadLists.getBookSiblingPrevious(this.context.id, bookId)
-        } else {
-          this.siblingPrevious = await this.$talesBooks.getBookSiblingPrevious(bookId)
-        }
+        this.siblingPrevious = await this.$talesBooks.getBookSiblingPrevious(bookId)
       } catch (e) {
         this.siblingPrevious = {} as BookDto
       }
@@ -941,10 +922,6 @@ export default Vue.extend({
         case ItemTypes.SERIES:
           await this.$talesSeries.uploadThumbnail(this.series.id, newImageFile, true)
           this.sendNotification(`${this.$t('bookreader.notification_poster_set_series')}`)
-          break
-        case ItemTypes.READLIST:
-          await this.$talesReadLists.uploadThumbnail(this.context.id, newImageFile, true)
-          this.sendNotification(`${this.$t('bookreader.notification_poster_set_readlist')}`)
           break
       }
     },

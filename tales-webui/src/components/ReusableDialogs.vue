@@ -1,45 +1,5 @@
 <template>
   <div>
-    <collection-add-to-dialog
-      v-model="addToCollectionDialog"
-      :series-ids="addToCollectionSeriesIds"
-    />
-
-    <collection-edit-dialog
-      v-model="editCollectionDialog"
-      :collection="editCollection"
-    />
-
-    <confirmation-dialog
-      v-model="deleteCollectionDialog"
-      :title="collectionsToDeleteSingle ? $t('dialog.delete_collection.dialog_title') : $t('dialog.delete_collection.dialog_title_multiple')"
-      :body-html="collectionsToDeleteSingle ? $t('dialog.delete_collection.warning_html', { name: collectionsToDelete.name}) : $t('dialog.delete_collection.warning_multiple_html', { count: collectionsToDelete.length})"
-      :confirm-text="collectionsToDeleteSingle ? $t('dialog.delete_collection.confirm_delete', {name: collectionsToDelete.name}) : $t('dialog.delete_collection.confirm_delete_multiple', {count: collectionsToDelete.length})"
-      :button-confirm="$t('dialog.delete_collection.button_confirm')"
-      button-confirm-color="error"
-      @confirm="deleteCollections"
-    />
-
-    <read-list-add-to-dialog
-      v-model="addToReadListDialog"
-      :bookIds="addToReadListBookIds"
-    />
-
-    <read-list-edit-dialog
-      v-model="editReadListDialog"
-      :read-list="editReadList"
-    />
-
-    <confirmation-dialog
-      v-model="deleteReadListDialog"
-      :title="readListsToDeleteSingle ? $t('dialog.delete_readlist.dialog_title') : $t('dialog.delete_readlist.dialog_title_multiple')"
-      :body-html="readListsToDeleteSingle ? $t('dialog.delete_readlist.warning_html', {name: readListsToDelete.name}) : $t('dialog.delete_readlist.warning_multiple_html', {count: readListsToDelete.length})"
-      :confirm-text="readListsToDeleteSingle ? $t('dialog.delete_readlist.confirm_delete', {name: readListsToDelete.name}) : $t('dialog.delete_readlist.confirm_delete_multiple', {count: readListsToDelete.length})"
-      :button-confirm="$t('dialog.delete_readlist.button_confirm')"
-      button-confirm-color="error"
-      @confirm="deleteReadLists"
-    />
-
     <library-edit-dialog
       v-model="editLibraryDialog"
       :library="editLibrary"
@@ -99,21 +59,16 @@
 </template>
 
 <script lang="ts">
-import CollectionAddToDialog from '@/components/dialogs/CollectionAddToDialog.vue'
-import CollectionEditDialog from '@/components/dialogs/CollectionEditDialog.vue'
 import EditBooksDialog from '@/components/dialogs/EditBooksDialog.vue'
 import EditSeriesDialog from '@/components/dialogs/EditSeriesDialog.vue'
 import LibraryEditDialog from '@/components/dialogs/LibraryEditDialog.vue'
 import Vue from 'vue'
-import ReadListAddToDialog from '@/components/dialogs/ReadListAddToDialog.vue'
-import ReadListEditDialog from '@/components/dialogs/ReadListEditDialog.vue'
 import {BookDto} from '@/types/tales-books'
 import {Oneshot, SeriesDto} from '@/types/tales-series'
 import {ERROR} from '@/types/events'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import {LibraryDto} from '@/types/tales-libraries'
 import BulkEditBooksDialog from '@/components/dialogs/BulkEditBooksDialog.vue'
-import {ReadListDto} from '@/types/tales-readlists'
 import EditOneshotDialog from '@/components/dialogs/EditOneshotDialog.vue'
 
 export default Vue.extend({
@@ -122,89 +77,11 @@ export default Vue.extend({
     EditOneshotDialog,
     BulkEditBooksDialog,
     ConfirmationDialog,
-    CollectionAddToDialog,
-    CollectionEditDialog,
-    ReadListAddToDialog,
-    ReadListEditDialog,
     LibraryEditDialog,
     EditBooksDialog,
     EditSeriesDialog,
   },
   computed: {
-    // collections
-    addToCollectionDialog: {
-      get(): boolean {
-        return this.$store.state.addToCollectionDialog
-      },
-      set(val) {
-        this.$store.dispatch('dialogAddSeriesToCollectionDisplay', val)
-      },
-    },
-    addToCollectionSeriesIds(): string[] {
-      return this.$store.state.addToCollectionSeriesIds
-    },
-    editCollectionDialog: {
-      get(): boolean {
-        return this.$store.state.editCollectionDialog
-      },
-      set(val) {
-        this.$store.dispatch('dialogEditCollectionDisplay', val)
-      },
-    },
-    editCollection(): CollectionDto {
-      return this.$store.state.editCollection
-    },
-    deleteCollectionDialog: {
-      get(): boolean {
-        return this.$store.state.deleteCollectionDialog
-      },
-      set(val) {
-        this.$store.dispatch('dialogDeleteCollectionDisplay', val)
-      },
-    },
-    collectionsToDelete(): CollectionDto | CollectionDto[] {
-      return this.$store.state.deleteCollections
-    },
-    collectionsToDeleteSingle(): boolean {
-      return !Array.isArray(this.collectionsToDelete)
-    },
-    // read lists
-    addToReadListDialog: {
-      get(): boolean {
-        return this.$store.state.addToReadListDialog
-      },
-      set(val) {
-        this.$store.dispatch('dialogAddBooksToReadListDisplay', val)
-      },
-    },
-    addToReadListBookIds(): string[] {
-      return this.$store.state.addToReadListBookIds
-    },
-    editReadListDialog: {
-      get(): boolean {
-        return this.$store.state.editReadListDialog
-      },
-      set(val) {
-        this.$store.dispatch('dialogEditReadListDisplay', val)
-      },
-    },
-    editReadList(): ReadListDto {
-      return this.$store.state.editReadList
-    },
-    deleteReadListDialog: {
-      get(): boolean {
-        return this.$store.state.deleteReadListDialog
-      },
-      set(val) {
-        this.$store.dispatch('dialogDeleteReadListDisplay', val)
-      },
-    },
-    readListsToDelete(): ReadListDto | ReadListDto[] {
-      return this.$store.state.deleteReadLists
-    },
-    readListsToDeleteSingle(): boolean {
-      return !Array.isArray(this.readListsToDelete)
-    },
     // libraries
     editLibraryDialog: {
       get(): boolean {
@@ -311,26 +188,6 @@ export default Vue.extend({
         await this.$store.dispatch('deleteLibrary', this.libraryToDelete)
       } catch (e) {
         this.$eventHub.$emit(ERROR, {message: e.message} as ErrorEvent)
-      }
-    },
-    async deleteReadLists() {
-      const toUpdate = (this.readListsToDeleteSingle ? [this.readListsToDelete] : this.readListsToDelete) as ReadListDto[]
-      for (const b of toUpdate) {
-        try {
-          await this.$talesReadLists.deleteReadList(b.id)
-        } catch (e) {
-          this.$eventHub.$emit(ERROR, {message: e.message} as ErrorEvent)
-        }
-      }
-    },
-    async deleteCollections() {
-      const toUpdate = (this.collectionsToDeleteSingle ? [this.collectionsToDelete] : this.collectionsToDelete) as CollectionDto[]
-      for (const b of toUpdate) {
-        try {
-          await this.$talesCollections.deleteCollection(b.id)
-        } catch (e) {
-          this.$eventHub.$emit(ERROR, {message: e.message} as ErrorEvent)
-        }
       }
     },
     async deleteSeries() {

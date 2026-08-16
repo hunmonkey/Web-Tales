@@ -4,6 +4,37 @@
 
 Extend Tales without replacing its proven library, identity, authorization, analysis, page streaming, metadata and deployment foundations.
 
+## Planned reduction to folders and reader
+
+[ADR-0019](ADR/ADR-0019-reduce-to-folder-and-reader-app.md) plans a redesign
+that reduces the application to a side menu of folders plus the reader. It is
+**Proposed, not implemented**: nothing described below is true of the current
+code, and the sections after this one still describe what ships today.
+
+The planned end state:
+
+- "Folder" is the existing path-backed library, keeping its pinning and
+  reordering. No new virtual folder model, table or API is introduced.
+- The side menu carries five entries — keep reading, folders, users,
+  preferences, sign out — with search moved to the top of the drawer and the app
+  bar removed.
+- The main area is empty until a side-menu item is selected. Keep reading stays
+  reachable but is no longer the landing screen.
+- The reader keeps its full feature set: every source format and every viewer
+  setting listed in this document survives unchanged.
+- Collections, read lists, import, media management, metrics, announcements,
+  releases, historical events, authentication-activity views, the dashboard's
+  recommendation shelves and **all of OPDS** are removed — frontend first, then
+  the backend endpoints and schema.
+
+Phase D of that plan breaks public API compatibility, deletes user data and
+ends practical upstream merges. It does not start until the owner accepts
+ADR-0019. Tickets are SV-1200 through SV-1246 in `docs/BACKLOG.md`.
+
+Removing OPDS also retires this document's assumption that a non-browser OPDS
+client is a supported way to reach the library. After that ticket the web UI and
+the ShelfView reader are the only clients.
+
 ## Boundaries
 
 - Existing API remains under `/api/v1`.
