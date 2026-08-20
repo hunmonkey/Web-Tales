@@ -45,6 +45,11 @@ Before adding a package:
   imported by the local reader, called with `useWebWorkers: false`, adds no
   native binary or network behavior, and no source code was copied into the
   repository.
+- `@d-i-t-a/reader` `2.5.3`, Apache-2.0: approved only for the existing EPUB
+  WebPub fallback. It replaces the historical project fork and its vulnerable
+  bundled PDF.js 2.14.305 with the official release's PDF.js 5.5.207. The exact
+  reader/PDF.js versions and EPUB initialization contract are test-covered.
+  This does not authorize direct PDF.js use by ShelfView's PDF reader.
 
 ## Stop and escalate
 

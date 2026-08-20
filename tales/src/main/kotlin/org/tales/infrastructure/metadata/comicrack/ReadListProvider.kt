@@ -21,10 +21,10 @@ class ReadListProvider(
       try {
         mapper.readValue(cbl, ReadingList::class.java)
       } catch (e: Exception) {
-        logger.error(e) { "Error while trying to parse ComicRack ReadingList" }
+        logger.error { "Error while parsing ComicRack reading list: errorType=${e.javaClass.simpleName}" }
         throw ComicRackListException("Error while trying to parse ComicRack ReadingList", "ERR_1015")
       }
-    logger.debug { "Trying to convert ComicRack ReadingList to ReadListRequest: $readingList" }
+    logger.debug { "Converting ComicRack reading list" }
 
     if (readingList.name.isNullOrBlank()) throw ComicRackListException("ReadingList has no Name element", "ERR_1030")
     if (readingList.books.isEmpty()) throw ComicRackListException("ReadingList does not contain any Book element", "ERR_1029")
@@ -37,6 +37,6 @@ class ReadListProvider(
       }
 
     return ReadListRequest(name = readingList.name!!, books = books)
-      .also { logger.debug { "Converted request: $it" } }
+      .also { logger.debug { "Converted ComicRack reading list: bookCount=${books.size}" } }
   }
 }

@@ -28,7 +28,7 @@ class ImageAnalyzer {
         }
       }
     } catch (e: Exception) {
-      logger.warn(e) { "Could not get image dimensions" }
+      logger.warn { "Could not get image dimensions: errorType=${e.javaClass.simpleName}" }
       null
     }
 }

@@ -35,6 +35,7 @@ class ShelfViewHighlightController(
   private val mediaRepository: MediaRepository,
   private val contentRestrictionChecker: ContentRestrictionChecker,
   private val highlightRepository: ShelfViewHighlightRepository,
+  private val locatorValidator: ShelfViewLocatorValidator,
   private val mapper: ObjectMapper,
 ) {
   @Operation(summary = "List ShelfView highlights")
@@ -139,10 +140,10 @@ class ShelfViewHighlightController(
   ): ShelfViewValidatedLocator {
     val media = mediaRepository.findByIdOrNull(book.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
-    return ShelfViewLocatorValidator.validate(
+    return locatorValidator.validate(
       locator = request.locator,
-      expectedContentFingerprint = shelfViewContentFingerprint(book, media),
-      pageCount = shelfViewPageCount(media),
+      book = book,
+      media = media,
     )
   }
 

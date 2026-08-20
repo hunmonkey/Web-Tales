@@ -23,7 +23,7 @@ class WebServerConfiguration(
       if (it.startsWith("/") && !it.endsWith("/"))
         factory.setContextPath(it)
       else
-        logger.warn { "Ignoring invalid server context path: $it" }
+        logger.warn { "Ignoring invalid server context path" }
     }
   }
 }

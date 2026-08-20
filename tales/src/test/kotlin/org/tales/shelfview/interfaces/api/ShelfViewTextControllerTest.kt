@@ -2,6 +2,7 @@ package org.tales.shelfview.interfaces.api
 
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -12,6 +13,7 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.tales.domain.model.Book
+import org.tales.domain.model.Library
 import org.tales.domain.model.Media
 import org.tales.domain.model.makeBook
 import org.tales.domain.model.makeLibrary
@@ -45,10 +47,16 @@ class ShelfViewTextControllerTest(
   @Autowired private val bookRepository: BookRepository,
   @Autowired private val mockMvc: MockMvc,
 ) {
-  private val library = makeLibrary(id = "shelfview-text-library")
+  lateinit var libraryRoot: Path
+
+  private lateinit var library: Library
 
   @BeforeAll
-  fun `setup library`() {
+  fun `setup library`(
+    @TempDir root: Path,
+  ) {
+    libraryRoot = root
+    library = makeLibrary(id = "shelfview-text-library", url = libraryRoot.toUri().toURL())
     libraryRepository.insert(library)
   }
 
@@ -66,10 +74,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given utf8 txt book when getting text then returns normalized plain text paragraphs`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("story.txt")
+  fun `given utf8 txt book when getting text then returns normalized plain text paragraphs`() {
+    val file = libraryRoot.resolve("story.txt")
     Files.writeString(
       file,
       "First paragraph\r\n\r\n<script>alert(\"x\")</script>\r\nSecond line",
@@ -93,10 +99,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given utf8 bom txt book when getting text then strips bom`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("bom.txt")
+  fun `given utf8 bom txt book when getting text then strips bom`() {
+    val file = libraryRoot.resolve("bom.txt")
     Files.write(
       file,
       byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()) + "BOM text".toByteArray(StandardCharsets.UTF_8),
@@ -114,10 +118,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given euc kr txt book when getting text with requested encoding then decodes text`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("korean.txt")
+  fun `given euc kr txt book when getting text with requested encoding then decodes text`() {
+    val file = libraryRoot.resolve("korean.txt")
     Files.write(file, byteArrayOf(0xB0.toByte(), 0xA1.toByte()))
     val book = createBookWithMedia(file)
 
@@ -132,10 +134,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given unsupported encoding when getting text then returns bad request`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("story.txt")
+  fun `given unsupported encoding when getting text then returns bad request`() {
+    val file = libraryRoot.resolve("unsupported-encoding.txt")
     Files.writeString(file, "Text", StandardCharsets.UTF_8)
     val book = createBookWithMedia(file)
 
@@ -148,10 +148,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given txt file over size limit when getting text then returns payload too large`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("large.txt")
+  fun `given txt file over size limit when getting text then returns payload too large`() {
+    val file = libraryRoot.resolve("large.txt")
     Files.writeString(file, "a".repeat(129), StandardCharsets.UTF_8)
     val book = createBookWithMedia(file)
 
@@ -164,10 +162,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given txt line over line limit when getting text then returns payload too large`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("long-line.txt")
+  fun `given txt line over line limit when getting text then returns payload too large`() {
+    val file = libraryRoot.resolve("long-line.txt")
     Files.writeString(file, "b".repeat(65), StandardCharsets.UTF_8)
     val book = createBookWithMedia(file)
 
@@ -180,10 +176,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser
-  fun `given non txt book when getting text then returns bad request`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("book.pdf")
+  fun `given non txt book when getting text then returns bad request`() {
+    val file = libraryRoot.resolve("book.pdf")
     Files.writeString(file, "Not a text profile", StandardCharsets.UTF_8)
     val book = createBookWithMedia(file, TalesMediaType.PDF.type)
 
@@ -196,10 +190,8 @@ class ShelfViewTextControllerTest(
 
   @Test
   @WithMockCustomUser(sharedAllLibraries = false, sharedLibraries = ["other"])
-  fun `given user without library access when getting text then returns forbidden`(
-    @TempDir dir: Path,
-  ) {
-    val file = dir.resolve("story.txt")
+  fun `given user without library access when getting text then returns forbidden`() {
+    val file = libraryRoot.resolve("restricted.txt")
     Files.writeString(file, "Text", StandardCharsets.UTF_8)
     val book = createBookWithMedia(file)
 
@@ -207,6 +199,107 @@ class ShelfViewTextControllerTest(
       .get("/api/shelfview/v1/books/${book.id}/text")
       .andExpect {
         status { isForbidden() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given txt file exactly at size limit when getting text then returns content`() {
+    val file = libraryRoot.resolve("exact-limit.txt")
+    Files.writeString(file, "a".repeat(63) + "\n\n" + "b".repeat(63), StandardCharsets.UTF_8)
+    val book = createBookWithMedia(file)
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/text")
+      .andExpect {
+        status { isOk() }
+        jsonPath("$.paragraphs.length()") { value(2) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given txt path outside owning library when getting text then returns forbidden`(
+    @TempDir outside: Path,
+  ) {
+    val file = outside.resolve("outside.txt")
+    Files.writeString(file, "Outside", StandardCharsets.UTF_8)
+    val book = createBookWithMedia(file)
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/text")
+      .andExpect {
+        status { isForbidden() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given txt symbolic link when getting text then returns forbidden`() {
+    val target = libraryRoot.resolve("link-target.txt")
+    Files.writeString(target, "Target", StandardCharsets.UTF_8)
+    val link = libraryRoot.resolve("linked.txt")
+    createSymbolicLinkOrSkip(link, target)
+    val book = createBookWithMedia(link)
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/text")
+      .andExpect {
+        status { isForbidden() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given intermediate link escapes library when getting text then returns forbidden`(
+    @TempDir outside: Path,
+  ) {
+    val externalFile = outside.resolve("escaped.txt")
+    Files.writeString(externalFile, "Escaped", StandardCharsets.UTF_8)
+    val link = libraryRoot.resolve("escape")
+    createSymbolicLinkOrSkip(link, outside)
+    val book = createBookWithMedia(link.resolve(externalFile.fileName))
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/text")
+      .andExpect {
+        status { isForbidden() }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given registered txt is replaced by outside symbolic link when getting text then returns forbidden`(
+    @TempDir outside: Path,
+  ) {
+    val registeredPath = libraryRoot.resolve("replaced.txt")
+    Files.writeString(registeredPath, "Original", StandardCharsets.UTF_8)
+    val book = createBookWithMedia(registeredPath)
+    val outsideTarget = outside.resolve("outside-target.txt")
+    Files.writeString(outsideTarget, "Outside secret", StandardCharsets.UTF_8)
+    Files.delete(registeredPath)
+    createSymbolicLinkOrSkip(registeredPath, outsideTarget)
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/text")
+      .andExpect {
+        status { isForbidden() }
+        content { string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Outside secret"))) }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given txt file disappears after registration when getting text then returns not found`() {
+    val file = libraryRoot.resolve("missing.txt")
+    Files.writeString(file, "Missing", StandardCharsets.UTF_8)
+    val book = createBookWithMedia(file)
+    Files.delete(file)
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/text")
+      .andExpect {
+        status { isNotFound() }
       }
   }
 
@@ -249,6 +342,17 @@ class ShelfViewTextControllerTest(
     }
 
     return book
+  }
+
+  private fun createSymbolicLinkOrSkip(
+    link: Path,
+    target: Path,
+  ) {
+    try {
+      Files.createSymbolicLink(link, target)
+    } catch (failure: Exception) {
+      assumeTrue(false, "Symbolic links are not available: ${failure.javaClass.simpleName}")
+    }
   }
 
   private companion object {

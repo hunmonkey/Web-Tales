@@ -57,3 +57,8 @@ export function getBookReadRouteFromMedia(media: MediaDto): string {
 
   return getLegacyBookReadRouteFromMedia(media)
 }
+
+export function getEpubReaderFallbackRouteFromMedia(media: MediaDto): string | undefined {
+  if (lowerCase(media.mediaProfile) === 'epub') return undefined
+  return getBookReadRouteFromMedia(media)
+}

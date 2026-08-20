@@ -85,7 +85,7 @@ class TransientBooksController(
       } catch (ex: MediaNotReadyException) {
         throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
       } catch (ex: NoSuchFileException) {
-        logger.warn(ex) { "File not found}" }
+        logger.warn { "Transient book file not found: bookId=${it.book.id}, errorType=${ex.javaClass.simpleName}" }
         throw ResponseStatusException(HttpStatus.NOT_FOUND, "File not found, it may have moved")
       }
     } ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)

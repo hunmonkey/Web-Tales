@@ -50,7 +50,9 @@ class BookMetadataLifecycle(
             try {
               provider.getBookMetadataFromBook(BookWithMedia(book, media))
             } catch (e: Exception) {
-              logger.error(e) { "Error while getting metadata from ${provider.javaClass.simpleName} for book: $book" }
+              logger.error {
+                "Book metadata provider failed: bookId=${book.id}, provider=${provider.javaClass.simpleName}, errorType=${e.javaClass.simpleName}"
+              }
               null
             }
 

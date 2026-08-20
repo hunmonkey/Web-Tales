@@ -574,7 +574,7 @@ class BookController(
       } catch (ex: MediaNotReadyException) {
         throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
       } catch (ex: NoSuchFileException) {
-        logger.warn(ex) { "File not found: $book" }
+        logger.warn { "Book file not found: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
         throw ResponseStatusException(HttpStatus.NOT_FOUND, "File not found, it may have moved")
       }
     } ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -784,7 +784,7 @@ class BookController(
           priority = HIGHEST_PRIORITY,
         )
       } catch (e: Exception) {
-        logger.error(e) { "Error while creating import task for: $it" }
+        logger.error { "Error while creating import task: seriesId=${it.seriesId}, errorType=${e.javaClass.simpleName}" }
       }
     }
   }

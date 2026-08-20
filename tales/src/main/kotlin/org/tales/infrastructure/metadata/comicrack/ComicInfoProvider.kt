@@ -97,7 +97,7 @@ class ComicInfoProvider(
             try {
               URI(it.trim()).let { uri -> WebLink(uri.host, uri) }
             } catch (e: Exception) {
-              logger.error(e) { "Could not parse Web element as valid URI: $it" }
+              logger.error { "Could not parse ComicInfo Web element: errorType=${e.javaClass.simpleName}" }
               null
             }
           }
@@ -174,14 +174,14 @@ class ComicInfoProvider(
   private fun getComicInfo(book: BookWithMedia): ComicInfo? {
     try {
       if (book.media.files.none { it.fileName == COMIC_INFO }) {
-        logger.debug { "Book does not contain any $COMIC_INFO file: $book" }
+        logger.debug { "Book does not contain ComicInfo metadata: bookId=${book.book.id}" }
         return null
       }
 
       val fileContent = bookAnalyzer.getFileContent(book, COMIC_INFO)
       return mapper.readValue(fileContent, ComicInfo::class.java)
     } catch (e: Exception) {
-      logger.error(e) { "Error while retrieving metadata from $COMIC_INFO" }
+      logger.error { "Error while retrieving ComicInfo metadata: bookId=${book.book.id}, errorType=${e.javaClass.simpleName}" }
       return null
     }
   }

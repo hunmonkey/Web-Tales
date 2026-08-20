@@ -65,12 +65,12 @@ class SeriesLifecycle(
   private val whitespacePattern = """\s+""".toRegex()
 
   fun sortBooks(series: Series) {
-    logger.info { "Sorting books for $series" }
+    logger.info { "Sorting books: seriesId=${series.id}" }
 
     val books = bookRepository.findAllBySeriesId(series.id)
     val metadatas = bookMetadataRepository.findAllByIds(books.map { it.id })
-    logger.debug { "Existing books: $books" }
-    logger.debug { "Existing metadata: $metadatas" }
+    logger.debug { "Existing books for sort: seriesId=${series.id}, count=${books.size}" }
+    logger.debug { "Existing metadata for sort: seriesId=${series.id}, count=${metadatas.size}" }
 
     val sorted =
       books
@@ -82,7 +82,7 @@ class SeriesLifecycle(
               .replace(whitespacePattern, " ")
           },
         ).map { book -> book to metadatas.first { it.bookId == book.id } }
-    logger.debug { "Sorted books: $sorted" }
+    logger.debug { "Sorted books: seriesId=${series.id}, count=${sorted.size}" }
 
     bookRepository.update(
       sorted.mapIndexed { index, (book, _) -> book.copy(number = index + 1) },
@@ -171,7 +171,7 @@ class SeriesLifecycle(
   }
 
   fun softDeleteMany(series: Collection<Series>) {
-    logger.info { "Soft delete series: $series" }
+    logger.info { "Soft delete series ids: ${series.map { it.id }}" }
     val deletedDate = LocalDateTime.now()
 
     transactionTemplate.executeWithoutResult {
@@ -326,8 +326,8 @@ class SeriesLifecycle(
   }
 
   fun deleteSeriesFiles(series: Series) {
-    if (series.path.notExists()) return logger.info { "Cannot delete series folder, path does not exist: ${series.path}" }
-    if (!series.path.isWritable()) return logger.info { "Cannot delete series folder, path is not writable: ${series.path}" }
+    if (series.path.notExists()) return logger.info { "Cannot delete series folder: seriesId=${series.id}, reason=NOT_FOUND" }
+    if (!series.path.isWritable()) return logger.info { "Cannot delete series folder: seriesId=${series.id}, reason=NOT_WRITABLE" }
 
     val thumbnails =
       thumbnailsSeriesRepository
@@ -339,12 +339,12 @@ class SeriesLifecycle(
       .findAllBySeriesId(series.id)
       .forEach { bookLifecycle.deleteBookFiles(it) }
     thumbnails.forEach {
-      if (it.deleteIfExists()) logger.info { "Deleted file: $it" }
+      if (it.deleteIfExists()) logger.info { "Deleted series thumbnail: seriesId=${series.id}" }
     }
 
     if (series.path.exists() && series.path.listDirectoryEntries().isEmpty())
       if (series.path.deleteIfExists()) {
-        logger.info { "Deleted directory: ${series.path}" }
+        logger.info { "Deleted empty series directory: seriesId=${series.id}" }
         historicalEventRepository.insert(HistoricalEvent.SeriesFolderDeleted(series, "Folder was deleted because it was empty"))
       }
 

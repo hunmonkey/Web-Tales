@@ -157,7 +157,7 @@ sealed class Task(
   ) : Task(priority, seriesId) {
     override val uniqueId: String = "IMPORT_BOOK_${seriesId}_$sourceFile"
 
-    override fun toString(): String = "ImportBook(sourceFile='$sourceFile', seriesId='$seriesId', copyMode=$copyMode, destinationName=$destinationName, upgradeBookId=$upgradeBookId, priority='$priority')"
+    override fun toString(): String = "ImportBook(seriesId='$seriesId', copyMode=$copyMode, upgradeBookId=$upgradeBookId, priority='$priority')"
   }
 
   class ConvertBook(

@@ -1,5 +1,6 @@
 package org.tales.shelfview.interfaces.api
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -155,7 +156,7 @@ class ShelfViewHighlightControllerTest(
 
   @Test
   @WithMockCustomUser(id = USER_1_ID)
-  fun `given mixed text selector when creating highlight then it can be fetched`() {
+  fun `given forged mixed text locator for a fixed page book when creating highlight then it is rejected`() {
     val book = createBookWithMedia()
 
     mockMvc
@@ -169,21 +170,10 @@ class ShelfViewHighlightControllerTest(
             textQuote = "Archive text",
           )
       }.andExpect {
-        status { isCreated() }
-        jsonPath("$.locator.kind") { value("MIXED") }
-        jsonPath("$.selector.kind") { value("MIXED_TEXT_RANGE") }
-        jsonPath("$.selector.itemId") { value("opaque-item") }
-        jsonPath("$.selector.itemSelector.kind") { value("TEXT_RANGE") }
-        jsonPath("$.color") { value("PINK") }
+        status { isBadRequest() }
       }
 
-    mockMvc
-      .get("/api/shelfview/v1/books/${book.id}/highlights")
-      .andExpect {
-        status { isOk() }
-        jsonPath("$.length()") { value(1) }
-        jsonPath("${'$'}[0].selector.kind") { value("MIXED_TEXT_RANGE") }
-      }
+    assertThat(readerStateDao.findHighlights(book.id, USER_1_ID)).isEmpty()
   }
 
   @Test

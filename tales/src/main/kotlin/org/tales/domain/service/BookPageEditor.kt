@@ -92,13 +92,11 @@ class BookPageEditor(
       return null
     }
 
-    logger.info { "Start removal of ${pagesToDelete.size} pages for book: $book" }
-    logger.debug { "Pages: ${media.pages}" }
-    logger.debug { "Pages to delete: $pagesToDelete" }
-    logger.debug { "Pages to keep: $pagesToKeep" }
+    logger.info { "Start page removal: bookId=${book.id}, deleteCount=${pagesToDelete.size}" }
+    logger.debug { "Page removal plan: bookId=${book.id}, total=${media.pages.size}, delete=${pagesToDelete.size}, keep=${pagesToKeep.size}" }
 
     val tempFile = File.createTempFile(TEMP_PREFIX, TEMP_SUFFIX, book.path.parent.toFile()).toPath()
-    logger.info { "Creating new file: $tempFile" }
+    logger.info { "Creating temporary page-removal archive: bookId=${book.id}" }
     ZipArchiveOutputStream(tempFile.outputStream()).use { zipStream ->
       zipStream.setMethod(ZipArchiveOutputStream.DEFLATED)
       zipStream.setLevel(Deflater.NO_COMPRESSION)

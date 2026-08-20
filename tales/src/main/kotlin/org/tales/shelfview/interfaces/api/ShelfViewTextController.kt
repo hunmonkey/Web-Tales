@@ -47,6 +47,9 @@ class ShelfViewTextController(
     }
 
     val book = bookRepository.findByIdOrNull(bookDto.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+    if (book.libraryId != bookDto.libraryId) {
+      throw ResponseStatusException(HttpStatus.FORBIDDEN, "SHELFVIEW_TEXT_LIBRARY_MISMATCH")
+    }
     return textContentProvider.read(book, shelfViewContentFingerprint(bookDto, media), encoding)
   }
 

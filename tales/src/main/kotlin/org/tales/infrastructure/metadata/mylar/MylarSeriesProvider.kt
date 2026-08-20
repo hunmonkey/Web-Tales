@@ -33,7 +33,7 @@ class MylarSeriesProvider(
     try {
       val seriesJsonPath = series.path.resolve(SERIES_JSON)
       if (seriesJsonPath.notExists()) {
-        logger.debug { "Series folder does not contain any $SERIES_JSON file: $series" }
+        logger.debug { "Series folder does not contain Mylar metadata: seriesId=${series.id}" }
         return null
       }
       val metadata = mapper.readValue(seriesJsonPath.toFile(), MylarSeries::class.java).metadata
@@ -62,7 +62,7 @@ class MylarSeriesProvider(
         collections = emptySet(),
       )
     } catch (e: Exception) {
-      logger.error(e) { "Error while retrieving metadata from $SERIES_JSON" }
+      logger.error { "Error while retrieving Mylar series metadata: seriesId=${series.id}, errorType=${e.javaClass.simpleName}" }
       return null
     }
   }

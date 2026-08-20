@@ -1,6 +1,8 @@
 package org.tales.interfaces.mvc
 
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.ControllerAdvice
@@ -10,6 +12,7 @@ import org.springframework.web.servlet.NoHandlerFoundException
 
 @Component
 @ControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 class ResourceNotFoundController {
   val apis = listOf("/api", "/opds", "/sse")
 

@@ -44,6 +44,7 @@ class ShelfViewPositionController(
   private val bookLifecycle: BookLifecycle,
   private val contentRestrictionChecker: ContentRestrictionChecker,
   private val readerPositionRepository: ShelfViewReaderPositionRepository,
+  private val locatorValidator: ShelfViewLocatorValidator,
   private val mapper: ObjectMapper,
 ) {
   @Operation(summary = "Get ShelfView reader position")
@@ -78,13 +79,12 @@ class ShelfViewPositionController(
   ): ShelfViewPositionDto {
     val book = findAuthorizedBook(bookId, principal)
     val media = mediaRepository.findByIdOrNull(book.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-    val contentFingerprint = shelfViewContentFingerprint(book, media)
     val validatedLocator =
-      ShelfViewLocatorValidator.validate(
+      locatorValidator.validate(
         locator = request.locator,
         progression = request.progression,
-        expectedContentFingerprint = contentFingerprint,
-        pageCount = shelfViewPageCount(media),
+        book = book,
+        media = media,
       )
 
     val position =

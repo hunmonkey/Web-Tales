@@ -59,4 +59,6 @@ data class Library(
 
   @delegate:Transient
   val path: Path by lazy { this.root.toURI().toPath() }
+
+  override fun toString(): String = "Library(id='$id')"
 }

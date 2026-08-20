@@ -52,7 +52,7 @@ class FontsController(
             FilenameUtils.getName(FilenameUtils.getPathNoEndSeparator(it.uri.toString()))
           }
       } catch (e: Exception) {
-        logger.error(e) { "Could not load embedded fonts" }
+        logger.error { "Could not load embedded fonts: errorType=${e.javaClass.simpleName}" }
         emptyMap()
       }
 
@@ -76,14 +76,14 @@ class FontsController(
           emptyMap()
         }
       } catch (e: Exception) {
-        logger.error(e) { "Could not load additional fonts" }
+        logger.error { "Could not load additional fonts: errorType=${e.javaClass.simpleName}" }
         emptyMap()
       }
 
     fonts = fontsEmbedded + fontsAdditional
 
-    logger.info { "Fonts embedded: $fontsEmbedded" }
-    logger.info { "Fonts discovered: $fontsAdditional" }
+    logger.info { "Embedded font family count: ${fontsEmbedded.size}" }
+    logger.info { "Additional font family count: ${fontsAdditional.size}" }
   }
 
   @GetMapping("families")

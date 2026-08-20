@@ -10,7 +10,7 @@ import {
   ClientSettingUserUpdateDto,
 } from '@/types/tales-clientsettings'
 import {Theme} from '@/types/themes'
-import i18n from '@/i18n'
+import {KNOWN_LOCALES} from '@/i18n'
 
 let service: TalesSettingsService
 
@@ -54,7 +54,10 @@ export const vuexModule: Module<any, any> = {
       if (Object.values(Theme).includes(theme)) commit('setTheme', theme)
 
       const locale = state.clientSettingsUser[CLIENT_SETTING.WEBUI_LOCALE]?.value
-      if (i18n.availableLocales.includes(locale)) commit('setLocale', locale)
+      // Checked against every locale that has a file, not against the loaded
+      // ones: a stored locale outside the four eager ones is legitimate and
+      // arrives when App's watcher fetches its chunk.
+      if (KNOWN_LOCALES.includes(locale)) commit('setLocale', locale)
     },
     async saveUserPreference({dispatch}, {key, value}: { key: CLIENT_SETTING, value: string }) {
       const newSettings = {} as Record<string, ClientSettingUserUpdateDto>

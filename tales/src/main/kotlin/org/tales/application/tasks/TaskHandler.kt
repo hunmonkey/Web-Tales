@@ -181,7 +181,7 @@ class TaskHandler(
         meterRegistry.timer(METER_TASKS_EXECUTION, "type", task.javaClass.simpleName).record(it.toJavaDuration())
       }
     } catch (e: Exception) {
-      logger.error(e) { "Task $task execution failed" }
+      logger.error { "Task $task execution failed: errorType=${e.javaClass.simpleName}" }
       meterRegistry.counter(METER_TASKS_FAILURE, "type", task.javaClass.simpleName).increment()
     }
   }

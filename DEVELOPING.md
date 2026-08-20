@@ -7,7 +7,7 @@ Thanks a lot for contributing to Tales!
 You will need:
 
 - Java JDK version 21+
-- Nodejs version 18+ (check the `.nvmrc` file)
+- Nodejs version 22.13+ (check the `.nvmrc` file) and npm version 11+
 
 ## Setting up the project
 

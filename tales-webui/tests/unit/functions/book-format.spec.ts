@@ -1,4 +1,8 @@
-import {getBookReadRouteFromMedia, getLegacyBookReadRouteFromMedia} from '@/functions/book-format'
+import {
+  getBookReadRouteFromMedia,
+  getEpubReaderFallbackRouteFromMedia,
+  getLegacyBookReadRouteFromMedia,
+} from '@/functions/book-format'
 import {MediaDto} from '@/types/tales-books'
 
 const divinaMedia: MediaDto = {
@@ -16,6 +20,15 @@ const epubMedia: MediaDto = {
   pagesCount: 2,
   comment: '',
   mediaProfile: 'EPUB',
+  epubDivinaCompatible: false,
+}
+
+const pdfMedia: MediaDto = {
+  status: 'READY',
+  mediaType: 'application/pdf',
+  pagesCount: 2,
+  comment: '',
+  mediaProfile: 'PDF',
   epubDivinaCompatible: false,
 }
 
@@ -59,5 +72,17 @@ describe('book read routes', () => {
     process.env.VUE_APP_SHELFVIEW_READER = 'true'
 
     expect(getLegacyBookReadRouteFromMedia(divinaMedia)).toBe('read-book')
+  })
+
+  it('redirects PDF away from the EPUB reader with either reader flag state', () => {
+    delete process.env.VUE_APP_SHELFVIEW_READER
+    expect(getEpubReaderFallbackRouteFromMedia(pdfMedia)).toBe('read-book')
+
+    process.env.VUE_APP_SHELFVIEW_READER = 'true'
+    expect(getEpubReaderFallbackRouteFromMedia(pdfMedia)).toBe('read-book-v2')
+  })
+
+  it('keeps EPUB in the EPUB reader', () => {
+    expect(getEpubReaderFallbackRouteFromMedia(epubMedia)).toBeUndefined()
   })
 })

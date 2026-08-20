@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.ClassPathResource
+import org.tales.captureLogs
 import org.tales.domain.model.Book
 import org.tales.domain.model.BookPage
 import org.tales.domain.model.BookWithMedia
@@ -309,11 +310,12 @@ class BookAnalyzerTest(
     @Test
     fun `given epub archive when toc cannot be extracted then media status is READY with comments`() {
       val file = ClassPathResource("epub/The Incomplete Theft - Ralph Burke.epub")
-      val book = Book("book", file.url, LocalDateTime.now())
+      val book = Book("book", file.url, LocalDateTime.now(), id = BOOK_ID)
 
-      every { epubExtractor.getToc(any()) } throws Exception("mock exception")
+      every { epubExtractor.getToc(any()) } throws Exception(SENSITIVE_PARSER_MESSAGE)
 
-      val media = bookAnalyzer.analyze(book, false)
+      val captured = captureLogs(BookAnalyzer::class.java) { bookAnalyzer.analyze(book, false) }
+      val media = captured.result
       val extension = media.extension as? MediaExtensionEpub
 
       assertThat(media.mediaType).isEqualTo("application/epub+zip")
@@ -321,6 +323,9 @@ class BookAnalyzerTest(
       assertThat(media.comment).contains("ERR_1035")
       assertThat(extension).isNotNull
       assertThat(extension!!.toc).isEmpty()
+      assertThat(captured.rendered)
+        .contains("bookId=$BOOK_ID", "errorType=Exception")
+        .doesNotContain(SENSITIVE_PARSER_MESSAGE, file.url.toString(), "Exception:")
     }
 
     @Test
@@ -513,4 +518,9 @@ class BookAnalyzerTest(
       ImageIO.write(image, "png", output)
       output.toByteArray()
     }
+
+  private companion object {
+    const val BOOK_ID = "book-id"
+    const val SENSITIVE_PARSER_MESSAGE = "SV1274_PRIVATE_EPUB_PARSER_DETAIL"
+  }
 }

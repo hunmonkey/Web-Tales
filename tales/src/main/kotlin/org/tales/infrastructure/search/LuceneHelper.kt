@@ -81,7 +81,7 @@ class LuceneHelper(
       } catch (_: ParseException) {
         emptyList()
       } catch (e: Exception) {
-        logger.error(e) { "Error fetching entities from index" }
+        logger.error { "Error fetching entities from index: entityType=${entity.type}, errorType=${e.javaClass.simpleName}" }
         emptyList()
       }
     } else {

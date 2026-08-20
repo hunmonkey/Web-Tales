@@ -457,11 +457,11 @@ class ReadListController(
             books.forEach { (index, book) ->
               val file = FileSystemResource(book.path)
               if (!file.exists()) {
-                logger.warn { "Book file not found, skipping archive entry: ${file.path}" }
+                logger.warn { "Book file not found; skipping archive entry: bookId=${book.id}" }
                 return@forEach
               }
 
-              logger.debug { "Adding file to zip archive: ${file.path}" }
+              logger.debug { "Adding book to ZIP archive: bookId=${book.id}" }
               file.inputStream.use {
                 zipStream.putArchiveEntry(ZipArchiveEntry("${index + 1} - ${file.filename}"))
                 IOUtils.copyLarge(it, zipStream, ByteArray(8192))

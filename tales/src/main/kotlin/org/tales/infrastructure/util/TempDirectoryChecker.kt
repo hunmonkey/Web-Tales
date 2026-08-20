@@ -19,16 +19,16 @@ fun checkTempDirectory() {
     val tmpDir = Path(it)
 
     if (Files.notExists(tmpDir)) {
-      logger.warn { "Temp directory does not exist, attempting to create it: $tmpDir" }
+      logger.warn { "Temp directory does not exist; attempting creation" }
       try {
         Files.createDirectories(tmpDir)
-        logger.info { "Created missing temp directory: $tmpDir" }
+        logger.info { "Created missing temp directory" }
       } catch (e: Exception) {
-        logger.error(e) { "Could not create missing temp directory: $tmpDir" }
-        throw IllegalStateException("Could not create missing temp directory: $tmpDir", e)
+        logger.error { "Could not create missing temp directory: errorType=${e.javaClass.simpleName}" }
+        throw IllegalStateException("Could not create the configured temp directory")
       }
     }
 
-    check(Files.isWritable(tmpDir)) { "Temp directory is not writable: $tmpDir" }
+    check(Files.isWritable(tmpDir)) { "The configured temp directory is not writable" }
   } ?: throw IllegalStateException("System property 'java.io.tmpdir' is not defined")
 }

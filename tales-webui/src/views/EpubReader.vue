@@ -332,9 +332,10 @@ import {
 import {flattenToc} from '@/functions/toc'
 import ShortcutHelpDialog from '@/components/dialogs/ShortcutHelpDialog.vue'
 import screenfull from 'screenfull'
-import {getBookReadRouteFromMedia} from '@/functions/book-format'
+import {getBookReadRouteFromMedia, getEpubReaderFallbackRouteFromMedia} from '@/functions/book-format'
 import SettingsSelect from '@/components/SettingsSelect.vue'
 import {createR2Progression, r2ProgressionToReadingPosition} from '@/functions/readium'
+import {epubReaderStyleInjectables} from '@/functions/epub-reader-assets'
 import {debounce} from 'lodash'
 
 export default Vue.extend({
@@ -450,7 +451,7 @@ export default Vue.extend({
     if (screenfull.isEnabled) screenfull.on('change', this.fullscreenChanged)
   },
   beforeDestroy() {
-    this.d2Reader.stop()
+    this.d2Reader?.stop?.()
   },
   destroyed() {
     this.$vuetify.rtl = (this.$t('common.locale_rtl') === 'true')
@@ -730,6 +731,7 @@ export default Vue.extend({
     },
     async setup(bookId: string) {
       this.book = await this.$talesBooks.getBook(bookId)
+      if (this.redirectUnsupportedMediaIfNeeded()) return
       this.series = await this.$talesSeries.getOneSeries(this.book.seriesId)
 
       const progression = await this.$talesBooks.getProgression(bookId)
@@ -759,29 +761,10 @@ export default Vue.extend({
       this.d2Reader = await D2Reader.load({
         url: new URL(bookManifestUrl(this.bookId)),
         userSettings: this.settings,
-        storageType: 'memory',
+        useStorageType: 'memory',
         lastReadingPosition: initialLocation,
         injectables: [
-          // webpack will process the new URL (https://webpack.js.org/guides/asset-modules/#url-assets)
-          // we use a different extension so that the css-loader rule is not used (see vue.config.js)
-          {
-            type: 'style',
-            url: new URL('../styles/readium/ReadiumCSS-before.css.resource', import.meta.url).toString(),
-            r2before: true,
-          },
-          {
-            type: 'style',
-            url: new URL('../styles/readium/ReadiumCSS-default.css.resource', import.meta.url).toString(),
-            r2default: true,
-          },
-          {
-            type: 'style',
-            url: new URL('../styles/readium/ReadiumCSS-after.css.resource', import.meta.url).toString(),
-            r2after: true,
-          },
-          {type: 'style', url: new URL('../styles/r2d2bc/popup.css.resource', import.meta.url).toString()},
-          {type: 'style', url: new URL('../styles/r2d2bc/popover.css.resource', import.meta.url).toString()},
-          {type: 'style', url: new URL('../styles/r2d2bc/style.css.resource', import.meta.url).toString()},
+          ...epubReaderStyleInjectables(),
           ...fontFamiliesInjectables,
         ],
         requestConfig: {
@@ -841,6 +824,17 @@ export default Vue.extend({
       } catch (e) {
         this.siblingPrevious = {} as BookDto
       }
+    },
+    redirectUnsupportedMediaIfNeeded(): boolean {
+      const fallbackRoute = getEpubReaderFallbackRouteFromMedia(this.book.media)
+      if (!fallbackRoute) return false
+
+      this.$router.replace({
+        name: fallbackRoute,
+        params: {bookId: this.bookId},
+        query: this.$route.query,
+      })
+      return true
     },
     historyBack() {
       this.d2Reader.historyBack()

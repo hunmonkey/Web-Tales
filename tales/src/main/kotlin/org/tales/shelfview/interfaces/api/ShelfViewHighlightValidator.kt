@@ -59,7 +59,7 @@ internal object ShelfViewHighlightValidator {
   private fun JsonNode.validateMixedTextRange(locator: JsonNode) {
     if (locator.requiredText("kind") != KIND_MIXED) invalid("MIXED_TEXT_RANGE requires a MIXED locator")
 
-    val itemId = requiredText("itemId")
+    val itemId = requiredText("itemId", SHELFVIEW_LOCATOR_MAX_ITEM_ID_LENGTH)
     val itemIndex = requiredInt("itemIndex")
     if (itemIndex < 0) invalid("itemIndex must be zero or greater")
     if (locator.requiredText("itemId") != itemId || locator.requiredInt("itemIndex") != itemIndex) {
@@ -117,10 +117,15 @@ internal object ShelfViewHighlightValidator {
     return value.intValue()
   }
 
-  private fun JsonNode.requiredText(name: String): String {
+  private fun JsonNode.requiredText(
+    name: String,
+    maxLength: Int? = null,
+  ): String {
     val value = get(name) ?: invalid("$name is required")
     if (!value.isTextual || value.textValue().isBlank()) invalid("$name must be a non-empty string")
-    return value.textValue()
+    val text = value.textValue()
+    if (maxLength != null && text.length > maxLength) invalid("$name must be $maxLength characters or fewer")
+    return text
   }
 
   private fun invalid(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_INVALID_HIGHLIGHT: $message")

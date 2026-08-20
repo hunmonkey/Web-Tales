@@ -39,7 +39,7 @@ class TalesUserLifecycle(
     newPassword: String,
     expireSessions: Boolean,
   ) {
-    logger.info { "Changing password for user ${user.email}" }
+    logger.info { "Changing password: userId=${user.id}" }
     val updatedUser = user.copy(password = passwordEncoder.encode(newPassword))
     userRepository.update(updatedUser)
 
@@ -53,7 +53,7 @@ class TalesUserLifecycle(
     requireNotNull(existing) { "User doesn't exist, cannot update: $user" }
 
     val toUpdate = user.copy(password = existing.password)
-    logger.info { "Update user: $toUpdate" }
+    logger.info { "Updating user: userId=${toUpdate.id}" }
     userRepository.update(toUpdate)
 
     val expireSessions =
@@ -76,12 +76,12 @@ class TalesUserLifecycle(
     userRepository.insert(talesUser.copy(password = passwordEncoder.encode(talesUser.password)))
 
     val createdUser = userRepository.findByIdOrNull(talesUser.id)!!
-    logger.info { "User created: $createdUser" }
+    logger.info { "User created: userId=${createdUser.id}" }
     return createdUser
   }
 
   fun deleteUser(user: TalesUser) {
-    logger.info { "Deleting user: $user" }
+    logger.info { "Deleting user: userId=${user.id}" }
 
     transactionTemplate.executeWithoutResult {
       clientSettingsDtoDao.deleteByUserId(user.id)
@@ -96,13 +96,9 @@ class TalesUserLifecycle(
   }
 
   fun expireSessions(user: TalesUser) {
-    logger.info { "Expiring all sessions for user: ${user.email}" }
-    sessionRegistry
-      .getAllSessions(TalesPrincipal(user), false)
-      .forEach {
-        logger.info { "Expiring session: ${it.sessionId}" }
-        it.expireNow()
-      }
+    val sessions = sessionRegistry.getAllSessions(TalesPrincipal(user), false)
+    logger.info { "Expiring user sessions: userId=${user.id}, count=${sessions.size}" }
+    sessions.forEach { it.expireNow() }
   }
 
   /**

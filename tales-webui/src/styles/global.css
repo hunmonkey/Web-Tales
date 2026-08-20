@@ -162,7 +162,7 @@ html {
 /* The search box moved from the app bar into the top of the drawer (SV-1200),
    so it now fills the drawer width instead of centring inside a wide bar. */
 .app-shell__search {
-    padding: 12px 12px 4px;
+    padding: 8px 6px 2px;
 }
 
 .app-shell__search .v-input__slot {
@@ -183,14 +183,33 @@ html {
     border-inline-end: 1px solid var(--tales-border) !important;
 }
 
+/* The menu carries no icons, so the drawer is sized to the labels and the
+   horizontal padding is kept small to give the main area the width back. */
 .app-shell__nav {
-    padding: 10px 12px;
+    padding: 6px 6px;
 }
 
 .app-shell__nav .v-list-item,
 .app-shell__nav .v-list-group__header {
-    border-radius: 12px;
-    margin-bottom: 3px;
+    border-radius: 10px;
+    margin-bottom: 2px;
+    min-height: 40px;
+    padding-inline: 10px;
+}
+
+/* Vuetify reserves a wide gutter for the icon slot that no longer exists. */
+.app-shell__nav .v-list-item__content {
+    padding-block: 6px;
+}
+
+/* Library rows keep a row-level action menu; it should not push the name. */
+.app-shell__nav .v-list-item__action {
+    margin-inline-start: 4px;
+    min-width: 28px;
+}
+
+.app-shell__nav .v-list-group--sub-group .v-list-item {
+    padding-inline-start: 16px;
 }
 
 .app-shell__nav .v-list-item--active {

@@ -9,6 +9,7 @@ import org.tales.domain.model.Media
 import org.tales.domain.model.MediaProfile
 import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption

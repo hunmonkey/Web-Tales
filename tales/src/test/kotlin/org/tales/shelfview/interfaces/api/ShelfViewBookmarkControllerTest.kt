@@ -1,5 +1,6 @@
 package org.tales.shelfview.interfaces.api
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
@@ -154,7 +155,7 @@ class ShelfViewBookmarkControllerTest(
 
   @Test
   @WithMockCustomUser(id = USER_1_ID)
-  fun `given mixed locator when creating bookmark then it can be fetched`() {
+  fun `given forged mixed locator for a fixed page book when creating bookmark then it is rejected`() {
     val book = createBookWithMedia()
 
     mockMvc
@@ -162,23 +163,10 @@ class ShelfViewBookmarkControllerTest(
         contentType = MediaType.APPLICATION_JSON
         content = mixedBookmarkJson(label = "Archive image")
       }.andExpect {
-        status { isCreated() }
-        jsonPath("$.locator.kind") { value("MIXED") }
-        jsonPath("$.locator.itemId") { value("opaque-item") }
-        jsonPath("$.locator.itemIndex") { value(1) }
-        jsonPath("$.locator.itemLocator.kind") { value("PAGE") }
-        jsonPath("$.locator.itemLocator.page") { value(0) }
-        jsonPath("$.label") { value("Archive image") }
+        status { isBadRequest() }
       }
 
-    mockMvc
-      .get("/api/shelfview/v1/books/${book.id}/bookmarks")
-      .andExpect {
-        status { isOk() }
-        jsonPath("$.length()") { value(1) }
-        jsonPath("${'$'}[0].locator.kind") { value("MIXED") }
-        jsonPath("${'$'}[0].locator.itemId") { value("opaque-item") }
-      }
+    assertThat(readerStateDao.findBookmarks(book.id, USER_1_ID)).isEmpty()
   }
 
   @Test

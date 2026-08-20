@@ -8,9 +8,15 @@ import Vue from 'vue'
 import {Theme} from '@/types/themes'
 import {LIBRARY_ADDED, LIBRARY_CHANGED, LIBRARY_DELETED, SESSION_EXPIRED} from '@/types/events'
 import {LibrarySseDto, SessionExpiredDto} from '@/types/tales-sse'
+import {loadLocale} from '@/i18n'
 
 export default Vue.extend({
   name: 'App',
+  data() {
+    return {
+      localeLoadRequest: 0,
+    }
+  },
   created() {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this.systemThemeChange)
 
@@ -31,11 +37,16 @@ export default Vue.extend({
   },
   watch: {
     '$store.state.persistedState.locale': {
+      // Only the four locales the picker offers are in the initial bundle; any
+      // other stored locale arrives as its own chunk. Testing availableLocales
+      // would reject those, because a locale is not "available" until fetched.
       handler(val) {
-        if (this.$i18n.availableLocales.includes(val)) {
+        const request = ++this.localeLoadRequest
+        loadLocale(val).then(loaded => {
+          if (!loaded || request !== this.localeLoadRequest || this.$store.state.persistedState.locale !== val) return
           this.$i18n.locale = val
           this.$vuetify.rtl = (this.$t('common.locale_rtl') === 'true')
-        }
+        })
       },
       immediate: true,
     },

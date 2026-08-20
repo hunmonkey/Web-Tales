@@ -129,7 +129,7 @@ class BookLifecycle(
     } catch (ex: NoThumbnailFoundException) {
       logger.error { "Error while creating thumbnail" }
     } catch (ex: Exception) {
-      logger.error(ex) { "Error while creating thumbnail" }
+      logger.error { "Error while creating thumbnail: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
     }
   }
 
@@ -218,7 +218,7 @@ class BookLifecycle(
             resizeTargetFormat.mediaType,
           )
         } catch (e: Exception) {
-          logger.error(e) { "Resize thumbnail of book $bookId to $resizeTo: failed" }
+          logger.error { "Resize thumbnail failed: bookId=$bookId, targetSize=$resizeTo, errorType=${e.javaClass.simpleName}" }
         }
       }
 
@@ -312,13 +312,13 @@ class BookLifecycle(
         try {
           imageConverter.resizeImageToByteArray(pageContent, resizeTargetFormat, resizeTo)
         } catch (e: Exception) {
-          logger.error(e) { "Resize page #$number of book $book to $resizeTo: failed" }
+          logger.error { "Resize page failed: bookId=${book.id}, page=$number, targetSize=$resizeTo, errorType=${e.javaClass.simpleName}" }
           throw e
         }
       return TypedBytes(convertedPage, resizeTargetFormat.mediaType)
     } else {
       convertTo?.let {
-        val msg = "Convert page #$number of book $book from $pageMediaType to ${it.mediaType}"
+        val msg = "Convert page #$number of bookId=${book.id} from $pageMediaType to ${it.mediaType}"
         if (!imageConverter.supportedReadMediaTypes.contains(pageMediaType)) {
           throw ImageConversionException("$msg: unsupported read format $pageMediaType")
         }
@@ -335,7 +335,7 @@ class BookLifecycle(
           try {
             imageConverter.convertImage(pageContent, it.imageIOFormat)
           } catch (e: Exception) {
-            logger.error(e) { "$msg: conversion failed" }
+            logger.error { "$msg: conversion failed, errorType=${e.javaClass.simpleName}" }
             throw e
           }
         return TypedBytes(convertedPage, it.mediaType)
@@ -526,8 +526,8 @@ class BookLifecycle(
   }
 
   fun deleteBookFiles(book: Book) {
-    if (book.path.notExists()) return logger.info { "Cannot delete book file, path does not exist: ${book.path}" }
-    if (!book.path.isWritable()) return logger.info { "Cannot delete book file, path is not writable: ${book.path}" }
+    if (book.path.notExists()) return logger.info { "Cannot delete book file: bookId=${book.id}, reason=NOT_FOUND" }
+    if (!book.path.isWritable()) return logger.info { "Cannot delete book file: bookId=${book.id}, reason=NOT_WRITABLE" }
 
     val thumbnails =
       thumbnailBookRepository
@@ -536,11 +536,11 @@ class BookLifecycle(
         .filter { it.exists() && it.isWritable() }
 
     if (book.path.deleteIfExists()) {
-      logger.info { "Deleted file: ${book.path}" }
+      logger.info { "Deleted book file: bookId=${book.id}" }
       historicalEventRepository.insert(HistoricalEvent.BookFileDeleted(book, "File was deleted by user request"))
     }
     thumbnails.forEach {
-      if (it.deleteIfExists()) logger.info { "Deleted file: $it" }
+      if (it.deleteIfExists()) logger.info { "Deleted book thumbnail: bookId=${book.id}" }
     }
 
     if (book.path.parent
@@ -548,7 +548,7 @@ class BookLifecycle(
         .isEmpty()
     )
       if (book.path.parent.deleteIfExists()) {
-        logger.info { "Deleted directory: ${book.path.parent}" }
+        logger.info { "Deleted empty book directory: bookId=${book.id}, seriesId=${book.seriesId}" }
         historicalEventRepository.insert(HistoricalEvent.SeriesFolderDeleted(book.seriesId, book.path.parent, "Folder was deleted because it was empty"))
       }
 

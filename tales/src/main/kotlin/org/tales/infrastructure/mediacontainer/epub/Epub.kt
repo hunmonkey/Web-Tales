@@ -6,7 +6,8 @@ import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
 import org.tales.domain.model.MediaUnsupportedException
 import org.tales.infrastructure.util.getEntryInputStream
-import org.tales.infrastructure.util.use
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
+import org.tales.shelfview.infrastructure.archive.withPreflightedZip
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -17,8 +18,11 @@ data class EpubPackage(
   val manifest: Map<String, ManifestItem>,
 )
 
-inline fun <R> Path.epub(block: (EpubPackage) -> R): R =
-  ZipFile.builder().setPath(this).use { zip ->
+fun <R> Path.epub(
+  archiveProperties: ShelfViewArchiveProperties,
+  block: (EpubPackage) -> R,
+): R =
+  withPreflightedZip(this, archiveProperties) { zip ->
     val opfFile = zip.getPackagePath()
     val opfDoc = zip.getEntryInputStream(opfFile)?.use { Jsoup.parse(it, null, "", Parser.xmlParser()) } ?: throw MediaUnsupportedException("Could not open OPF resource")
     val opfDir = Paths.get(opfFile).parent
@@ -38,8 +42,11 @@ fun ZipFile.getPackagePath(): String =
 /**
  * Returns the content of the Epub package file as a [String]
  */
-fun getPackageFileContent(path: Path): String? =
-  ZipFile.builder().setPath(path).use { zip ->
+fun getPackageFileContent(
+  path: Path,
+  archiveProperties: ShelfViewArchiveProperties,
+): String? =
+  withPreflightedZip(path, archiveProperties) { zip ->
     try {
       zip.getEntryInputStream(zip.getPackagePath())?.reader()?.use { it.readText() }
     } catch (e: Exception) {

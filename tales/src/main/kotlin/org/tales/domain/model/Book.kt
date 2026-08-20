@@ -23,4 +23,6 @@ data class Book(
 ) : Auditable {
   @delegate:Transient
   val path: Path by lazy { this.url.toURI().toPath() }
+
+  override fun toString(): String = "Book(id='$id')"
 }

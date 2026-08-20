@@ -28,7 +28,7 @@ class InitialUserController(
       initialUsers
         .forEach {
           userLifecycle.createUser(it)
-          logger.info { "Initial user created. Login: ${it.email}, Password: ${it.password}" }
+          logger.info { "Initial user created" }
         }
     }
   }

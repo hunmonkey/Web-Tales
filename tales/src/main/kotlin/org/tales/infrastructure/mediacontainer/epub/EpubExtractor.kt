@@ -6,6 +6,7 @@ import org.jsoup.Jsoup
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.tales.domain.model.BookPage
+import org.tales.domain.model.EntryNotFoundException
 import org.tales.domain.model.EpubTocEntry
 import org.tales.domain.model.MediaFile
 import org.tales.domain.model.R2Locator
@@ -14,7 +15,8 @@ import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.tales.infrastructure.util.getEntryBytes
 import org.tales.infrastructure.util.getEntryInputStream
-import org.tales.infrastructure.util.getZipEntryBytes
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
+import org.tales.shelfview.infrastructure.archive.withPreflightedZip
 import java.net.URLDecoder
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -29,6 +31,7 @@ class EpubExtractor(
   private val contentDetector: ContentDetector,
   private val imageAnalyzer: ImageAnalyzer,
   @param:Value("#{@talesProperties.epubDivinaLetterCountThreshold}") private val letterCountThreshold: Int,
+  private val archiveProperties: ShelfViewArchiveProperties,
 ) {
   /**
    * Retrieves a specific entry by name from the zip archive
@@ -36,7 +39,10 @@ class EpubExtractor(
   fun getEntryStream(
     path: Path,
     entryName: String,
-  ): ByteArray = getZipEntryBytes(path, entryName)
+  ): ByteArray =
+    readEntryBytes(path, entryName, ignoreLocalFileHeader = true)
+      ?: readEntryBytes(path, entryName, ignoreLocalFileHeader = false)
+      ?: throw EntryNotFoundException("Entry does not exist")
 
   fun isEpub(path: Path): Boolean =
     try {
@@ -49,7 +55,7 @@ class EpubExtractor(
    * Retrieves the book cover along with its mediaType from the epub 2/3 manifest
    */
   fun getCover(path: Path): TypedBytes? =
-    path.epub { (zip, opfDoc, opfDir, manifest) ->
+    path.epub(archiveProperties) { (zip, opfDoc, opfDir, manifest) ->
       val coverManifestItem =
         // EPUB 3 - try to get cover from manifest properties 'cover-image'
         manifest.values.firstOrNull { it.properties.contains("cover-image") }
@@ -74,6 +80,22 @@ class EpubExtractor(
       } else {
         null
       }
+    }
+
+  private fun readEntryBytes(
+    path: Path,
+    entryName: String,
+    ignoreLocalFileHeader: Boolean,
+  ): ByteArray? =
+    withPreflightedZip(
+      path,
+      archiveProperties,
+      configure = {
+        setUseUnicodeExtraFields(true)
+        setIgnoreLocalFileHeader(ignoreLocalFileHeader)
+      },
+    ) { zip ->
+      zip.getEntryBytes(entryName)
     }
 
   fun getResources(epub: EpubPackage): List<MediaFile> {

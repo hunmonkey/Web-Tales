@@ -95,7 +95,7 @@ class BookConverter(
     if (destinationPath.exists())
       throw FileAlreadyExistsException("Destination file already exists: $destinationPath")
 
-    logger.info { "Copying archive content to $destinationPath" }
+    logger.info { "Copying archive content: bookId=${book.id}" }
     ZipArchiveOutputStream(destinationPath.outputStream()).use { zipStream ->
       zipStream.setMethod(ZipArchiveOutputStream.DEFLATED)
       zipStream.setLevel(Deflater.NO_COMPRESSION)
@@ -149,7 +149,7 @@ class BookConverter(
     }
 
     if (book.path.deleteIfExists()) {
-      logger.info { "Deleted old file: ${book.path}" }
+      logger.info { "Deleted source file after conversion: bookId=${book.id}" }
       historicalEventRepository.insert(HistoricalEvent.BookFileDeleted(book, "File was deleted after conversion to CBZ"))
     }
 
@@ -185,7 +185,7 @@ class BookConverter(
 
     if (book.path.extension.lowercase() == "epub" && media.mediaType == MediaType.ZIP.type) {
       skippedRepairs += book.id
-      logger.info { "EPUB file detected as zip should not be repaired, skipping: ${book.path}" }
+      logger.info { "EPUB file detected as ZIP; extension repair skipped: bookId=${book.id}" }
       return
     }
 
@@ -202,7 +202,7 @@ class BookConverter(
     if (destinationPath.exists())
       throw FileAlreadyExistsException("Destination file already exists: $destinationPath")
 
-    logger.info { "Renaming ${book.path} to $destinationPath" }
+    logger.info { "Repairing book extension: bookId=${book.id}" }
     book.path.moveTo(destinationPath)
 
     val repairedBook =

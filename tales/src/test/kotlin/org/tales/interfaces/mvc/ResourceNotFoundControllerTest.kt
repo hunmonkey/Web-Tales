@@ -50,6 +50,7 @@ class ResourceNotFoundControllerTest(
       .get("/book/0DBTWY6S0KNX9")
       .andExpect {
         status { isOk() }
+        forwardedUrl("/")
       }
   }
 }

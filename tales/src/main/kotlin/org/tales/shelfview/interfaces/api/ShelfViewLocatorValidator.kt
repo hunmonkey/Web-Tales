@@ -2,23 +2,28 @@ package org.tales.shelfview.interfaces.api
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
+import org.tales.domain.model.Media
+import org.tales.interfaces.api.rest.dto.BookDto
+import org.tales.shelfview.domain.ShelfViewPublicationKind
+
+internal const val SHELFVIEW_LOCATOR_MAX_ITEM_ID_LENGTH = 128
+internal const val SHELFVIEW_LOCATOR_MAX_CONTENT_FINGERPRINT_LENGTH = 512
 
 internal data class ShelfViewValidatedLocator(
   val contentFingerprint: String,
 )
 
-internal object ShelfViewLocatorValidator {
-  private const val SCHEMA_VERSION = 1
-  private const val KIND_PAGE = "PAGE"
-  private const val KIND_TEXT = "TEXT"
-  private const val KIND_MIXED = "MIXED"
-
-  fun validate(
+@Component
+class ShelfViewLocatorValidator(
+  private val mixedManifestResolver: ShelfViewMixedManifestResolver,
+) {
+  internal fun validate(
     locator: JsonNode?,
     progression: Float?,
-    expectedContentFingerprint: String,
-    pageCount: Int,
+    book: BookDto,
+    media: Media,
   ): ShelfViewValidatedLocator {
     val normalizedProgression = progression ?: invalid("progression is required")
     if (!normalizedProgression.isFinite() || normalizedProgression < 0F || normalizedProgression > 1F) {
@@ -27,15 +32,15 @@ internal object ShelfViewLocatorValidator {
 
     return validate(
       locator = locator,
-      expectedContentFingerprint = expectedContentFingerprint,
-      pageCount = pageCount,
+      book = book,
+      media = media,
     )
   }
 
-  fun validate(
+  internal fun validate(
     locator: JsonNode?,
-    expectedContentFingerprint: String,
-    pageCount: Int,
+    book: BookDto,
+    media: Media,
   ): ShelfViewValidatedLocator {
     if (locator == null || !locator.isObject) invalid("locator must be an object")
 
@@ -43,15 +48,16 @@ internal object ShelfViewLocatorValidator {
     if (schemaVersion != SCHEMA_VERSION) invalid("schemaVersion must be $SCHEMA_VERSION")
 
     val kind = locator.requiredText("kind")
-    val contentFingerprint = locator.requiredText("contentFingerprint")
+    val contentFingerprint = locator.requiredText("contentFingerprint", SHELFVIEW_LOCATOR_MAX_CONTENT_FINGERPRINT_LENGTH)
+    val expectedContentFingerprint = shelfViewContentFingerprint(book, media)
     if (contentFingerprint != expectedContentFingerprint) {
       invalid("contentFingerprint does not match the current book")
     }
 
     when (kind) {
-      KIND_PAGE -> locator.validatePageLocator(pageCount)
+      KIND_PAGE -> locator.validatePageLocator(shelfViewPageCount(media))
       KIND_TEXT -> locator.validateTextLocator()
-      KIND_MIXED -> locator.validateMixedLocator()
+      KIND_MIXED -> locator.validateMixedLocator(book, media, expectedContentFingerprint)
       else -> invalid("kind must be PAGE, TEXT or MIXED")
     }
 
@@ -81,9 +87,14 @@ internal object ShelfViewLocatorValidator {
     if (locatorProgression < 0.0 || locatorProgression > 1.0) invalid("locator progression must be between 0 and 1")
   }
 
-  private fun JsonNode.validateMixedLocator() {
-    requiredText("itemId")
-    if (requiredInt("itemIndex") < 0) invalid("itemIndex must be zero or greater")
+  private fun JsonNode.validateMixedLocator(
+    book: BookDto,
+    media: Media,
+    bookContentFingerprint: String,
+  ) {
+    val itemId = requiredText("itemId", SHELFVIEW_LOCATOR_MAX_ITEM_ID_LENGTH)
+    val itemIndex = requiredInt("itemIndex")
+    if (itemIndex < 0) invalid("itemIndex must be zero or greater")
 
     val itemLocator = get("itemLocator") ?: invalid("itemLocator is required")
     if (!itemLocator.isObject) invalid("itemLocator must be an object")
@@ -91,11 +102,31 @@ internal object ShelfViewLocatorValidator {
     val schemaVersion = itemLocator.requiredInt("schemaVersion")
     if (schemaVersion != SCHEMA_VERSION) invalid("itemLocator schemaVersion must be $SCHEMA_VERSION")
 
-    itemLocator.requiredText("contentFingerprint")
-    when (itemLocator.requiredText("kind")) {
+    val itemContentFingerprint = itemLocator.requiredText("contentFingerprint", SHELFVIEW_LOCATOR_MAX_CONTENT_FINGERPRINT_LENGTH)
+    val itemKind = itemLocator.requiredText("kind")
+    when (itemKind) {
       KIND_PAGE -> itemLocator.validatePageLocator()
       KIND_TEXT -> itemLocator.validateTextLocator()
       else -> invalid("itemLocator kind must be PAGE or TEXT")
+    }
+
+    val currentItem = mixedManifestResolver.listCurrentItems(book, media, bookContentFingerprint).getOrNull(itemIndex)
+    if (currentItem == null || currentItem.itemId != itemId) {
+      invalid("mixed item does not exist in the current manifest")
+    }
+    if (itemContentFingerprint != currentItem.contentFingerprint) {
+      invalid("itemLocator contentFingerprint does not match the current manifest item")
+    }
+
+    val expectedKind =
+      when (currentItem.kind) {
+        ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE -> KIND_PAGE
+        ShelfViewPublicationKind.TEXT_REFLOW -> KIND_TEXT
+        else -> invalid("mixed manifest item kind is not supported")
+      }
+    if (itemKind != expectedKind) invalid("itemLocator kind does not match the current manifest item")
+    if (itemKind == KIND_PAGE) {
+      itemLocator.validatePageLocator(currentItem.pageCount ?: invalid("mixed page item has no page count"))
     }
   }
 
@@ -105,10 +136,15 @@ internal object ShelfViewLocatorValidator {
     return value.intValue()
   }
 
-  private fun JsonNode.requiredText(name: String): String {
+  private fun JsonNode.requiredText(
+    name: String,
+    maxLength: Int? = null,
+  ): String {
     val value = get(name) ?: invalid("$name is required")
     if (!value.isTextual || value.textValue().isBlank()) invalid("$name must be a non-empty string")
-    return value.textValue()
+    val text = value.textValue()
+    if (maxLength != null && text.length > maxLength) invalid("$name must be $maxLength characters or fewer")
+    return text
   }
 
   private fun JsonNode.requiredNumber(name: String): Double {
@@ -121,4 +157,11 @@ internal object ShelfViewLocatorValidator {
   }
 
   private fun invalid(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_INVALID_LOCATOR: $message")
+
+  private companion object {
+    const val SCHEMA_VERSION = 1
+    const val KIND_PAGE = "PAGE"
+    const val KIND_TEXT = "TEXT"
+    const val KIND_MIXED = "MIXED"
+  }
 }

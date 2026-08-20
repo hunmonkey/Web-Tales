@@ -122,13 +122,13 @@ class BookImporter(
       var deletedUpgradedFile = false
       when {
         bookToUpgrade?.path != null && destFile == bookToUpgrade.path -> {
-          logger.info { "Deleting existing file: ${bookToUpgrade.path}" }
+          logger.info { "Deleting existing upgrade target: bookId=${bookToUpgrade.id}" }
           try {
             bookToUpgrade.path.deleteExisting()
             historicalEventRepository.insert(HistoricalEvent.BookFileDeleted(bookToUpgrade, "File was deleted to import an upgrade"))
             deletedUpgradedFile = true
           } catch (e: NoSuchFileException) {
-            logger.warn { "Could not delete upgraded book: ${bookToUpgrade.path}" }
+            logger.warn { "Could not delete upgrade target: bookId=${bookToUpgrade.id}, reason=NOT_FOUND" }
           }
         }
 
@@ -138,29 +138,29 @@ class BookImporter(
       if (bookToUpgrade?.path != null) {
         fileSystemScanner.scanBookSidecars(bookToUpgrade.path).forEach { sidecar ->
           val sidecarPath = sidecar.url.toURI().toPath()
-          logger.info { "Deleting existing file: $sidecarPath" }
+          logger.info { "Deleting existing upgrade sidecar: bookId=${bookToUpgrade.id}" }
           sidecarPath.deleteIfExists()
         }
       }
 
       when (copyMode) {
         CopyMode.MOVE -> {
-          logger.info { "Moving file $sourceFile to $destFile" }
+          logger.info { "Moving imported book: seriesId=${series.id}, upgradeBookId=$upgradeBookId" }
           sourceFile.moveTo(destFile)
           sidecars.forEach {
             it.key.url.toURI().toPath().let { sourcePath ->
-              logger.info { "Moving file $sourcePath to ${it.value}" }
+              logger.info { "Moving imported sidecar: seriesId=${series.id}" }
               sourcePath.moveTo(it.value, true)
             }
           }
         }
 
         CopyMode.COPY -> {
-          logger.info { "Copying file $sourceFile to $destFile" }
+          logger.info { "Copying imported book: seriesId=${series.id}, upgradeBookId=$upgradeBookId" }
           sourceFile.copyTo(destFile)
           sidecars.forEach {
             it.key.url.toURI().toPath().let { sourcePath ->
-              logger.info { "Copying file $sourcePath to ${it.value}" }
+              logger.info { "Copying imported sidecar: seriesId=${series.id}" }
               sourcePath.copyTo(it.value, true)
             }
           }
@@ -168,17 +168,17 @@ class BookImporter(
 
         CopyMode.HARDLINK ->
           try {
-            logger.info { "Hardlink file $sourceFile to $destFile" }
+            logger.info { "Hardlinking imported book: seriesId=${series.id}, upgradeBookId=$upgradeBookId" }
             Files.createLink(destFile, sourceFile)
             sidecars.forEach {
               it.key.url.toURI().toPath().let { sourcePath ->
-                logger.info { "Hardlink file $sourcePath to ${it.value}" }
+                logger.info { "Hardlinking imported sidecar: seriesId=${series.id}" }
                 it.value.deleteIfExists()
                 Files.createLink(it.value, sourcePath)
               }
             }
           } catch (e: Exception) {
-            logger.warn(e) { "Filesystem does not support hardlinks, copying instead" }
+            logger.warn { "Hardlink import failed; copying instead: seriesId=${series.id}, errorType=${e.javaClass.simpleName}" }
             sourceFile.copyTo(destFile)
             sidecars.forEach {
               it.key.url
@@ -240,7 +240,7 @@ class BookImporter(
 
         // delete upgraded book file on disk if it has not been replaced earlier
         if (!deletedUpgradedFile && bookToUpgrade.path.deleteIfExists()) {
-          logger.info { "Deleted existing file: ${bookToUpgrade.path}" }
+          logger.info { "Deleted replaced upgrade target: bookId=${bookToUpgrade.id}" }
           historicalEventRepository.insert(HistoricalEvent.BookFileDeleted(bookToUpgrade, "File was deleted to import an upgrade"))
         }
 

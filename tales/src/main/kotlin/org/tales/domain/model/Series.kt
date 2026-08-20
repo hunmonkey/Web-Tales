@@ -20,4 +20,6 @@ data class Series(
 ) : Auditable {
   @delegate:Transient
   val path: Path by lazy { this.url.toURI().toPath() }
+
+  override fun toString(): String = "Series(id='$id')"
 }

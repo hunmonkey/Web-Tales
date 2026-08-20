@@ -38,7 +38,7 @@ class LibraryLifecycle(
     PathContainedInPath::class,
   )
   fun addLibrary(library: Library): Library {
-    logger.info { "Adding new library: ${library.name} with root folder: ${library.root}" }
+    logger.info { "Adding new library: libraryId=${library.id}" }
 
     val existing = libraryRepository.findAll()
     checkLibraryValidity(library, existing)
@@ -117,7 +117,7 @@ class LibraryLifecycle(
   }
 
   fun deleteLibrary(library: Library) {
-    logger.info { "Deleting library: $library" }
+    logger.info { "Deleting library: libraryId=${library.id}" }
 
     val series = seriesRepository.findAllByLibraryId(library.id)
     transactionTemplate.executeWithoutResult {

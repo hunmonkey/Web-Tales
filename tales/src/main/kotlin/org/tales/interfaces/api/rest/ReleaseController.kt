@@ -74,7 +74,7 @@ class ReleaseController(
       response?.body ?: emptyList()
     } catch (e: RuntimeException) {
       // the repository may have no releases, be private, or GitHub may be unreachable: none of those are server errors
-      logger.warn { "Could not retrieve releases: ${e.message}" }
+      logger.warn { "Could not retrieve releases: errorType=${e.javaClass.simpleName}" }
       emptyList()
     }
 }

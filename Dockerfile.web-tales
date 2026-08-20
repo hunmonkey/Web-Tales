@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
-FROM node:18-bookworm AS webui
+FROM node:22-bookworm AS webui
 WORKDIR /workspace
+RUN npm install --global npm@11
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" \
  && git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
 COPY tales-webui/package*.json ./tales-webui/

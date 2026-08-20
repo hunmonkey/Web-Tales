@@ -1,5 +1,6 @@
 package org.tales.shelfview.interfaces.api
 
+import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Positive
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.http.HttpStatus
@@ -7,20 +8,28 @@ import org.springframework.stereotype.Component
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Book
+import org.tales.domain.persistence.LibraryRepository
 import org.tales.shelfview.interfaces.api.dto.ShelfViewTextContentDto
+import java.io.IOException
 import java.nio.ByteBuffer
+import java.nio.channels.Channels
+import java.nio.channels.ReadableByteChannel
+import java.nio.channels.SeekableByteChannel
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.Charset
 import java.nio.charset.CodingErrorAction
 import java.nio.file.AccessDeniedException
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 
 @Component
 @ConfigurationProperties(prefix = "shelfview.text")
 @Validated
 class ShelfViewTextProperties {
+  @Max(2_147_483_646)
   @Positive
   var maxBytes: Long = 5L * 1024L * 1024L
 
@@ -31,6 +40,7 @@ class ShelfViewTextProperties {
 @Component
 class ShelfViewTextContentProvider(
   private val properties: ShelfViewTextProperties,
+  private val libraryRepository: LibraryRepository,
 ) {
   fun maxBytes(): Long = properties.maxBytes
 
@@ -39,12 +49,10 @@ class ShelfViewTextContentProvider(
     contentFingerprint: String,
     requestedEncoding: String?,
   ): ShelfViewTextContentDto {
-    val size = sizeOf(book.path)
-    if (size > properties.maxBytes) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_TEXT_TOO_LARGE")
-    }
-
-    val bytes = readBytes(book.path)
+    val library =
+      libraryRepository.findByIdOrNull(book.libraryId)
+        ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_TEXT_LIBRARY_NOT_FOUND")
+    val bytes = readBytes(book.path, library.path)
     return readBytes(
       bookId = book.id,
       contentFingerprint = contentFingerprint,
@@ -76,21 +84,23 @@ class ShelfViewTextContentProvider(
     )
   }
 
-  private fun sizeOf(path: Path): Long =
+  private fun readBytes(
+    path: Path,
+    libraryRoot: Path,
+  ): ByteArray =
     try {
-      Files.size(path)
+      openAuthorizedTextFile(path, libraryRoot).use { channel ->
+        readShelfViewTextBytes(channel, properties.maxBytes)
+      }
+    } catch (ex: ResponseStatusException) {
+      throw ex
     } catch (ex: NoSuchFileException) {
       throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_TEXT_FILE_NOT_FOUND", ex)
     } catch (ex: AccessDeniedException) {
       throw ResponseStatusException(HttpStatus.FORBIDDEN, "SHELFVIEW_TEXT_FILE_NOT_READABLE", ex)
-    }
-
-  private fun readBytes(path: Path): ByteArray =
-    try {
-      Files.readAllBytes(path)
-    } catch (ex: NoSuchFileException) {
-      throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_TEXT_FILE_NOT_FOUND", ex)
-    } catch (ex: AccessDeniedException) {
+    } catch (ex: SecurityException) {
+      throw ResponseStatusException(HttpStatus.FORBIDDEN, "SHELFVIEW_TEXT_FILE_NOT_READABLE", ex)
+    } catch (ex: IOException) {
       throw ResponseStatusException(HttpStatus.FORBIDDEN, "SHELFVIEW_TEXT_FILE_NOT_READABLE", ex)
     }
 
@@ -180,3 +190,56 @@ class ShelfViewTextContentProvider(
     val UTF_8_BOM = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
   }
 }
+
+internal fun readShelfViewTextBytes(
+  channel: SeekableByteChannel,
+  maxBytes: Long,
+): ByteArray {
+  require(maxBytes in 1 until Int.MAX_VALUE) { "TXT byte limit must be lower than Int.MAX_VALUE" }
+  if (channel.size() > maxBytes) {
+    throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_TEXT_TOO_LARGE")
+  }
+
+  val sizeAgnosticChannel =
+    object : ReadableByteChannel {
+      override fun read(destination: ByteBuffer): Int = channel.read(destination)
+
+      override fun isOpen(): Boolean = channel.isOpen
+
+      override fun close() = channel.close()
+    }
+  val bytes = Channels.newInputStream(sizeAgnosticChannel).readNBytes((maxBytes + 1).toInt())
+  if (bytes.size.toLong() > maxBytes) {
+    throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_TEXT_TOO_LARGE")
+  }
+  return bytes
+}
+
+private fun openAuthorizedTextFile(
+  path: Path,
+  libraryRoot: Path,
+): SeekableByteChannel {
+  val realRoot = libraryRoot.toRealPath()
+  if (!Files.isDirectory(realRoot, LinkOption.NOFOLLOW_LINKS)) textPathForbidden()
+
+  val requestedPath = path.toAbsolutePath().normalize()
+  if (Files.isSymbolicLink(requestedPath)) textPathForbidden()
+  val realPath = requestedPath.toRealPath()
+  if (realPath == realRoot || !realPath.startsWith(realRoot)) textPathForbidden()
+  if (!Files.isRegularFile(realPath, LinkOption.NOFOLLOW_LINKS)) textPathForbidden()
+
+  val channel =
+    Files.newByteChannel(
+      realPath,
+      setOf(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS),
+    )
+  try {
+    if (Files.isSymbolicLink(requestedPath) || requestedPath.toRealPath() != realPath) textPathForbidden()
+    return channel
+  } catch (failure: Throwable) {
+    channel.close()
+    throw failure
+  }
+}
+
+private fun textPathForbidden(): Nothing = throw ResponseStatusException(HttpStatus.FORBIDDEN, "SHELFVIEW_TEXT_PATH_OUTSIDE_LIBRARY")

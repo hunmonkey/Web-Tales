@@ -177,7 +177,7 @@ class ShelfViewPositionControllerTest(
 
   @Test
   @WithMockCustomUser(id = USER_1_ID)
-  fun `given mixed locator when saving position then it can be fetched`() {
+  fun `given forged mixed locator for a fixed page book when saving position then it is rejected`() {
     val book = createBookWithMedia()
 
     mockMvc
@@ -185,24 +185,10 @@ class ShelfViewPositionControllerTest(
         contentType = MediaType.APPLICATION_JSON
         content = mixedPositionJson(progression = 0.75F)
       }.andExpect {
-        status { isOk() }
-        jsonPath("$.locator.kind") { value("MIXED") }
-        jsonPath("$.locator.itemId") { value("opaque-item") }
-        jsonPath("$.locator.itemIndex") { value(1) }
-        jsonPath("$.locator.itemLocator.kind") { value("PAGE") }
-        jsonPath("$.locator.itemLocator.page") { value(0) }
-        jsonPath("$.locator.contentFingerprint") { value(CONTENT_FINGERPRINT) }
-        jsonPath("$.progression") { value(0.75) }
+        status { isBadRequest() }
       }
 
-    mockMvc
-      .get("/api/shelfview/v1/books/${book.id}/position")
-      .andExpect {
-        status { isOk() }
-        jsonPath("$.locator.kind") { value("MIXED") }
-        jsonPath("$.locator.itemId") { value("opaque-item") }
-      }
-
+    assertThat(readerStateDao.findPositionOrNull(book.id, USER_1_ID)).isNull()
     assertThat(readProgressRepository.findByBookIdAndUserIdOrNull(book.id, USER_1_ID)).isNull()
   }
 

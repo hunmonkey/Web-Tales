@@ -150,6 +150,27 @@ class ShelfViewMixedTextControllerTest(
 
   @Test
   @WithMockCustomUser
+  fun `given mixed zip over entry count limit when getting text then returns safe payload too large`(
+    @TempDir dir: Path,
+  ) {
+    val textBytes = "selected".toByteArray(StandardCharsets.UTF_8)
+    val entries = linkedMapOf("selected.txt" to textBytes)
+    repeat(8) { index -> entries["ignored-$index.bin"] = byteArrayOf(index.toByte()) }
+    val zip = dir.resolve("too-many-entries.zip")
+    writeZip(zip, entries)
+    val book = createBookWithMedia(zip)
+    val itemId = textItemId("selected.txt", textBytes.size.toLong())
+
+    mockMvc
+      .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/text")
+      .andExpect {
+        status { isPayloadTooLarge() }
+        jsonPath("$.code") { value("SHELFVIEW_ARCHIVE_TOO_MANY_ENTRIES") }
+      }
+  }
+
+  @Test
+  @WithMockCustomUser
   fun `given mixed zip with traversal entry when getting text then returns bad request`(
     @TempDir dir: Path,
   ) {

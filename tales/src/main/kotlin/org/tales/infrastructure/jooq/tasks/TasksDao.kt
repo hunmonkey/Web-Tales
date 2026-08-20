@@ -63,7 +63,7 @@ class TasksDao(
           try {
             objectMapper.readValue(it.value2(), Class.forName(it.value1())) as Task
           } catch (e: Exception) {
-            logger.error(e) { "Could not deserialize object of type: ${it.value1()}" }
+            logger.error { "Could not deserialize task: taskType=${it.value1()}, errorType=${e.javaClass.simpleName}" }
             null
           }
         } ?: return null
@@ -101,7 +101,7 @@ class TasksDao(
     try {
       objectMapper.readValue(value2(), Class.forName(value1())) as Task
     } catch (e: Exception) {
-      logger.error(e) { "Could not deserialize object of type: ${value1()}" }
+      logger.error { "Could not deserialize task: taskType=${value1()}, errorType=${e.javaClass.simpleName}" }
       null
     }
 

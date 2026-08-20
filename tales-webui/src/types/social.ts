@@ -8,3 +8,13 @@ export const socialButtons = {
     text: 'white',
   },
 }
+
+const oauth2ProviderIcons: Record<string, string> = {
+  google: 'mdi-google',
+  facebook: 'mdi-facebook',
+  github: 'mdi-github',
+}
+
+export function oauth2ProviderIcon(registrationId: string): string {
+  return oauth2ProviderIcons[registrationId.toLowerCase()] ?? 'mdi-login-variant'
+}

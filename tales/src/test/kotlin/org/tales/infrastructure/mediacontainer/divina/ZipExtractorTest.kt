@@ -1,15 +1,23 @@
 package org.tales.infrastructure.mediacontainer.divina
 
+import io.mockk.every
+import io.mockk.mockk
 import org.apache.tika.config.TikaConfig
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.core.io.ClassPathResource
+import org.tales.captureLogs
 import org.tales.domain.model.Dimension
 import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
+import org.tales.shelfview.infrastructure.archive.ArchiveLimitExceededException
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -19,7 +27,15 @@ import javax.imageio.ImageIO
 class ZipExtractorTest {
   private val contentDetector = ContentDetector(TikaConfig())
   private val imageAnalyzer = ImageAnalyzer()
-  private val zipExtractor = ZipExtractor(contentDetector, imageAnalyzer)
+  private val archiveProperties = ShelfViewArchiveProperties()
+  private val zipExtractor = ZipExtractor(contentDetector, imageAnalyzer, archiveProperties)
+
+  @BeforeEach
+  fun resetArchiveLimits() {
+    archiveProperties.maxEntries = 10_000
+    archiveProperties.maxImageBytes = 50L * 1024 * 1024
+    archiveProperties.maxTotalUncompressedBytes = 2L * 1024 * 1024 * 1024
+  }
 
   @Test
   fun `given zip file when parsing for entries then returns all images`() {
@@ -91,6 +107,97 @@ class ZipExtractorTest {
     assertThat(entries).isEmpty()
   }
 
+  @Test
+  fun `given zip over entry count limit when parsing for entries then rejects archive`(
+    @TempDir directory: Path,
+  ) {
+    archiveProperties.maxEntries = 2
+    val archive = directory.resolve("too-many-entries.zip")
+    writeZip(
+      archive,
+      "001.png" to byteArrayOf(1),
+      "002.png" to byteArrayOf(2),
+      "003.png" to byteArrayOf(3),
+    )
+
+    assertThatThrownBy { zipExtractor.getEntries(archive, false) }
+      .isInstanceOf(ArchiveLimitExceededException::class.java)
+      .hasMessage("SHELFVIEW_ARCHIVE_TOO_MANY_ENTRIES")
+  }
+
+  @Test
+  fun `given zip entry over image byte limit when parsing for entries then rejects archive`(
+    @TempDir directory: Path,
+  ) {
+    archiveProperties.maxImageBytes = 4
+    val archive = directory.resolve("oversized-entry.zip")
+    writeZip(archive, "001.png" to ByteArray(5))
+
+    assertThatThrownBy { zipExtractor.getEntries(archive, false) }
+      .isInstanceOf(ArchiveLimitExceededException::class.java)
+      .hasMessage("SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE")
+  }
+
+  @Test
+  fun `given zip entry over image byte limit when reading page then rejects before allocation`(
+    @TempDir directory: Path,
+  ) {
+    archiveProperties.maxImageBytes = 4
+    val archive = directory.resolve("oversized-page.zip")
+    writeZip(archive, "001.png" to ByteArray(5))
+
+    assertThatThrownBy { zipExtractor.getEntryStream(archive, "001.png") }
+      .isInstanceOf(ArchiveLimitExceededException::class.java)
+      .hasMessage("SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE")
+  }
+
+  @Test
+  fun `given large sibling entry when reading small page then budgets selected page only`(
+    @TempDir directory: Path,
+  ) {
+    archiveProperties.maxTotalUncompressedBytes = 4
+    val archive = directory.resolve("large-sibling.zip")
+    val selected = byteArrayOf(1, 2, 3, 4)
+    writeZip(archive, "001.png" to selected, "002.png" to ByteArray(32))
+
+    assertThat(zipExtractor.getEntryStream(archive, "001.png")).isEqualTo(selected)
+  }
+
+  @Test
+  fun `given nested outer and page over cumulative budget when reading page then rejects request`(
+    @TempDir directory: Path,
+  ) {
+    val selected = byteArrayOf(1, 2, 3, 4)
+    val nested = zipBytes("001.png" to selected)
+    archiveProperties.maxTotalUncompressedBytes = nested.size + selected.size.toLong() - 1
+    val archive = directory.resolve("nested-budget.zip")
+    writeZip(archive, "chapter.cbz" to nested)
+
+    assertThatThrownBy {
+      zipExtractor.getEntryStream(archive, "chapter.cbz${ZIP_NESTED_ENTRY_SEPARATOR}001.png")
+    }.isInstanceOf(ArchiveLimitExceededException::class.java)
+      .hasMessage("SHELFVIEW_ARCHIVE_TOTAL_TOO_LARGE")
+  }
+
+  @Test
+  fun `zip parser failure log omits raw parser message`(
+    @TempDir directory: Path,
+  ) {
+    val failingDetector = mockk<ContentDetector>()
+    every { failingDetector.detectMediaType(any<InputStream>()) } throws IllegalStateException(SENSITIVE_PARSER_MESSAGE)
+    val extractor = ZipExtractor(failingDetector, imageAnalyzer, archiveProperties)
+    val archive = directory.resolve("parser-failure.zip")
+    writeZip(archive, "001.bin" to byteArrayOf(1, 2, 3))
+
+    val captured = captureLogs(ZipExtractor::class.java) { extractor.getEntries(archive, false) }
+
+    assertThat(captured.result).hasSize(1)
+    assertThat(captured.result.single().comment).isEqualTo(SENSITIVE_PARSER_MESSAGE)
+    assertThat(captured.rendered)
+      .contains("errorType=IllegalStateException")
+      .doesNotContain(SENSITIVE_PARSER_MESSAGE, archive.toString(), "IllegalStateException:")
+  }
+
   private fun writeZip(
     path: Path,
     vararg entries: Pair<String, ByteArray>,
@@ -125,4 +232,8 @@ class ZipExtractorTest {
       ImageIO.write(image, "png", output)
       output.toByteArray()
     }
+
+  private companion object {
+    const val SENSITIVE_PARSER_MESSAGE = "SV1274_PRIVATE_ZIP_PARSER_DETAIL"
+  }
 }

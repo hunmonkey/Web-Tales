@@ -12,10 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.tales.domain.model.Book
+import org.tales.domain.model.BookPage
 import org.tales.domain.model.Media
 import org.tales.domain.model.makeBook
 import org.tales.domain.model.makeLibrary
@@ -27,6 +29,7 @@ import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.service.LibraryLifecycle
 import org.tales.domain.service.SeriesLifecycle
 import org.tales.interfaces.api.rest.WithMockCustomUser
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -44,10 +47,10 @@ import org.tales.domain.model.MediaType as TalesMediaType
 @TestPropertySource(
   properties = [
     "shelfview.archive.max-entries=8",
-    "shelfview.archive.max-image-bytes=2048",
-    "shelfview.archive.max-image-width=64",
-    "shelfview.archive.max-image-height=64",
-    "shelfview.archive.max-image-pixels=4096",
+    "shelfview.archive.max-image-bytes=1048576",
+    "shelfview.archive.max-image-width=20000",
+    "shelfview.archive.max-image-height=20000",
+    "shelfview.archive.max-image-pixels=100000000",
     "shelfview.archive.max-pdf-bytes=65536",
     "shelfview.archive.max-pdf-pages=2",
   ],
@@ -60,6 +63,7 @@ class ShelfViewMixedPageControllerTest(
   @Autowired private val libraryLifecycle: LibraryLifecycle,
   @Autowired private val bookRepository: BookRepository,
   @Autowired private val mockMvc: MockMvc,
+  @Autowired private val archiveProperties: ShelfViewArchiveProperties,
 ) {
   private val library = makeLibrary(id = "shelfview-mixed-page-library")
 
@@ -171,6 +175,63 @@ class ShelfViewMixedPageControllerTest(
         }.andReturn()
 
     assertThat(response.response.contentAsByteArray).isNotEmpty
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given mixed zip pdf render exceeds output limit when getting page then returns payload too large`(
+    @TempDir dir: Path,
+  ) {
+    val pdfBytes = pdfBytes()
+    val zip = dir.resolve("mixed-pdf-output-limit.zip")
+    writeZip(zip, mapOf("limited.pdf" to pdfBytes))
+    val book = createBookWithMedia(zip)
+    val itemId = mixedItemId("limited.pdf", pdfBytes.size.toLong())
+    val previousLimit = archiveProperties.maxImageBytes
+
+    try {
+      archiveProperties.maxImageBytes = 1
+      mockMvc
+        .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1")
+        .andExpect {
+          status { isPayloadTooLarge() }
+          jsonPath("$.code") { value("SHELFVIEW_IMAGE_TOO_LARGE") }
+        }
+    } finally {
+      archiveProperties.maxImageBytes = previousLimit
+    }
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given real oversized zip page when authenticated user requests legacy page then returns safe payload too large`(
+    @TempDir dir: Path,
+  ) {
+    val entryBytes = ByteArray((archiveProperties.maxImageBytes + 1).toInt()) { index -> index.toByte() }
+    val zip = dir.resolve("legacy-page-limit.zip")
+    writeZip(zip, mapOf("private-entry.png" to entryBytes))
+    val book = createBookWithMedia(zip)
+    mediaRepository.findById(book.id).let { media ->
+      mediaRepository.update(
+        media.copy(
+          pageCount = 1,
+          pages = listOf(BookPage("private-entry.png", "image/png")),
+        ),
+      )
+    }
+
+    val response =
+      mockMvc
+        .get("/api/v1/books/${book.id}/pages/1") {
+          accept(MediaType.APPLICATION_JSON)
+        }.andExpect {
+          status { isPayloadTooLarge() }
+          jsonPath("$.code") { value("SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE") }
+        }.andReturn()
+        .response.contentAsString
+
+    assertThat(response).isEqualTo("{\"code\":\"SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE\"}")
+    assertThat(response).doesNotContain(zip.toString(), "private-entry.png")
   }
 
   @Test
@@ -291,12 +352,18 @@ class ShelfViewMixedPageControllerTest(
     writeZip(zip, mapOf("wide.jpg" to imageBytes))
     val book = createBookWithMedia(zip)
     val itemId = mixedItemId("wide.jpg", imageBytes.size.toLong())
+    val previousLimit = archiveProperties.maxImageWidth
 
-    mockMvc
-      .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1")
-      .andExpect {
-        status { isPayloadTooLarge() }
-      }
+    try {
+      archiveProperties.maxImageWidth = 64
+      mockMvc
+        .get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1")
+        .andExpect {
+          status { isPayloadTooLarge() }
+        }
+    } finally {
+      archiveProperties.maxImageWidth = previousLimit
+    }
   }
 
   @Test

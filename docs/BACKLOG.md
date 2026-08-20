@@ -1004,3 +1004,308 @@ and deletes user data, so no SV-123x ticket starts before the owner accepts it.
   recommendation shelves. Confirm before implementing.
 - Whether the ShelfView reader becomes unconditional, which is what deleting
   `DivinaReader.vue` would require, is still SV-1245's question.
+
+## Type-check health, found 2026-08-16 during the M9 work
+
+Not part of the redesign the owner asked for. Recorded because the measurements
+came out of it and the condition affects every future build.
+
+Measured facts:
+
+- The webpack build takes **19 minutes** with the type check and **56 seconds**
+  without, on the same tree. The check is ~98% of build time.
+- At `fork-ts-checker`'s 2048 MB default the check runs out of memory partway
+  through and aborts — and the build still prints `Build complete`. Several
+  "green" builds today had run no type check at all.
+- Given enough memory to finish, it reports **176 pre-existing type errors**
+  across 42 files on HEAD before any of today's work (155 across 35 files
+  after). The project has never had a passing type check.
+- Most errors cascade from `TS2589: Type instantiation is excessively deep`
+  against `Vue.extend({...})`. Once inference gives up, even `this.$router`
+  resolves as a missing property. Same root cause as the OOM: the type graph is
+  past what the compiler will carry.
+- Plain `tsc --noEmit` does **not** check `.vue` files, and `vue-tsc` is a Vue 3
+  tool that does not apply to this Vue 2.6 project. `fork-ts-checker` inside the
+  build is the only `.vue` type check available here.
+
+Done now (no dependency added, no default behaviour changed):
+
+- [x] `vue.config.js` accepts `SHELFVIEW_TSCHECK_MEMORY` so the check can be
+  given enough memory to complete when someone wants a real answer.
+
+Open, needs an owner decision:
+
+- [ ] SV-1250 Decide what to do about the 176 errors. Either fix them, or accept
+  them formally and stop pretending the check is meaningful. Until one or the
+  other, "the build passed" carries no type guarantee, and raising the memory
+  limit by default would simply turn every build red.
+- [ ] SV-1251 Consider splitting the type check out of `npm run build` so the
+  normal build stays at ~56 s and the check is an explicit, separate command.
+  Blocked on SV-1250: there is no point scheduling a check that always fails.
+
+## Speed pass from 2026-08-20
+
+Owner asked for ways to improve features or speed, then for all of them to be
+done. Everything below was measured before it was changed; the numbers are from
+this repository and, for compression, from the running server.
+
+Baseline, first-load JavaScript and CSS, measured both locally and against
+`[internal-host]:3333`:
+
+| | raw | gzip |
+|---|---:|---:|
+| `chunk-vendors.js` | 2,017,858 | 431,590 |
+| `app.js` | 1,433,841 | 394,337 |
+| `chunk-vendors.css` | 612,209 | 83,379 |
+| `app.css` | 8,105 | 2,306 |
+| **total** | **4,072,013** | **911,614** |
+
+After the five frontend and config tickets: **2,036,844 raw / 397,310 gzip**.
+Because SV-1260 also turns compression on, what the browser actually downloads
+goes from 4,072,013 bytes to 397,310 — a 90% reduction.
+
+- [x] SV-1260 Enable HTTP response compression. `server.compression` was never
+  configured, and Spring Boot defaults it to off. Confirmed against the running
+  server: `chunk-vendors.js` came back as `Content-Length: 2017858` with no
+  `Content-Encoding`, for a request that sent `Accept-Encoding: gzip, deflate,
+  br`. Nothing compresses on the way out either — the app is exposed directly,
+  not behind a compressing proxy. The mime types are Spring Boot's own defaults
+  plus SVG, written out rather than inherited so it stays visible that page
+  images and web fonts are excluded. **Not verified running**: there is no JDK on
+  the development machine, so the backend was never compiled here. Verify after
+  deploy with `curl -H 'Accept-Encoding: gzip' -I`.
+- [x] SV-1261 Remove the dead charting stack. SV-1204a deleted the metrics view;
+  `chart.js`, `vue-chartkick` and their two `@types` packages stayed behind, and
+  the only remaining references were three lines of `main.ts`. `moment` was never
+  imported anywhere in `src/` — it arrived as a transitive dependency of
+  chart.js 2.9. Source-map attribution put the three at 462 KB of the 1,936 KB
+  minified vendor chunk. Result: `chunk-vendors.js` −525,975 bytes (−26%), and
+  none of the three appear anywhere in `dist` afterwards. `moment` stays in the
+  lockfile because `r2-lcp-js` and `r2-shared-js` declare it, but nothing in the
+  bundle pulls it in.
+- [x] SV-1262 Load locales on demand. `i18n.ts` inlined all 38 locale files into
+  `app.js` — 1,325 KB minified, of which one locale is ever read. The four the
+  preferences picker offers (`ko`, `en`, `ja`, `zh-Hans`) stay eager, because the
+  picker labels each entry in its own language with `$t('common.locale_name', x)`
+  and needs those messages before the user has chosen. The other 34 became one
+  chunk each. `app.js` −83%.
+  Two call sites guarded on `i18n.availableLocales`, which is now only the loaded
+  locales: `App.vue`'s watcher loads the chunk before switching, and
+  `tales-settings.plugin` checks the new `KNOWN_LOCALES` instead.
+  `PreferencesView` was deliberately left alone — its existing
+  `availableLocales` filter now reads as "offered and eager", which is the
+  correct guard.
+  **Caught during implementation**: passing `require.context` a regex held in a
+  const produces an empty context. Webpack only reads literal arguments. The
+  first build emitted no locale chunks at all and `KNOWN_LOCALES` would have been
+  empty at runtime, which would have stopped even Korean from applying. The
+  regex is now written out at the call site with a comment saying why.
+- [x] SV-1263 Subset the Material Design Icons stylesheet.
+  `@mdi/font` ships 7,296 icon rules; the application names 130. That was 329 KB
+  of the 612 KB vendor stylesheet and 51 KB of its 83 KB gzipped — and a
+  stylesheet blocks the first paint. `tales-webui/webpack/mdi-subset-loader.js`
+  is a `pre` loader that rebuilds the used-icon list from source on every
+  compile. Result: 171 rules kept, 7,125 dropped, `chunk-vendors.css` −53% raw
+  and −60% gzipped, with all 147 required icons verified present afterwards.
+  Written as a loader rather than a committed generated stylesheet because a
+  generated file goes stale the moment someone adds an icon, and the icon then
+  renders as an empty box.
+  **Two traps found while doing it**: Vuetify's own 33 icons are named in
+  `vuetify/lib/services/icons/presets/mdi.js`, not in `src/`, so scanning only
+  the application would have deleted the checkbox tick and the pagination
+  chevrons. And `ReadMore.vue` assembles `mdi-chevron-{{ open ? 'up' : 'down' }}`
+  at runtime, which a whole-name scan sees only as the stem `mdi-chevron-`;
+  `mdi-chevron-up` is in neither `src/` nor the Vuetify preset, so it would have
+  gone. The loader now treats a stem that runs into an interpolation as a prefix
+  and keeps everything under it.
+  **Not done**: the webfont itself. `materialdesignicons-webfont.woff2` is still
+  396 KB for 171 glyphs, and the `@font-face` also names `.eot`, `.woff` and
+  `.ttf`, so 3.5 MB of font files ship in the image for the one file browsers
+  fetch. Subsetting a woff2 needs a font tool, which is a new dependency.
+- [x] SV-1264 Run the canvas image filters in a worker. The 2D filters are
+  per-pixel passes on the main thread, and `canvas-image-processing.ts` already
+  said so: above `SHELFVIEW_CANVAS_CPU_MAX_PIXELS` (4 MP) it gave up and showed
+  the page unfiltered rather than stall the page turn. The pixel pass now runs in
+  a worker, pixels moving both ways as a transferred `ArrayBuffer`. This is a
+  feature change as much as a speed one: pages between 4 MP and the reader's
+  12 MP budget are filtered now where before they were silently left alone.
+  Without workers the runner falls back to the main thread and keeps the old
+  4 MP refusal exactly.
+  `import.meta.url` — how webpack 5 finds a worker entry — is a syntax error once
+  Jest rewrites a module to CommonJS, so `new Worker(...)` lives in its own file
+  reached by a dynamic import that only runs when `Worker` exists. Under jsdom
+  the file is never loaded, so it is never parsed.
+- [x] SV-1265 Cache open PDF documents. `PdfExtractor.getPageContentAsImage`
+  re-parsed the whole file on every page request, and `FixedPageAdapter`
+  prefetches -1 to +4, so one page turn issued six concurrent full parses of the
+  same PDF. [ADR-0020](ADR/ADR-0020-pdf-document-cache.md) has the design and,
+  more importantly, why it uses `tryLock` with a load-per-request fallback rather
+  than blocking: `PDDocument` cannot render concurrently, and whether "one parse
+  plus serialised renders" beats "six parallel parses" depends on whether parsing
+  or rendering dominates for a given file — which has not been measured here. The
+  fallback removes the need to know: sequential reading hits the cache, a burst
+  that finds the lock held behaves exactly as today, so no access pattern gets
+  slower.
+  **Verified 2026-08-20** with a temporary JDK 21: Kotlin compilation and
+  ktlint passed, and the focused PDF extractor suite exercises rendering,
+  cache shutdown, and non-`Exception` failure ownership.
+- [x] SV-1266 Block non-EPUB media from the legacy D2Reader route. A caller
+  could open `/book/{bookId}/read-epub` directly with a PDF book and reach the
+  `pdfjs-dist 2.14.305` bundled by `@d-i-t-a/reader`, which is affected by
+  [CVE-2024-4367](https://github.com/advisories/GHSA-wgrm-67xf-hhpq).
+  `EpubReader.setup` now checks the loaded book before requesting its series,
+  progression, manifest, or constructing D2Reader. Non-EPUB media is replaced
+  with the normal fixed-page route (`read-book-v2` when ShelfView is enabled,
+  otherwise `read-book`), preserving route parameters. EPUB behavior is
+  unchanged. The teardown also tolerates the intentionally uninitialized
+  reader on this early-return path.
+- [x] SV-1267 Restore direction-specific side taps on horizontally overflowing
+  fixed pages. The prior boolean enabled both side zones when either horizontal
+  edge was reached, so a right tap at the left edge advanced even though the
+  page still had content to pan towards. `shelfViewTapAction` now receives
+  independent physical left/right edge availability. LTR/RTL only decides the
+  resulting previous/next action after the tapped physical edge is eligible.
+  Pure input tests cover both directions and both edges; the reader integration
+  test now verifies that the right tap is ignored at the left edge and advances
+  only after `scrollLeft` reaches the right edge.
+- [x] SV-1268 Remove confirmed frontend orphan code. Repository-wide tracked
+  reference searches and the explicit router/component registration paths found
+  no consumers for `PagesTable.vue`, `BookPickerDialog.vue`,
+  `SeriesPickerDialog.vue`, or `series-slim.ts`; their last consumers were
+  removed by SV-1200..SV-1204. The four files are deleted. The reader test
+  factory also no longer accepts or registers the already removed
+  `$talesReadLists` service. Historical progress/backlog mentions remain as
+  documentation, and the unused locale namespaces are recorded separately from
+  this code-only cleanup rather than expanding the ticket across every locale.
+- [x] SV-1269 Preserve OAuth login icons in the MDI subset. `LoginView` built
+  `mdi-{{ provider.registrationId }}` at runtime, which the source scanner could
+  not turn into concrete glyph names; Google, Facebook, and GitHub were removed
+  from the generated CSS. Provider ids now go through a small explicit mapping,
+  with `mdi-login-variant` for arbitrary OIDC registrations. All four concrete
+  names are statically visible to the subset loader. A loader-level regression
+  test proves those rules stay while an unused rule is removed; applying the
+  loader to the full upstream CSS keeps 175 of 7,296 glyph rules and retains all
+  four OAuth rules.
+- [x] SV-1270 Harden canvas filter worker lifecycle. Concurrent first calls now
+  share one creation promise. A single dispatcher transfers only the active
+  image buffer while later jobs remain cancellable in a queue. Each canvas page
+  aborts its prior job when its source/mode changes or it unmounts; aborting
+  active synchronous worker work terminates that worker, then resumes valid
+  queued work on a fresh one. `error`, `messageerror`, protocol mismatch, and
+  `postMessage` failure reject and detach every pending listener/promise instead
+  of hanging. Tests cover shared creation, both worker error channels, post
+  failure, real active cancellation/restart, worker and synchronous paths.
+- [x] SV-1271 Make PDF cache document ownership and shutdown deterministic. A
+  locally loaded `PDDocument` now stays under a `finally` guard until Caffeine
+  explicitly takes ownership, covering `Error` subclasses and cache insertion
+  failures as well as `Exception`. The cache removal listener uses a direct
+  executor, so eviction and `@PreDestroy` return only after the handle closes.
+  Tests inspect the real cached PDFBox document immediately after shutdown and
+  mock an `AssertionError` render path; both closure guarantees pass. ADR-0020
+  now also states that mtime+size detects ordinary changes but is not content
+  identity when both metadata values are deliberately preserved.
+
+## Security and quality follow-ups from the 2026-08-20 audit
+
+- [x] SV-1272 Bound archive enumeration and extraction across every served
+  path. The legacy `ZipExtractor`, `RarExtractor`, and `Rar5Extractor` still
+  materialize whole entry lists or entry bodies without a byte budget, and the
+  mixed-ZIP path materializes entries before enforcing its count limit. Apply
+  entry-count, per-entry uncompressed-byte, cumulative request, nested-content,
+  and decoded-image limits before allocation. Add oversized/unknown-size and
+  archive-bomb regression tests for both scanning and authenticated page
+  delivery. Consider a separate global extraction concurrency budget after the
+  per-request boundaries are reliable.
+  Completed 2026-08-20: one `shelfview.archive` policy now bounds entry count,
+  central-directory and parser-construction metadata, per-entry and cumulative
+  uncompressed bytes, compression ratio, nested archives, decoded dimensions,
+  PDF pages and rendered output. ZIP/EPUB use an O(1) central-directory
+  preflight on the same channel handed to Commons Compress; RAR4 limits the
+  exact channel reads performed by junrar; mixed nested ZIPs and PDFs spool to
+  owned temp files with deterministic cleanup. Limit failures are stable HTTP
+  413 codes without paths or parser messages. Unit tests cover declared,
+  unknown and forged metadata limits, and authenticated legacy/mixed API tests
+  exercise the real extractors. A global cross-request extraction concurrency
+  ceiling remains a separate operational follow-up.
+- [x] SV-1273 Confine standalone TXT reads to the authorized media root and
+  make the byte cap allocation-safe. Reject symbolic-link targets and files
+  whose resolved real path escapes the owning library root, open without
+  following links, and stream at most `maxBytes + 1` rather than calling
+  `Files.readAllBytes` after a separate size check. Cover link replacement,
+  file growth between metadata/read operations, missing files, and exact-limit
+  reads.
+  Completed 2026-08-20: standalone TXT delivery now resolves the owning library
+  from the stored book, verifies the authorized and raw-book library ids still
+  agree, confines the real file to the real library root, rejects final links,
+  and opens with `NOFOLLOW_LINKS`. The same channel is revalidated and read
+  through a size-agnostic bounded view, so a file that grows after its size
+  query is stopped after `maxBytes + 1` bytes. Tests cover the exact boundary,
+  forged/growing size metadata, root escape, final and intermediate links,
+  post-registration link replacement, missing files, and the authenticated API.
+- [x] SV-1274 Sanitize production error responses. Change the production
+  `server.error.include-message` policy from `always`, separate stable public
+  validation codes from exception messages, and add API tests proving server
+  filesystem paths, book `toString()` values, SQL details, and parser messages
+  cannot appear in JSON error bodies or ordinary logs.
+  Completed 2026-08-20: production error attributes now return only HTTP status
+  and a stable code even when detail query flags or external error settings ask
+  for more. Controller advice preserves framework status and protocol headers
+  while discarding exception reasons and validation messages. Application logs
+  use opaque ids, counts, and exception types instead of media paths, parser/SQL
+  messages, throwable stacks, passwords, or session identifiers; model string
+  forms used by logging are similarly restricted. Focused error, security,
+  logging, analyzer, archive, PDF, user lifecycle, and style checks pass.
+  Malformed JSON is explicitly retained as a sanitized `400 / HTTP_400`
+  response instead of falling through the generic handler as a server error.
+- [x] SV-1275 Prevent stale lazy-locale requests from overriding a newer user
+  choice. Give locale loads an order token (or compare the store's current
+  locale before applying the result), and test a slow first load resolving
+  after a later eager and lazy selection.
+  Completed 2026-08-20: the root locale watcher now gives each load a monotonic
+  request number and rechecks the store before applying locale/RTL state. Tests
+  deterministically resolve an older lazy request after newer eager and lazy
+  choices, plus after a newer failed load; no stale result changes the UI.
+- [x] SV-1276 Remove or patch the legacy reader's vulnerable production
+  dependency chain. SV-1266 blocks non-EPUB media from the reachable PDF.js
+  route, but `@d-i-t-a/reader` still installs `pdfjs-dist 2.14.305`. Inventory
+  the 22 current production-tree audit findings by actual browser/server reach,
+  upgrade or remove verified vulnerable code without a broad framework
+  migration, and keep regression coverage for the EPUB fallback.
+  Completed 2026-08-20: replaced the stale Git fork with official reader 2.5.3,
+  whose shipped bundle contains PDF.js 5.5.207 instead of 2.14.305, and moved
+  builds to Node 22.13+/npm 11. Compatible `qs`, `form-data`, `nanoid`,
+  `brace-expansion`, and external sanitizer nodes were refreshed. Clean install,
+  EPUB initialization/fallback tests, type/lint checks, and a production build
+  pass; the deployed EPUB chunk contains no 2.14.305 code. Audit findings fell
+  from 22 to 16. Ten remaining reader findings are Node-only installation-tree
+  leaves absent from the static browser/JAR artifact; five are the Vue 2 runtime
+  advisory and its dependents with no runtime-template compiler sink; one is
+  Vuetify 2, whose vulnerable user-defined date formatter and untrusted preset
+  paths are not used. The official reader still prebundles older sanitizer and
+  nanoid code, but their affected Search/TTS/custom-size paths are disabled or
+  unused; replacing that dormant code requires an upstream slim build rather
+  than a misleading root override.
+- [x] SV-1277 Bind MIXED Locators to the current Manifest item. Validation
+  currently checks only that `itemId` and nested `contentFingerprint` are
+  non-empty, not that the item exists or that its derived fingerprint matches.
+  Validate the pair against the current book Manifest and bound identifier
+  lengths before storing positions/bookmarks/highlights, with stale and forged
+  locator tests.
+  Completed 2026-08-20: Manifest responses and state writes now share one
+  bounded mixed-item resolver. Positions, bookmarks, and highlights accept only
+  the current item id/index, server-derived nested fingerprint, matching item
+  kind, and in-range nested page; item ids and fingerprints are length-bounded
+  before archive work. A weighted, write-expiring cache avoids repeating PDF or
+  nested-archive inspection on the two-second position autosave path. Real-ZIP
+  tests cover valid saves plus missing ids, forged indexes, stale fingerprints,
+  oversized ids, and mismatched highlight selectors.
+
+### Measured but not acted on
+
+- The Korean webfonts are the largest remaining download: Pretendard in three
+  weights is 2.3 MB and Gowun in two is 0.98 MB. `font-display: swap` is already
+  set, so they do not block the first paint, but they are still the bulk of what
+  a phone fetches. Splitting them into unicode-range subsets is the standard fix
+  and needs a font tool.
+- `ShelfViewReaderShell.vue` is 7,357 lines. Not a speed problem; recorded
+  because everything in the reader has to be changed inside it.

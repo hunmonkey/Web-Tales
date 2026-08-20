@@ -17,7 +17,7 @@ private const val SEED = 0
 @Component
 class Hasher {
   fun computeHash(path: Path): String {
-    logger.debug { "Hashing: $path" }
+    logger.debug { "Hashing filesystem content" }
 
     return if (Files.isDirectory(path)) computeDirectoryHash(path) else computeHash(path.inputStream())
   }

@@ -189,7 +189,7 @@ class CommonBookController(
     } catch (_: MediaNotReadyException) {
       throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
     } catch (ex: NoSuchFileException) {
-      logger.warn(ex) { "File not found: $book" }
+      logger.warn { "Book file not found: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
       throw ResponseStatusException(HttpStatus.NOT_FOUND, "File not found, it may have moved")
     }
   } ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -253,7 +253,7 @@ class CommonBookController(
     } catch (_: MediaNotReadyException) {
       throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book analysis failed")
     } catch (ex: NoSuchFileException) {
-      logger.warn(ex) { "File not found: $book" }
+      logger.warn { "Book file not found: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
       throw ResponseStatusException(HttpStatus.NOT_FOUND, "File not found, it may have moved")
     }
 
@@ -364,7 +364,7 @@ class CommonBookController(
             .body(stream)
         }
       } catch (ex: FileNotFoundException) {
-        logger.warn(ex) { "File not found: $book" }
+        logger.warn { "Book file not found: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
         throw ResponseStatusException(HttpStatus.NOT_FOUND, "File not found, it may have moved")
       }
     } ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)

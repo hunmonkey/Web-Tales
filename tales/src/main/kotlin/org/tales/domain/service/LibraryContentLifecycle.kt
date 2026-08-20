@@ -70,7 +70,7 @@ class LibraryContentLifecycle(
     library: Library,
     scanDeep: Boolean = false,
   ) {
-    logger.info { "Scan root folder for library: $library" }
+    logger.info { "Scan library content: libraryId=${library.id}" }
     measureTime {
       val scanResult =
         try {
@@ -172,7 +172,7 @@ class LibraryContentLifecycle(
 
             // update existing books
             newBooks.forEach { newBook ->
-              logger.debug { "Trying to match scanned book by url: $newBook" }
+              logger.debug { "Trying to match scanned book: bookId=${newBook.id}" }
               existingBooks.find { it.url == newBook.url && it.deletedDate == null }?.let { existingBook ->
                 logger.debug { "Matched existing book: $existingBook" }
                 if (newBook.hasChangedOnDiskComparedTo(existingBook)) {
@@ -234,7 +234,7 @@ class LibraryContentLifecycle(
           when (newSidecar.source) {
             Sidecar.Source.SERIES ->
               seriesRepository.findNotDeletedByLibraryIdAndUrlOrNull(library.id, newSidecar.parentUrl)?.let { series ->
-                logger.info { "Sidecar changed on disk (${newSidecar.url}, refresh Series for ${newSidecar.type}: $series" }
+                logger.info { "Series sidecar changed: seriesId=${series.id}, type=${newSidecar.type}" }
                 when (newSidecar.type) {
                   Sidecar.Type.ARTWORK -> taskEmitter.refreshSeriesLocalArtwork(series.id)
                   Sidecar.Type.METADATA -> taskEmitter.refreshSeriesMetadata(series.id)
@@ -243,7 +243,7 @@ class LibraryContentLifecycle(
 
             Sidecar.Source.BOOK ->
               bookRepository.findNotDeletedByLibraryIdAndUrlOrNull(library.id, newSidecar.parentUrl)?.let { book ->
-                logger.info { "Sidecar changed on disk (${newSidecar.url}, refresh Book for ${newSidecar.type}: $book" }
+                logger.info { "Book sidecar changed: bookId=${book.id}, type=${newSidecar.type}" }
                 when (newSidecar.type) {
                   Sidecar.Type.ARTWORK -> taskEmitter.refreshBookLocalArtwork(book)
                   Sidecar.Type.METADATA -> taskEmitter.refreshBookMetadata(book)

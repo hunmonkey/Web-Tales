@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Media
-import org.tales.domain.model.MediaFile
 import org.tales.domain.model.MediaProfile
 import org.tales.domain.persistence.BookRepository
 import org.tales.domain.persistence.MediaRepository
@@ -38,7 +37,7 @@ class ShelfViewManifestController(
   private val bookRepository: BookRepository,
   private val mediaRepository: MediaRepository,
   private val contentRestrictionChecker: ContentRestrictionChecker,
-  private val zipMixedContentProvider: ShelfViewZipMixedContentProvider,
+  private val mixedManifestResolver: ShelfViewMixedManifestResolver,
   private val pdfContentsProvider: ShelfViewPdfContentsProvider,
   private val epubContentsProvider: ShelfViewEpubContentsProvider,
   private val mapper: ObjectMapper,
@@ -95,32 +94,22 @@ class ShelfViewManifestController(
 
     val sourceFormat = sourceFormat(book, mediaType)
 
-    if (mediaType == TalesMediaType.ZIP && sourceFormat == ShelfViewSourceFormat.ZIP && hasMixedZipEntries(media.files)) {
-      val sourceBook = bookRepository.findByIdOrNull(book.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-      val items =
-        zipMixedContentProvider
-          .listManifestItems(sourceBook.path, contentFingerprint)
-          .mapIndexed { index, item ->
-            item.toManifestItemDto(
-              bookId = book.id,
-              bookContentFingerprint = contentFingerprint,
-              index = index,
-            )
-          }
-
-      if (items.any { it.kind == ShelfViewPublicationKind.TEXT_REFLOW || it.sourceFormat == ShelfViewSourceFormat.PDF }) {
-        return ShelfViewManifestDto(
-          bookId = book.id,
-          title = book.metadata.title.ifBlank { book.name },
-          kind = ShelfViewPublicationKind.MIXED_CONTENT_SEQUENCE,
-          sourceFormat = ShelfViewSourceFormat.ZIP,
-          contentFingerprint = contentFingerprint,
-          pageCount = items.sumOf { it.pageCount ?: 1 },
-          items = items,
-          contents = items.map { it.toContentsItemDto(contentFingerprint) },
-          capabilities = mixedContentCapabilities,
-        )
-      }
+    val mixedItems =
+      mixedManifestResolver
+        .listCurrentItems(book, media, contentFingerprint)
+        .map { it.toManifestItemDto(book.id) }
+    if (mixedItems.isNotEmpty()) {
+      return ShelfViewManifestDto(
+        bookId = book.id,
+        title = book.metadata.title.ifBlank { book.name },
+        kind = ShelfViewPublicationKind.MIXED_CONTENT_SEQUENCE,
+        sourceFormat = ShelfViewSourceFormat.ZIP,
+        contentFingerprint = contentFingerprint,
+        pageCount = mixedItems.sumOf { it.pageCount ?: 1 },
+        items = mixedItems,
+        contents = mixedItems.map { it.toContentsItemDto(contentFingerprint) },
+        capabilities = mixedContentCapabilities,
+      )
     }
 
     if (mediaType.profile !in fixedPageProfiles) {
@@ -197,25 +186,15 @@ class ShelfViewManifestController(
       else -> "/api/v1/books/$bookId/pages/{pageOneBased}/thumbnail"
     }
 
-  private fun hasMixedZipEntries(files: List<MediaFile>): Boolean =
-    files.any { file ->
-      val extension = FilenameUtils.getExtension(file.fileName).lowercase()
-      extension == "txt" || extension == "pdf"
-    }
-
-  private fun ShelfViewZipMixedManifestItem.toManifestItemDto(
+  private fun ShelfViewCurrentMixedManifestItem.toManifestItemDto(
     bookId: String,
-    bookContentFingerprint: String,
-    index: Int,
-  ): ShelfViewManifestItemDto {
-    val itemContentFingerprint = ShelfViewZipMixedItemIds.itemContentFingerprint(bookContentFingerprint, itemId)
-
-    return ShelfViewManifestItemDto(
+  ): ShelfViewManifestItemDto =
+    ShelfViewManifestItemDto(
       itemId = itemId,
       index = index,
       kind = kind,
       label = label,
-      contentFingerprint = itemContentFingerprint,
+      contentFingerprint = contentFingerprint,
       sourceFormat = sourceFormat,
       pageCount = pageCount,
       text =
@@ -234,7 +213,6 @@ class ShelfViewManifestController(
           null
         },
     )
-  }
 
   private fun ShelfViewManifestItemDto.toContentsItemDto(bookContentFingerprint: String): ShelfViewManifestContentsItemDto =
     ShelfViewManifestContentsItemDto(

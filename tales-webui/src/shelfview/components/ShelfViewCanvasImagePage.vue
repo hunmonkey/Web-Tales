@@ -36,15 +36,12 @@
 <script lang="ts">
 import Vue from 'vue'
 import {
-  SHELFVIEW_CANVAS_CPU_MAX_PIXELS,
   SHELFVIEW_CANVAS_IMAGE_MAX_PIXELS,
   ShelfViewCanvasImageProcessingMode,
-  shelfViewAdaptiveMonochromeImageData,
-  shelfViewBackgroundCleanupImageData,
   shelfViewCanvasImageWithinPixelBudget,
   shelfViewRenderWebglSharpen,
-  shelfViewSharpenImageData,
 } from '@/shelfview/functions/canvas-image-processing'
+import {shelfViewFilterImageData} from '@/shelfview/functions/canvas-filter-runner'
 
 export default Vue.extend({
   name: 'ShelfViewCanvasImagePage',
@@ -85,6 +82,7 @@ export default Vue.extend({
   data: () => ({
     fallback: false,
     processingToken: 0,
+    filterAbortController: undefined as AbortController | undefined,
   }),
   watch: {
     src: 'process',
@@ -96,10 +94,14 @@ export default Vue.extend({
   },
   beforeDestroy() {
     this.processingToken++
+    this.filterAbortController?.abort()
   },
   methods: {
     async process() {
       const token = ++this.processingToken
+      this.filterAbortController?.abort()
+      const filterAbortController = typeof AbortController === 'undefined' ? undefined : new AbortController()
+      this.filterAbortController = filterAbortController
       this.fallback = false
       await this.$nextTick()
 
@@ -121,37 +123,31 @@ export default Vue.extend({
           return
         }
 
-        // Everything below here is a synchronous per-pixel pass on the main
-        // thread, so a large page falls back to the untouched original rather
-        // than stalling the page turn.
-        if (!shelfViewCanvasImageWithinPixelBudget(width, height, SHELFVIEW_CANVAS_CPU_MAX_PIXELS)) {
-          throw new Error('Canvas image is over the CPU filter budget')
-        }
-
         canvas.width = width
         canvas.height = height
         const context = canvas.getContext('2d', {willReadFrequently: true})
         if (!context) throw new Error('Canvas 2D context is unavailable')
 
         context.drawImage(image, 0, 0)
-        const imageData = context.getImageData(0, 0, width, height)
-        switch (this.mode) {
-          case 'WEBGL_SHARPEN':
-          case 'SHARPEN':
-            context.putImageData(shelfViewSharpenImageData(imageData), 0, 0)
-            break
-          case 'BACKGROUND_CLEANUP':
-            context.putImageData(shelfViewBackgroundCleanupImageData(imageData), 0, 0)
-            break
-          case 'ADAPTIVE_MONO':
-            context.putImageData(shelfViewAdaptiveMonochromeImageData(imageData), 0, 0)
-            break
-        }
+        // The per-pixel pass runs in a worker where one exists, so the page turn
+        // is not held up by it. Without a worker the runner falls back to the
+        // main thread and refuses anything over the CPU budget, which is the
+        // behaviour this component had before.
+        const filtered = await shelfViewFilterImageData(
+          this.mode,
+          context.getImageData(0, 0, width, height),
+          filterAbortController?.signal,
+        )
+        if (token !== this.processingToken) return
+
+        context.putImageData(filtered, 0, 0)
         this.$emit('processed')
       } catch (_error) {
         if (token !== this.processingToken) return
         this.fallback = true
         this.$emit('processing-failed')
+      } finally {
+        if (this.filterAbortController === filterAbortController) this.filterAbortController = undefined
       }
     },
     loadImage(src: string): Promise<HTMLImageElement> {

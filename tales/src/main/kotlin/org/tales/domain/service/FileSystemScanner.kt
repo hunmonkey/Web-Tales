@@ -71,10 +71,10 @@ class FileSystemScanner(
         if (scanEpub) add("epub")
         if (scanTxt) add("txt")
       }
-    logger.info { "Scanning folder: $root" }
+    logger.info { "Scanning library content" }
     logger.info { "Scan for extensions: $scanForExtensions" }
     logger.info { "Scan ShelfView image directories: $scanImageDirectory" }
-    logger.info { "Excluded directory patterns: $directoryExclusions" }
+    logger.info { "Excluded directory pattern count: ${directoryExclusions.size}" }
     logger.info { "Force directory modified time: $forceDirectoryModifiedTime" }
 
     if (!(Files.isDirectory(root) && Files.isReadable(root)))
@@ -100,7 +100,7 @@ class FileSystemScanner(
             dir: Path,
             attrs: BasicFileAttributes,
           ): FileVisitResult {
-            logger.trace { "preVisit: $dir (regularFile:${attrs.isRegularFile}, directory:${attrs.isDirectory}, symbolicLink:${attrs.isSymbolicLink}, other:${attrs.isOther})" }
+            logger.trace { "preVisit (regularFile:${attrs.isRegularFile}, directory:${attrs.isDirectory}, symbolicLink:${attrs.isSymbolicLink}, other:${attrs.isOther})" }
             if (dir.name.startsWith(".") ||
               directoryExclusions.any { exclude ->
                 dir.pathString.contains(exclude, true)
@@ -129,7 +129,7 @@ class FileSystemScanner(
             file: Path,
             attrs: BasicFileAttributes,
           ): FileVisitResult {
-            logger.trace { "visitFile: $file (regularFile:${attrs.isRegularFile}, directory:${attrs.isDirectory}, symbolicLink:${attrs.isSymbolicLink}, other:${attrs.isOther})" }
+            logger.trace { "visitFile (regularFile:${attrs.isRegularFile}, directory:${attrs.isDirectory}, symbolicLink:${attrs.isSymbolicLink}, other:${attrs.isOther})" }
             if (!attrs.isSymbolicLink && !attrs.isDirectory) {
               if (scanForExtensions.contains(file.extension.lowercase()) &&
                 !file.name.startsWith(".")
@@ -163,7 +163,7 @@ class FileSystemScanner(
             file: Path?,
             exc: IOException?,
           ): FileVisitResult {
-            logger.warn { "Could not access: $file" }
+            logger.warn { "Could not access scanned entry: errorType=${exc?.javaClass?.simpleName ?: "UNKNOWN"}" }
             return FileVisitResult.SKIP_SUBTREE
           }
 
@@ -171,7 +171,7 @@ class FileSystemScanner(
             dir: Path,
             exc: IOException?,
           ): FileVisitResult {
-            logger.trace { "postVisit: $dir" }
+            logger.trace { "postVisit directory" }
             val books = pathToBooks[dir]
             val tempSeries = pathToSeries[dir]
             if (!books.isNullOrEmpty() && tempSeries !== null) {
@@ -287,7 +287,7 @@ class FileSystemScanner(
             lastModifiedTime = attrs.getUpdatedTime(),
           )
         } catch (ex: IOException) {
-          logger.warn(ex) { "Could not read image-directory state file: $candidate" }
+          logger.warn { "Could not read image-directory state file: errorType=${ex.javaClass.simpleName}" }
           null
         }
       }

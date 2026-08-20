@@ -2444,6 +2444,7 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+
   })
 
   it('closes the innermost open panel with Escape before touching the chrome', async () => {
@@ -2899,6 +2900,29 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('1 / 3')
+
+    stage.element.scrollLeft = 400
+    await (wrapper.vm as any).onReaderPointerDown({
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 13,
+      clientX: 900,
+      clientY: 120,
+      target: stage.element,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await (wrapper.vm as any).onReaderPointerUp({
+      pointerId: 13,
+      clientX: 904,
+      clientY: 126,
+      cancelable: true,
+      preventDefault: jest.fn(),
+    })
+    await flushPromises()
+    await Vue.nextTick()
+
+    expect(wrapper.find('[data-testid="shelfview-reader-page-counter"]').text()).toBe('2 / 3')
   })
 
   it('toggles reader chrome from text mouse center taps without side paging', async () => {
@@ -3678,7 +3702,6 @@ function mountShell({
   shelfViewState = {},
   shelfViewText = {},
   talesBooks = {},
-  talesReadLists = {},
   routeQuery = {},
   smAndDown = false,
 }: {
@@ -3686,7 +3709,6 @@ function mountShell({
   shelfViewState?: Record<string, jest.Mock>,
   shelfViewText?: Record<string, jest.Mock>,
   talesBooks?: Record<string, jest.Mock>,
-  talesReadLists?: Record<string, jest.Mock>,
   routeQuery?: Record<string, unknown>,
   smAndDown?: boolean,
 }) {
@@ -3744,10 +3766,6 @@ function mountShell({
         getBookSiblingNext: jest.fn().mockRejectedValue(new Error('No next book')),
         updateReadProgress: jest.fn().mockResolvedValue({}),
         ...talesBooks,
-      },
-      $talesReadLists: {
-        getBookSiblingNext: jest.fn().mockRejectedValue(new Error('No next book')),
-        ...talesReadLists,
       },
       $talesSeries: {
         getOneSeries: jest.fn().mockResolvedValue(series),

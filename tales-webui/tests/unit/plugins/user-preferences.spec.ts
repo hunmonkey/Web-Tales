@@ -7,6 +7,10 @@ import {Theme} from '@/types/themes'
 
 jest.mock('@/i18n', () => ({
   __esModule: true,
+  // KNOWN_LOCALES is every locale that has a file, loaded or not; the plugin
+  // guards on it rather than on availableLocales, because a lazily loaded
+  // locale is a valid stored preference before its chunk has arrived.
+  KNOWN_LOCALES: ['en', 'ko', 'ja'],
   default: {
     locale: 'ko',
     availableLocales: ['en', 'ko', 'ja'],

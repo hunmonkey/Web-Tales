@@ -124,7 +124,7 @@ git push --set-upstream origin shelfview-main
 |---|---|
 | 백엔드 | Kotlin, Spring Boot, Gradle, jOOQ, Flyway |
 | 프런트엔드 | Vue 2.6, TypeScript 4.9, Vuex 3, Vuetify 2, Vue CLI 5 |
-| 개발 요구사항 | JDK 21+, Node.js 18+ |
+| 개발 요구사항 | JDK 21+, Node.js 22.13+, npm 11+ |
 | 배포 | 단일 Docker 이미지, 기본 포트 25600 |
 | 저장소 | Tales의 기존 DB·마이그레이션 체계 유지 |
 
@@ -1052,7 +1052,7 @@ AI는 명시적 승인 없이 다음을 하지 않는다.
 
 ### SV-002 로컬 개발 환경
 
-- JDK 21+, Node 18+ 확인
+- JDK 21+, Node 22.13+, npm 11+ 확인
 - 백엔드 실행
 - 프런트엔드 dev server 실행
 - 기본 테스트 결과 기록

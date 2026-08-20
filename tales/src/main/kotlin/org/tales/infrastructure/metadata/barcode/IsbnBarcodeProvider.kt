@@ -62,18 +62,18 @@ class IsbnBarcodeProvider(
             }
 
           if (result == null || result.text == null) {
-            logger.debug { "Book page $p does not contain a barcode: $book" }
+            logger.debug { "Book page does not contain a barcode: bookId=${book.book.id}, page=$p" }
           } else {
             if (validator.isValid(result.text)) {
-              logger.debug { "Book page $p contains barcode which is valid ISBN: '${result.text}'. $book" }
+              logger.debug { "Book page contains a valid ISBN barcode: bookId=${book.book.id}, page=$p" }
               return BookMetadataPatch(isbn = validator.validate(result.text))
             } else {
-              logger.debug { "Book page $p contains barcode which is invalid ISBN: '${result.text}'. $book" }
+              logger.debug { "Book page contains an invalid ISBN barcode: bookId=${book.book.id}, page=$p" }
             }
           }
         }
       } catch (e: Exception) {
-        logger.error(e) { "Error while processing page" }
+        logger.error { "Error while processing barcode page: bookId=${book.book.id}, page=$p, errorType=${e.javaClass.simpleName}" }
       }
     }
 

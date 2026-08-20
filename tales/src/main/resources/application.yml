@@ -63,8 +63,25 @@ server:
   forward-headers-strategy: framework
   shutdown: graceful
   error:
-    include-message: always
+    include-binding-errors: never
+    include-exception: false
+    include-message: never
+    include-path: never
+    include-stacktrace: never
   port: 25600
+  # Tomcat sends everything uncompressed unless this is switched on: the property
+  # defaults to false, and the app is exposed directly rather than behind a
+  # compressing reverse proxy. Measured against the running server, the initial
+  # JS and CSS came to 4,071,730 bytes with no Content-Encoding, against 911,612
+  # bytes gzipped - the same four files, 77% smaller.
+  #
+  # The mime types are Spring Boot's own defaults plus SVG, listed rather than
+  # inherited so it is visible that page images and web fonts are absent: they
+  # are already compressed formats, and running them through gzip would spend
+  # CPU to make them slightly bigger.
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml,image/svg+xml
 
 management:
   endpoints.web.exposure.include: "*"

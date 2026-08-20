@@ -87,14 +87,32 @@ describe('ShelfView reader input helpers', () => {
   })
 
   it('maps tap zones by reading direction only when paging is enabled', () => {
-    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', true)).toBe('PREVIOUS')
-    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'LTR', true)).toBe('NEXT')
-    expect(shelfViewTapAction({x: 500, y: 100}, {x: 504, y: 106}, 1000, 'LTR', true)).toBe('TOGGLE_CHROME')
-    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'RTL', true)).toBe('NEXT')
-    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'RTL', true)).toBe('PREVIOUS')
-    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', false)).toBeUndefined()
-    expect(shelfViewTapAction({x: 500, y: 100}, {x: 504, y: 106}, 1000, 'LTR', false)).toBe('TOGGLE_CHROME')
-    expect(shelfViewTapAction({x: 900, y: 100}, {x: 940, y: 106}, 1000, 'LTR', true)).toBeUndefined()
+    const bothEdges = {left: true, right: true}
+    const neitherEdge = {left: false, right: false}
+
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', bothEdges)).toBe('PREVIOUS')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'LTR', bothEdges)).toBe('NEXT')
+    expect(shelfViewTapAction({x: 500, y: 100}, {x: 504, y: 106}, 1000, 'LTR', bothEdges)).toBe('TOGGLE_CHROME')
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'RTL', bothEdges)).toBe('NEXT')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'RTL', bothEdges)).toBe('PREVIOUS')
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', neitherEdge)).toBeUndefined()
+    expect(shelfViewTapAction({x: 500, y: 100}, {x: 504, y: 106}, 1000, 'LTR', neitherEdge)).toBe('TOGGLE_CHROME')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 940, y: 106}, 1000, 'LTR', bothEdges)).toBeUndefined()
+  })
+
+  it('enables each physical side tap only at its matching horizontal edge', () => {
+    const atLeftEdge = {left: true, right: false}
+    const atRightEdge = {left: false, right: true}
+
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', atLeftEdge)).toBe('PREVIOUS')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'LTR', atLeftEdge)).toBeUndefined()
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'LTR', atRightEdge)).toBeUndefined()
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'LTR', atRightEdge)).toBe('NEXT')
+
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'RTL', atLeftEdge)).toBe('NEXT')
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'RTL', atLeftEdge)).toBeUndefined()
+    expect(shelfViewTapAction({x: 100, y: 100}, {x: 104, y: 106}, 1000, 'RTL', atRightEdge)).toBeUndefined()
+    expect(shelfViewTapAction({x: 900, y: 100}, {x: 904, y: 106}, 1000, 'RTL', atRightEdge)).toBe('PREVIOUS')
   })
 
   it('does not intercept shortcuts from editable targets', () => {

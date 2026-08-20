@@ -1,66 +1,36 @@
 package org.tales.shelfview.interfaces.api
 
 import com.github.benmanes.caffeine.cache.Caffeine
-import jakarta.validation.constraints.Positive
+import jakarta.annotation.PreDestroy
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipFile
-import org.apache.commons.compress.utils.SeekableInMemoryByteChannel
 import org.apache.commons.io.FilenameUtils
 import org.apache.pdfbox.Loader
-import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
-import org.springframework.validation.annotation.Validated
 import org.springframework.web.server.ResponseStatusException
 import org.tales.domain.model.Dimension
 import org.tales.domain.model.TypedBytes
 import org.tales.infrastructure.image.ImageAnalyzer
 import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.tales.infrastructure.mediacontainer.pdf.PdfExtractor
-import org.tales.infrastructure.util.use
 import org.tales.shelfview.domain.ShelfViewPublicationKind
 import org.tales.shelfview.domain.ShelfViewSourceFormat
-import java.io.ByteArrayOutputStream
+import org.tales.shelfview.infrastructure.archive.ArchiveLimitExceededException
+import org.tales.shelfview.infrastructure.archive.ArchiveReadBudget
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
+import org.tales.shelfview.infrastructure.archive.copyArchiveTo
+import org.tales.shelfview.infrastructure.archive.readArchiveBytes
+import org.tales.shelfview.infrastructure.archive.withPreflightedZip
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Base64
 import java.util.concurrent.TimeUnit
-import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
-import kotlin.io.path.div
 import kotlin.io.path.exists
-
-@Component
-@ConfigurationProperties(prefix = "shelfview.archive")
-@Validated
-class ShelfViewArchiveProperties {
-  @Positive
-  var maxEntries: Int = 10_000
-
-  @Positive
-  var maxImageBytes: Long = 50L * 1024 * 1024
-
-  @Positive
-  var maxImageWidth: Int = 20_000
-
-  @Positive
-  var maxImageHeight: Int = 20_000
-
-  @Positive
-  var maxImagePixels: Long = 100_000_000
-
-  @Positive
-  var maxPdfBytes: Long = 100L * 1024 * 1024
-
-  @Positive
-  var maxPdfPages: Int = 1_000
-
-  @Positive
-  var maxNestedArchiveBytes: Long = 100L * 1024 * 1024
-}
 
 data class ShelfViewZipTextEntryContent(
   val itemId: String,
@@ -92,7 +62,7 @@ class ShelfViewZipMixedContentProvider(
   private val imageAnalyzer: ImageAnalyzer,
   private val pdfExtractor: PdfExtractor,
 ) {
-  private val pdfCacheDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")) / "shelfview-mixed-pdf-cache"
+  private val pdfCacheFiles = ShelfViewPdfCacheFiles()
   private val natSortComparator: Comparator<String> = CaseInsensitiveSimpleNaturalComparator.getInstance()
 
   private val pdfCache =
@@ -100,35 +70,45 @@ class ShelfViewZipMixedContentProvider(
       .newBuilder()
       .maximumSize(64)
       .expireAfterAccess(30, TimeUnit.MINUTES)
-      .removalListener<String, Path> { _, path, _ -> path?.deleteIfExists() }
-      .build<String, Path>()
+      .executor { command -> command.run() }
+      .removalListener<String, Path> { _, path, _ ->
+        path?.let {
+          pdfExtractor.evictCachedDocument(it)
+          pdfCacheFiles.delete(it)
+        }
+      }.build<String, Path>()
+
+  @PreDestroy
+  fun closePdfCache() {
+    pdfCache.invalidateAll()
+    pdfCache.cleanUp()
+    pdfCacheFiles.close()
+  }
 
   fun listManifestItems(
     path: Path,
     bookContentFingerprint: String,
   ): List<ShelfViewZipMixedManifestItem> =
-    ZipFile.builder().setPath(path).use { zip ->
+    withZip(path) { zip ->
+      val budget = ArchiveReadBudget(archiveProperties)
       val normalizedNames = mutableSetOf<String>()
 
-      zip.entries
-        .toList()
-        .filter { !it.isDirectory }
-        .onEachIndexed { index, _ ->
-          if (index + 1 > archiveProperties.maxEntries) {
-            throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_ARCHIVE_TOO_MANY_ENTRIES")
-          }
-        }.map { entry ->
-          val normalizedName = normalizeEntryName(entry.name)
-          if (!normalizedNames.add(normalizedName)) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_DUPLICATE_ENTRY")
-          }
-          entry to normalizedName
-        }.filter { (_, normalizedName) ->
-          isTextEntry(normalizedName) || isFixedPageEntry(normalizedName)
-        }.sortedWith(compareBy(natSortComparator) { (_, normalizedName) -> normalizedName })
-        .map { (entry, normalizedName) ->
-          manifestItem(zip, entry, bookContentFingerprint, normalizedName)
-        }
+      val supportedEntries =
+        zip
+          .listEntries(budget)
+          .map { entry ->
+            val normalizedName = normalizeEntryName(entry.name)
+            if (!normalizedNames.add(normalizedName)) {
+              throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_DUPLICATE_ENTRY")
+            }
+            entry to normalizedName
+          }.filter { (_, normalizedName) ->
+            isTextEntry(normalizedName) || isFixedPageEntry(normalizedName)
+          }.sortedWith(compareBy(natSortComparator) { (_, normalizedName) -> normalizedName })
+
+      supportedEntries.map { (entry, normalizedName) ->
+        manifestItem(zip, entry, bookContentFingerprint, normalizedName, budget)
+      }
     }
 
   fun readTextEntry(
@@ -137,20 +117,13 @@ class ShelfViewZipMixedContentProvider(
     itemId: String,
     maxBytes: Long,
   ): ShelfViewZipTextEntryContent =
-    ZipFile.builder().setPath(path).use { zip ->
-      var entriesCount = 0
+    withZip(path) { zip ->
+      val budget = ArchiveReadBudget(archiveProperties)
       val normalizedNames = mutableSetOf<String>()
       var selectedEntry: ZipArchiveEntry? = null
       var selectedName: String? = null
 
-      zip.entries.toList().forEach { entry ->
-        if (entry.isDirectory) return@forEach
-
-        entriesCount += 1
-        if (entriesCount > archiveProperties.maxEntries) {
-          throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_ARCHIVE_TOO_MANY_ENTRIES")
-        }
-
+      zip.listEntries(budget).forEach { entry ->
         val normalizedName = normalizeEntryName(entry.name)
         if (!normalizedNames.add(normalizedName)) {
           throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_DUPLICATE_ENTRY")
@@ -173,11 +146,14 @@ class ShelfViewZipMixedContentProvider(
       val entry = selectedEntry ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_ZIP_TEXT_ENTRY_NOT_FOUND")
       val normalizedName = selectedName ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_ZIP_TEXT_ENTRY_NOT_FOUND")
       ensureEntrySizeWithinLimit(entry, maxBytes)
+      ensureEntryCanBeRead(zip, entry)
+      ensureEntryCompressionRatioWithinLimit(entry)
+      val bytes = zip.readEntryBytes(entry, maxBytes, budget = budget)
 
       ShelfViewZipTextEntryContent(
         itemId = itemId,
         normalizedEntryName = normalizedName,
-        bytes = zip.readEntryBytes(entry, maxBytes),
+        bytes = bytes,
       )
     }
 
@@ -191,20 +167,13 @@ class ShelfViewZipMixedContentProvider(
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PAGE_NUMBER_INVALID")
     }
 
-    return ZipFile.builder().setPath(path).use { zip ->
-      var entriesCount = 0
+    return withZip(path) { zip ->
+      val budget = ArchiveReadBudget(archiveProperties)
       val normalizedNames = mutableSetOf<String>()
       var selectedEntry: ZipArchiveEntry? = null
       var selectedName: String? = null
 
-      zip.entries.toList().forEach { entry ->
-        if (entry.isDirectory) return@forEach
-
-        entriesCount += 1
-        if (entriesCount > archiveProperties.maxEntries) {
-          throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_ARCHIVE_TOO_MANY_ENTRIES")
-        }
-
+      zip.listEntries(budget).forEach { entry ->
         val normalizedName = normalizeEntryName(entry.name)
         if (!normalizedNames.add(normalizedName)) {
           throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_DUPLICATE_ENTRY")
@@ -228,9 +197,9 @@ class ShelfViewZipMixedContentProvider(
       val normalizedName = selectedName ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_ZIP_PAGE_ENTRY_NOT_FOUND")
 
       when {
-        isSupportedNestedImageArchive(normalizedName) -> readNestedImagePage(zip, entry, itemId, normalizedName, pageNumber)
-        isPdfEntry(normalizedName) -> readPdfPage(zip, entry, bookContentFingerprint, itemId, normalizedName, pageNumber)
-        isImageEntry(normalizedName) -> readImagePage(zip, entry, itemId, normalizedName, pageNumber)
+        isSupportedNestedImageArchive(normalizedName) -> readNestedImagePage(zip, entry, itemId, normalizedName, pageNumber, budget)
+        isPdfEntry(normalizedName) -> readPdfPage(zip, entry, bookContentFingerprint, itemId, normalizedName, pageNumber, budget)
+        isImageEntry(normalizedName) -> readImagePage(zip, entry, itemId, normalizedName, pageNumber, budget)
         else -> throw ResponseStatusException(HttpStatus.NOT_FOUND, "SHELFVIEW_ZIP_PAGE_ENTRY_NOT_FOUND")
       }
     }
@@ -241,6 +210,7 @@ class ShelfViewZipMixedContentProvider(
     entry: ZipArchiveEntry,
     bookContentFingerprint: String,
     normalizedName: String,
+    budget: ArchiveReadBudget,
   ): ShelfViewZipMixedManifestItem {
     val itemId =
       ShelfViewZipMixedItemIds.itemId(
@@ -266,7 +236,7 @@ class ShelfViewZipMixedContentProvider(
           label = displayLabel(normalizedName),
           kind = ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE,
           sourceFormat = ShelfViewSourceFormat.PDF,
-          pageCount = validatedPdfPageCount(zip, entry, bookContentFingerprint, itemId),
+          pageCount = validatedPdfPageCount(zip, entry, bookContentFingerprint, itemId, budget),
         )
 
       isSupportedNestedImageArchive(normalizedName) ->
@@ -276,7 +246,7 @@ class ShelfViewZipMixedContentProvider(
           label = displayLabel(normalizedName),
           kind = ShelfViewPublicationKind.FIXED_PAGE_SEQUENCE,
           sourceFormat = sourceFormatForNestedImageArchive(normalizedName),
-          pageCount = validatedNestedImagePageCount(zip, entry),
+          pageCount = validatedNestedImagePageCount(zip, entry, budget),
         )
 
       isImageEntry(normalizedName) ->
@@ -347,7 +317,7 @@ class ShelfViewZipMixedContentProvider(
   ) {
     val size = entry.knownSizeOrNull() ?: return
     if (size > maxBytes) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_TEXT_TOO_LARGE")
+      throw ArchiveLimitExceededException("SHELFVIEW_TEXT_TOO_LARGE")
     }
   }
 
@@ -357,12 +327,16 @@ class ShelfViewZipMixedContentProvider(
     itemId: String,
     normalizedName: String,
     pageNumber: Int,
+    budget: ArchiveReadBudget,
   ): ShelfViewZipPageContent {
     if (pageNumber != 1) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PAGE_NUMBER_INVALID")
     }
 
-    val bytes = zip.readEntryBytes(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE")
+    ensureEntryCanBeRead(zip, entry)
+    ensureEntrySizeWithinLimit(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE")
+    ensureEntryCompressionRatioWithinLimit(entry)
+    val bytes = zip.readEntryBytes(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE", budget)
     val mediaType = contentDetector.detectMediaType(bytes.inputStream())
     if (!allowedImageMediaTypes(normalizedName).contains(mediaType)) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_IMAGE_MIME_MISMATCH")
@@ -385,11 +359,12 @@ class ShelfViewZipMixedContentProvider(
   private fun validatedNestedImagePageCount(
     zip: ZipFile,
     entry: ZipArchiveEntry,
+    budget: ArchiveReadBudget,
   ): Int =
-    withNestedImageArchive(zip, entry) { nestedZip ->
-      val nestedEntries = listNestedImageEntries(nestedZip)
+    withNestedImageArchive(zip, entry, budget) { nestedZip ->
+      val nestedEntries = listNestedImageEntries(nestedZip, budget)
       nestedEntries.forEach { (innerEntry, normalizedName) ->
-        readNestedImageEntry(nestedZip, innerEntry, normalizedName)
+        readNestedImageEntry(nestedZip, innerEntry, normalizedName, budget)
       }
       nestedEntries.size
     }
@@ -400,15 +375,16 @@ class ShelfViewZipMixedContentProvider(
     itemId: String,
     normalizedName: String,
     pageNumber: Int,
+    budget: ArchiveReadBudget,
   ): ShelfViewZipPageContent =
-    withNestedImageArchive(zip, entry) { nestedZip ->
-      val nestedEntries = listNestedImageEntries(nestedZip)
+    withNestedImageArchive(zip, entry, budget) { nestedZip ->
+      val nestedEntries = listNestedImageEntries(nestedZip, budget)
       if (pageNumber > nestedEntries.size) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PAGE_NUMBER_INVALID")
       }
 
       val (innerEntry, innerName) = nestedEntries[pageNumber - 1]
-      val page = readNestedImageEntry(nestedZip, innerEntry, innerName)
+      val page = readNestedImageEntry(nestedZip, innerEntry, innerName, budget)
 
       ShelfViewZipPageContent(
         itemId = itemId,
@@ -422,35 +398,40 @@ class ShelfViewZipMixedContentProvider(
   private fun <T> withNestedImageArchive(
     zip: ZipFile,
     entry: ZipArchiveEntry,
+    budget: ArchiveReadBudget,
     block: (ZipFile) -> T,
   ): T {
     ensureEntryCanBeRead(zip, entry)
     ensureEntrySizeWithinLimit(entry, archiveProperties.maxNestedArchiveBytes, "SHELFVIEW_NESTED_ARCHIVE_TOO_LARGE")
     ensureEntryCompressionRatioWithinLimit(entry)
-    val nestedBytes = zip.readEntryBytes(entry, archiveProperties.maxNestedArchiveBytes, "SHELFVIEW_NESTED_ARCHIVE_TOO_LARGE")
-
-    return try {
-      ZipFile.builder().setSeekableByteChannel(SeekableInMemoryByteChannel(nestedBytes)).use { nestedZip ->
-        block(nestedZip)
+    val tempPath = Files.createTempFile("shelfview-nested-", ".zip")
+    try {
+      zip.copyEntryToFile(entry, tempPath, archiveProperties.maxNestedArchiveBytes, "SHELFVIEW_NESTED_ARCHIVE_TOO_LARGE", budget)
+      return try {
+        withPreflightedZip(tempPath, archiveProperties) { nestedZip ->
+          block(nestedZip)
+        }
+      } catch (ex: ArchiveLimitExceededException) {
+        throw ex
+      } catch (ex: ResponseStatusException) {
+        throw ex
+      } catch (ex: Exception) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_NESTED_ARCHIVE_UNREADABLE", ex)
       }
-    } catch (ex: ResponseStatusException) {
-      throw ex
-    } catch (ex: Exception) {
-      throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_NESTED_ARCHIVE_UNREADABLE", ex)
+    } finally {
+      tempPath.deleteIfExists()
     }
   }
 
-  private fun listNestedImageEntries(nestedZip: ZipFile): List<Pair<ZipArchiveEntry, String>> {
+  private fun listNestedImageEntries(
+    nestedZip: ZipFile,
+    budget: ArchiveReadBudget,
+  ): List<Pair<ZipArchiveEntry, String>> {
     val normalizedNames = mutableSetOf<String>()
     val entries =
-      nestedZip.entries
-        .toList()
-        .filter { !it.isDirectory }
-        .onEachIndexed { index, _ ->
-          if (index + 1 > archiveProperties.maxEntries) {
-            throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_ARCHIVE_TOO_MANY_ENTRIES")
-          }
-        }.map { entry ->
+      nestedZip
+        .listEntries(budget)
+        .map { entry ->
           val normalizedName = normalizeNestedImageEntryName(entry.name)
           if (!normalizedNames.add(normalizedName)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_ARCHIVE_DUPLICATE_ENTRY")
@@ -469,12 +450,13 @@ class ShelfViewZipMixedContentProvider(
     nestedZip: ZipFile,
     entry: ZipArchiveEntry,
     normalizedName: String,
+    budget: ArchiveReadBudget,
   ): NestedImagePage {
     ensureEntryCanBeRead(nestedZip, entry)
     ensureEntrySizeWithinLimit(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE")
     ensureEntryCompressionRatioWithinLimit(entry)
 
-    val bytes = nestedZip.readEntryBytes(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE")
+    val bytes = nestedZip.readEntryBytes(entry, archiveProperties.maxImageBytes, "SHELFVIEW_IMAGE_TOO_LARGE", budget)
     val mediaType = contentDetector.detectMediaType(bytes.inputStream())
     if (!allowedImageMediaTypes(normalizedName).contains(mediaType)) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_IMAGE_MIME_MISMATCH")
@@ -493,11 +475,12 @@ class ShelfViewZipMixedContentProvider(
     entry: ZipArchiveEntry,
     bookContentFingerprint: String,
     itemId: String,
+    budget: ArchiveReadBudget,
   ): Int {
-    val pdfPath = cachedPdfPath(zip, entry, bookContentFingerprint, itemId)
+    val pdfPath = cachedPdfPath(zip, entry, bookContentFingerprint, itemId, budget)
     val pageCount = pdfPageCount(pdfPath)
     if (pageCount > archiveProperties.maxPdfPages) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_PDF_TOO_MANY_PAGES")
+      throw ArchiveLimitExceededException("SHELFVIEW_PDF_TOO_MANY_PAGES")
     }
     return pageCount
   }
@@ -509,11 +492,12 @@ class ShelfViewZipMixedContentProvider(
     itemId: String,
     normalizedName: String,
     pageNumber: Int,
+    budget: ArchiveReadBudget,
   ): ShelfViewZipPageContent {
-    val pdfPath = cachedPdfPath(zip, entry, bookContentFingerprint, itemId)
+    val pdfPath = cachedPdfPath(zip, entry, bookContentFingerprint, itemId, budget)
     val pageCount = pdfPageCount(pdfPath)
     if (pageCount > archiveProperties.maxPdfPages) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_PDF_TOO_MANY_PAGES")
+      throw ArchiveLimitExceededException("SHELFVIEW_PDF_TOO_MANY_PAGES")
     }
     if (pageNumber > pageCount) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PAGE_NUMBER_INVALID")
@@ -522,6 +506,8 @@ class ShelfViewZipMixedContentProvider(
     val pageContent =
       try {
         pdfExtractor.getPageContentAsImage(pdfPath, pageNumber)
+      } catch (ex: ArchiveLimitExceededException) {
+        throw ex
       } catch (ex: Exception) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PDF_RENDER_FAILED", ex)
       }
@@ -540,26 +526,45 @@ class ShelfViewZipMixedContentProvider(
     entry: ZipArchiveEntry,
     bookContentFingerprint: String,
     itemId: String,
+    budget: ArchiveReadBudget,
   ): Path {
     val cacheKey = ShelfViewZipMixedItemIds.itemContentFingerprint(bookContentFingerprint, itemId)
-    pdfCache.getIfPresent(cacheKey)?.takeIf { it.exists() }?.let { return it }
+    pdfCache.getIfPresent(cacheKey)?.let { cachedPath ->
+      if (cachedPath.exists()) return cachedPath
+      pdfCache.invalidate(cacheKey)
+    }
 
+    return requireNotNull(
+      pdfCache.get(cacheKey) {
+        createCachedPdfPath(zip, entry, budget)
+      },
+    )
+  }
+
+  private fun createCachedPdfPath(
+    zip: ZipFile,
+    entry: ZipArchiveEntry,
+    budget: ArchiveReadBudget,
+  ): Path {
     ensureEntrySizeWithinLimit(entry, archiveProperties.maxPdfBytes, "SHELFVIEW_PDF_TOO_LARGE")
-    pdfCacheDirectory.createDirectories()
+    ensureEntryCanBeRead(zip, entry)
+    ensureEntryCompressionRatioWithinLimit(entry)
 
-    val tempPath = Files.createTempFile(pdfCacheDirectory, "mixed-pdf-", ".pdf")
+    val tempPath = pdfCacheFiles.createTempFile()
     try {
-      zip.copyEntryToFile(entry, tempPath, archiveProperties.maxPdfBytes, "SHELFVIEW_PDF_TOO_LARGE")
+      zip.copyEntryToFile(entry, tempPath, archiveProperties.maxPdfBytes, "SHELFVIEW_PDF_TOO_LARGE", budget)
       if (contentDetector.detectMediaType(tempPath) != PDF_MEDIA_TYPE) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PDF_MIME_MISMATCH")
       }
-      pdfCache.put(cacheKey, tempPath)
       return tempPath
+    } catch (ex: ArchiveLimitExceededException) {
+      pdfCacheFiles.delete(tempPath)
+      throw ex
     } catch (ex: ResponseStatusException) {
-      tempPath.deleteIfExists()
+      pdfCacheFiles.delete(tempPath)
       throw ex
     } catch (ex: Exception) {
-      tempPath.deleteIfExists()
+      pdfCacheFiles.delete(tempPath)
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PDF_UNREADABLE", ex)
     }
   }
@@ -573,11 +578,11 @@ class ShelfViewZipMixedContentProvider(
 
   private fun validateImageDimension(dimension: Dimension) {
     if (dimension.width > archiveProperties.maxImageWidth || dimension.height > archiveProperties.maxImageHeight) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_IMAGE_DIMENSIONS_TOO_LARGE")
+      throw ArchiveLimitExceededException("SHELFVIEW_IMAGE_DIMENSIONS_TOO_LARGE")
     }
 
     if (dimension.width.toLong() * dimension.height.toLong() > archiveProperties.maxImagePixels) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_IMAGE_PIXELS_TOO_LARGE")
+      throw ArchiveLimitExceededException("SHELFVIEW_IMAGE_PIXELS_TOO_LARGE")
     }
   }
 
@@ -610,24 +615,10 @@ class ShelfViewZipMixedContentProvider(
     entry: ZipArchiveEntry,
     maxBytes: Long,
     tooLargeReason: String = "SHELFVIEW_TEXT_TOO_LARGE",
+    budget: ArchiveReadBudget,
   ): ByteArray =
     getInputStream(entry).use { input ->
-      val output = ByteArrayOutputStream()
-      val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-      var totalBytes = 0L
-
-      while (true) {
-        val read = input.read(buffer)
-        if (read == -1) break
-
-        totalBytes += read.toLong()
-        if (totalBytes > maxBytes) {
-          throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, tooLargeReason)
-        }
-        output.write(buffer, 0, read)
-      }
-
-      output.toByteArray()
+      input.readArchiveBytes(maxBytes, tooLargeReason, entry.knownSizeOrNull(), budget)
     }
 
   private fun ZipFile.copyEntryToFile(
@@ -635,25 +626,30 @@ class ShelfViewZipMixedContentProvider(
     destination: Path,
     maxBytes: Long,
     tooLargeReason: String,
+    budget: ArchiveReadBudget,
   ) {
     getInputStream(entry).use { input ->
       Files.newOutputStream(destination).use { output ->
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var totalBytes = 0L
-
-        while (true) {
-          val read = input.read(buffer)
-          if (read == -1) break
-
-          totalBytes += read.toLong()
-          if (totalBytes > maxBytes) {
-            throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, tooLargeReason)
-          }
-          output.write(buffer, 0, read)
-        }
+        input.copyArchiveTo(output, maxBytes, tooLargeReason, entry.knownSizeOrNull(), budget)
       }
     }
   }
+
+  private fun ZipFile.listEntries(budget: ArchiveReadBudget): List<ZipArchiveEntry> {
+    val result = mutableListOf<ZipArchiveEntry>()
+    val enumeration = entries
+    while (enumeration.hasMoreElements()) {
+      val entry = enumeration.nextElement()
+      budget.recordEntry()
+      if (!entry.isDirectory) result += entry
+    }
+    return result
+  }
+
+  private fun <T> withZip(
+    path: Path,
+    block: (ZipFile) -> T,
+  ): T = withPreflightedZip(path, archiveProperties, block = block)
 
   private fun ensureEntrySizeWithinLimit(
     entry: ZipArchiveEntry,
@@ -662,7 +658,7 @@ class ShelfViewZipMixedContentProvider(
   ) {
     val size = entry.knownSizeOrNull() ?: return
     if (size > maxBytes) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, tooLargeReason)
+      throw ArchiveLimitExceededException(tooLargeReason)
     }
   }
 
@@ -677,9 +673,12 @@ class ShelfViewZipMixedContentProvider(
 
   private fun ensureEntryCompressionRatioWithinLimit(entry: ZipArchiveEntry) {
     val size = entry.knownSizeOrNull() ?: return
-    val compressedSize = entry.compressedSize.takeIf { it != ArchiveEntry.SIZE_UNKNOWN && it > 0 } ?: return
-    if (size.toDouble() / compressedSize.toDouble() > MAX_COMPRESSION_RATIO) {
-      throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "SHELFVIEW_ARCHIVE_COMPRESSION_RATIO_TOO_HIGH")
+    val compressedSize = entry.compressedSize.takeIf { it != ArchiveEntry.SIZE_UNKNOWN && it >= 0 } ?: return
+    if (
+      (compressedSize == 0L && size > 0) ||
+      (compressedSize > 0 && size.toDouble() / compressedSize.toDouble() > archiveProperties.maxCompressionRatio)
+    ) {
+      throw ArchiveLimitExceededException("SHELFVIEW_ARCHIVE_COMPRESSION_RATIO_TOO_HIGH")
     }
   }
 
@@ -698,7 +697,6 @@ class ShelfViewZipMixedContentProvider(
     val SUPPORTED_NESTED_IMAGE_ARCHIVE_EXTENSIONS = setOf("zip", "cbz")
     val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif")
     const val PDF_MEDIA_TYPE = "application/pdf"
-    const val MAX_COMPRESSION_RATIO = 100.0
   }
 }
 

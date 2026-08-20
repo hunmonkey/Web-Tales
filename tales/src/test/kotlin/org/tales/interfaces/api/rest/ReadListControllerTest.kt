@@ -1389,10 +1389,8 @@ class ReadListControllerTest(
         .multipart("/api/v1/readlists/match/comicrack") {
           file("file", content.toByteArray())
         }.andExpect {
-          status {
-            isBadRequest()
-            reason("ERR_1015")
-          }
+          status { isBadRequest() }
+          jsonPath("$.code") { value("HTTP_400") }
         }
     }
 
@@ -1413,10 +1411,8 @@ class ReadListControllerTest(
         .multipart("/api/v1/readlists/match/comicrack") {
           file("file", content.toByteArray())
         }.andExpect {
-          status {
-            isBadRequest()
-            reason("ERR_1029")
-          }
+          status { isBadRequest() }
+          jsonPath("$.code") { value("HTTP_400") }
         }
     }
 
@@ -1438,10 +1434,8 @@ class ReadListControllerTest(
         .multipart("/api/v1/readlists/match/comicrack") {
           file("file", content.toByteArray())
         }.andExpect {
-          status {
-            isBadRequest()
-            reason("ERR_1030")
-          }
+          status { isBadRequest() }
+          jsonPath("$.code") { value("HTTP_400") }
         }
     }
 
@@ -1463,10 +1457,8 @@ class ReadListControllerTest(
         .multipart("/api/v1/readlists/match/comicrack") {
           file("file", content.toByteArray())
         }.andExpect {
-          status {
-            isBadRequest()
-            reason("ERR_1031")
-          }
+          status { isBadRequest() }
+          jsonPath("$.code") { value("HTTP_400") }
         }
     }
   }

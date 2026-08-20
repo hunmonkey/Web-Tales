@@ -18,12 +18,14 @@ import org.tales.domain.model.SeriesMetadataPatch
 import org.tales.infrastructure.mediacontainer.epub.getPackageFileContent
 import org.tales.infrastructure.metadata.BookMetadataProvider
 import org.tales.infrastructure.metadata.SeriesMetadataFromBookProvider
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Service
 class EpubMetadataProvider(
   private val isbnValidator: ISBNValidator,
+  private val archiveProperties: ShelfViewArchiveProperties,
 ) : BookMetadataProvider,
   SeriesMetadataFromBookProvider {
   private val relators =
@@ -48,7 +50,7 @@ class EpubMetadataProvider(
 
   override fun getBookMetadataFromBook(book: BookWithMedia): BookMetadataPatch? {
     if (book.media.mediaType != MediaType.EPUB.type) return null
-    getPackageFileContent(book.book.path)?.let { packageFile ->
+    getPackageFileContent(book.book.path, archiveProperties)?.let { packageFile ->
       val opf = Jsoup.parse(packageFile, "", Parser.xmlParser())
 
       val title = opf.selectFirst("*|metadata > *|title")?.text()?.ifBlank { null }
@@ -113,7 +115,7 @@ class EpubMetadataProvider(
     appendVolumeToTitle: Boolean,
   ): SeriesMetadataPatch? {
     if (book.media.mediaType != MediaType.EPUB.type) return null
-    getPackageFileContent(book.book.path)?.let { packageFile ->
+    getPackageFileContent(book.book.path, archiveProperties)?.let { packageFile ->
       val opf = Jsoup.parse(packageFile, "", Parser.xmlParser())
 
       val series = opf.selectFirst("*|metadata > *|meta[property=belongs-to-collection]")?.text()?.ifBlank { null }

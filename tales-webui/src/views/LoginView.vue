@@ -93,7 +93,7 @@
             :color="$_.get(socialButtons[provider.registrationId.toLowerCase()], 'color')"
             @click="oauth2Login(provider)"
           >
-            <v-icon left>mdi-{{ provider.registrationId }}</v-icon>
+            <v-icon left>{{ oauth2ProviderIcon(provider.registrationId) }}</v-icon>
             Sign in with {{ provider.name }}
           </v-btn>
         </form>
@@ -122,7 +122,7 @@ import {email, required} from 'vuelidate/lib/validators'
 import {Theme} from '@/types/themes'
 import {OAuth2ClientDto} from '@/types/tales-oauth2'
 import urls from '@/functions/urls'
-import {socialButtons} from '@/types/social'
+import {oauth2ProviderIcon, socialButtons} from '@/types/social'
 import {convertErrorCodes} from '@/functions/error-codes'
 import {CLIENT_SETTING} from '@/types/tales-clientsettings'
 
@@ -135,6 +135,7 @@ export default Vue.extend({
     return {
       urls,
       socialButtons,
+      oauth2ProviderIcon,
       form: {
         login: '',
         password: '',

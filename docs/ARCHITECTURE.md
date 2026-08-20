@@ -241,6 +241,11 @@ Planned ZIP expansion is tracked as SV-450 through SV-453. In addition to the cu
 - Validate archive traversal, nested entries, entry count, decompressed size, line length, image dimensions and internal PDF bounds before serving content.
 - ADR-0003 chooses a single-Book mixed content model: the ZIP remains one Tales book, and the ShelfView manifest exposes ordered internal items behind opaque item ids.
 - Mixed ZIP support adds a `MIXED_CONTENT_SEQUENCE` manifest shape and a `MixedContentAdapter` that coordinates text and fixed-page item adapters.
+- The Manifest controller and reader-state validators share the same mixed-item
+  resolver. A MIXED Locator is stored only when its item id/index, derived
+  fingerprint, kind, and page bound match that current resolved item. Resolved
+  metadata is weight-bounded and expires after write so frequent position
+  autosaves do not repeatedly inspect internal PDFs or nested archives.
 - GIF animation is preserved by default when the original GIF passes validation; internal PDF entries reuse the existing PDF page-image path through a bounded derived cache instead of PDF.js.
 - SV-997 allows mixed ZIP manifests and page endpoints to treat one-level
   nested ZIP/CBZ image chapters as fixed-page items when the nested archive
@@ -356,8 +361,10 @@ EPUB integration is planned by [ADR-0004](ADR/ADR-0004-epub-integration.md).
 The first integration path is a WebPub bridge, not a renderer rewrite.
 
 - Tales's existing EPUB scanner, analyzer, WebPub manifest, resource endpoints,
-  TOC/page-list/position extraction and `@d-i-t-a/reader` rendering remain the
-  source of truth.
+  TOC/page-list/position extraction and the pinned official
+  `@d-i-t-a/reader` 2.5.3 renderer remain the source of truth. Its dormant PDF
+  navigator is not a ShelfView PDF route; non-EPUB media is redirected before
+  reader initialization.
 - ShelfView exposes a distinct `EPUB_WEBPUB` manifest kind with an `epub`
   block that points to the existing authorized WebPub manifest and positions
   endpoints.

@@ -49,17 +49,19 @@ class ConfigurationChecker(
         try {
           Files.getFileStore(path).type().lowercase()
         } catch (e: Exception) {
-          logger.warn(e) { "Could not get FileStore type for path: $path" }
+          logger.warn { "Could not get FileStore type: errorType=${e.javaClass.simpleName}" }
           "unknown"
         }
 
       if (blockTypes.any { storeType.startsWith(it, ignoreCase = true) }) {
-        val errorMessage = "The path '$path' should be on a local filesystem, but was detected to be on a remote filesystem ($storeType). If this is inaccurate you can set '$ignoreProp' to ignore this check."
+        val errorMessage =
+          "The configured database path must be on a local filesystem, but was detected on a remote filesystem " +
+            "($storeType). If this is inaccurate you can set '$ignoreProp' to ignore this check."
 
-        logger.error { errorMessage }
+        logger.error { "Configuration path uses a blocked filesystem type: fileStoreType=$storeType, overrideProperty=$ignoreProp" }
         throw ConfigurationException(errorMessage)
       } else {
-        logger.debug { "FileStore type: $storeType, path: $path" }
+        logger.debug { "Configuration FileStore type: $storeType" }
       }
     }
   }

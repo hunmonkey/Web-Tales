@@ -38,6 +38,13 @@ export interface ShelfViewTouchStageState {
   atHorizontalEnd?: boolean,
 }
 
+export interface ShelfViewTapPagingState {
+  /** The page has no horizontal travel left towards the physical left edge. */
+  left: boolean,
+  /** The page has no horizontal travel left towards the physical right edge. */
+  right: boolean,
+}
+
 export function shelfViewReaderKeyboardAction(
   key: string,
   readingDirection: ShelfViewFixedPageReadingDirection,
@@ -130,7 +137,7 @@ export function shelfViewCenterTapAction(
   end: ShelfViewTouchPoint,
   stageWidth: number,
 ): ShelfViewReaderInputAction | undefined {
-  return shelfViewTapAction(start, end, stageWidth, 'LTR', false)
+  return shelfViewTapAction(start, end, stageWidth, 'LTR', {left: false, right: false})
 }
 
 export function shelfViewTapAction(
@@ -138,7 +145,7 @@ export function shelfViewTapAction(
   end: ShelfViewTouchPoint,
   stageWidth: number,
   readingDirection: ShelfViewFixedPageReadingDirection,
-  pagingEnabled: boolean,
+  paging: ShelfViewTapPagingState,
 ): ShelfViewReaderInputAction | undefined {
   if (!Number.isFinite(stageWidth) || stageWidth <= 0) return undefined
 
@@ -151,9 +158,10 @@ export function shelfViewTapAction(
   const rightBoundary = stageWidth * 0.65
 
   if (tapX >= leftBoundary && tapX <= rightBoundary) return 'TOGGLE_CHROME'
-  if (!pagingEnabled) return undefined
 
   const leftTap = tapX < leftBoundary
+  if (leftTap ? !paging.left : !paging.right) return undefined
+
   if (readingDirection === 'RTL') return leftTap ? 'NEXT' : 'PREVIOUS'
   return leftTap ? 'PREVIOUS' : 'NEXT'
 }

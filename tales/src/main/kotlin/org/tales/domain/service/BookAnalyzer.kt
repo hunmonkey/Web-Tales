@@ -29,6 +29,7 @@ import org.tales.infrastructure.mediacontainer.divina.DivinaExtractor
 import org.tales.infrastructure.mediacontainer.epub.EpubExtractor
 import org.tales.infrastructure.mediacontainer.epub.epub
 import org.tales.infrastructure.mediacontainer.pdf.PdfExtractor
+import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
 import java.io.ByteArrayOutputStream
 import java.nio.file.AccessDeniedException
 import java.nio.file.Files
@@ -58,6 +59,7 @@ class BookAnalyzer(
   private val thumbnailType: ImageType,
   @Qualifier("pdfImageType")
   private val pdfImageType: ImageType,
+  private val archiveProperties: ShelfViewArchiveProperties,
 ) {
   val divinaExtractors =
     extractors
@@ -69,7 +71,7 @@ class BookAnalyzer(
     book: Book,
     analyzeDimensions: Boolean,
   ): Media {
-    logger.info { "Trying to analyze book: $book" }
+    logger.info { "Trying to analyze book: bookId=${book.id}" }
     return try {
       var mediaType =
         if (book.path.isShelfViewImageDirectoryBook()) {
@@ -88,7 +90,7 @@ class BookAnalyzer(
         if (epubExtractor.isEpub(book.path)) {
           mediaType = MediaType.EPUB
         } else {
-          logger.warn { "Epub file is malformed, file is probably broken: ${book.path}" }
+          logger.warn { "EPUB file is malformed: bookId=${book.id}" }
           return Media(mediaType = mediaType.type, status = Media.Status.ERROR, comment = "ERR_1032", bookId = book.id)
         }
       }
@@ -101,13 +103,13 @@ class BookAnalyzer(
         MediaProfile.IMAGE_DIRECTORY -> analyzeImageDirectory(book, analyzeDimensions)
       }.copy(mediaType = mediaType.type)
     } catch (ade: AccessDeniedException) {
-      logger.error(ade) { "Error while analyzing book: $book" }
+      logger.error { "Error while analyzing book: bookId=${book.id}, errorType=${ade.javaClass.simpleName}" }
       Media(status = Media.Status.ERROR, comment = "ERR_1000")
     } catch (ex: NoSuchFileException) {
-      logger.error(ex) { "Error while analyzing book: $book" }
+      logger.error { "Error while analyzing book: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
       Media(status = Media.Status.ERROR, comment = "ERR_1018")
     } catch (ex: Exception) {
-      logger.error(ex) { "Error while analyzing book: $book" }
+      logger.error { "Error while analyzing book: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
       Media(status = Media.Status.ERROR, comment = "ERR_1005")
     }.copy(bookId = book.id)
   }
@@ -154,7 +156,7 @@ class BookAnalyzer(
     }
 
     if (pages.isEmpty()) {
-      logger.warn { "ShelfView image directory $book does not contain any pages" }
+      logger.warn { "ShelfView image directory does not contain any pages: bookId=${book.id}" }
       return Media(status = Media.Status.ERROR, comment = "ERR_1006")
     }
 
@@ -180,7 +182,7 @@ class BookAnalyzer(
       } catch (ex: MediaUnsupportedException) {
         return Media(status = Media.Status.UNSUPPORTED, comment = ex.code)
       } catch (ex: Exception) {
-        logger.error(ex) { "Error while analyzing book: $book" }
+        logger.error { "Error while analyzing book: bookId=${book.id}, errorType=${ex.javaClass.simpleName}" }
         return Media(status = Media.Status.ERROR, comment = "ERR_1008")
       }
 
@@ -203,7 +205,7 @@ class BookAnalyzer(
         ?.joinToString(prefix = "ERR_1007 [", postfix = "]") { it }
 
     if (pages.isEmpty()) {
-      logger.warn { "Book $book does not contain any pages" }
+      logger.warn { "Book does not contain any pages: bookId=${book.id}" }
       return Media(status = Media.Status.ERROR, comment = "ERR_1006")
     }
     logger.info { "Book has ${pages.size} pages" }
@@ -216,8 +218,8 @@ class BookAnalyzer(
   private fun analyzeEpub(
     book: Book,
     analyzeDimensions: Boolean,
-  ): Media {
-    book.path.epub { epub ->
+  ): Media =
+    book.path.epub(archiveProperties) { epub ->
       val (resources, missingResources) = epubExtractor.getResources(epub).partition { it.fileSize != null }
 
       val errors = mutableListOf<String>()
@@ -226,7 +228,7 @@ class BookAnalyzer(
         try {
           epubExtractor.getToc(epub)
         } catch (e: Exception) {
-          logger.error(e) { "Error while getting EPUB TOC" }
+          logger.error { "Error while getting EPUB TOC: bookId=${book.id}, errorType=${e.javaClass.simpleName}" }
           errors.add("ERR_1035")
           emptyList()
         }
@@ -235,7 +237,7 @@ class BookAnalyzer(
         try {
           epubExtractor.getLandmarks(epub)
         } catch (e: Exception) {
-          logger.error(e) { "Error while getting EPUB Landmarks" }
+          logger.error { "Error while getting EPUB Landmarks: bookId=${book.id}, errorType=${e.javaClass.simpleName}" }
           errors.add("ERR_1036")
           emptyList()
         }
@@ -244,7 +246,7 @@ class BookAnalyzer(
         try {
           epubExtractor.getPageList(epub)
         } catch (e: Exception) {
-          logger.error(e) { "Error while getting EPUB page list" }
+          logger.error { "Error while getting EPUB page list: bookId=${book.id}, errorType=${e.javaClass.simpleName}" }
           errors.add("ERR_1037")
           emptyList()
         }
@@ -253,7 +255,7 @@ class BookAnalyzer(
         try {
           epubExtractor.getDivinaPages(epub, analyzeDimensions)
         } catch (e: Exception) {
-          logger.error(e) { "Error while getting EPUB Divina pages" }
+          logger.error { "Error while getting EPUB Divina pages: bookId=${book.id}, errorType=${e.javaClass.simpleName}" }
           errors.add("ERR_1038")
           emptyList()
         }
@@ -264,7 +266,7 @@ class BookAnalyzer(
         try {
           epubExtractor.computePositions(resources, isFixedLayout)
         } catch (e: Exception) {
-          logger.error(e) { "Error while getting EPUB positions" }
+          logger.error { "Error while getting EPUB positions: bookId=${book.id}, errorType=${e.javaClass.simpleName}" }
           errors.add("ERR_1039")
           emptyList()
         }
@@ -281,7 +283,7 @@ class BookAnalyzer(
           .joinToString(" ")
           .ifBlank { null }
 
-      return Media(
+      Media(
         status = Media.Status.READY,
         pages = divinaPages,
         files = resources,
@@ -298,7 +300,6 @@ class BookAnalyzer(
         comment = allErrors,
       )
     }
-  }
 
   private fun analyzePdf(
     book: Book,
@@ -313,10 +314,10 @@ class BookAnalyzer(
     NoThumbnailFoundException::class,
   )
   fun generateThumbnail(book: BookWithMedia): ThumbnailBook {
-    logger.info { "Generate thumbnail for book: $book" }
+    logger.info { "Generate thumbnail for book: bookId=${book.book.id}" }
 
     if (book.media.status != Media.Status.READY) {
-      logger.warn { "Book media is not ready, cannot generate thumbnail. Book: $book" }
+      logger.warn { "Book media is not ready, cannot generate thumbnail: bookId=${book.book.id}" }
       throw MediaNotReadyException()
     }
 
@@ -369,7 +370,7 @@ class BookAnalyzer(
     book: BookWithMedia,
     number: Int,
   ): ByteArray {
-    logger.debug { "Get page #$number for book: $book" }
+    logger.debug { "Get page #$number for book: bookId=${book.book.id}" }
 
     if (book.media.status != Media.Status.READY) {
       logger.warn { "Book media is not ready, cannot get pages" }
@@ -404,7 +405,7 @@ class BookAnalyzer(
     book: BookWithMedia,
     number: Int,
   ): TypedBytes {
-    logger.debug { "Get raw page #$number for book: $book" }
+    logger.debug { "Get raw page #$number for book: bookId=${book.book.id}" }
     if (book.media.profile != MediaProfile.PDF) throw MediaUnsupportedException("Extractor does not support raw extraction of pages")
 
     if (book.media.status != Media.Status.READY) {
@@ -427,7 +428,7 @@ class BookAnalyzer(
     book: BookWithMedia,
     fileName: String,
   ): ByteArray {
-    logger.debug { "Get file $fileName for book: $book" }
+    logger.debug { "Get file for book: bookId=${book.book.id}" }
 
     if (book.media.status != Media.Status.READY) {
       logger.warn { "Book media is not ready, cannot get files" }

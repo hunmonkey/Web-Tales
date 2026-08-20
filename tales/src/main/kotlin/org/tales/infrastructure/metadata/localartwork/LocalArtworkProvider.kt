@@ -32,7 +32,7 @@ class LocalArtworkProvider(
   val supportedSeriesFiles = listOf("cover", "default", "folder", "poster", "series")
 
   fun getBookThumbnails(book: Book): List<ThumbnailBook> {
-    logger.info { "Looking for local thumbnails for book: $book" }
+    logger.info { "Looking for local thumbnails: bookId=${book.id}" }
     val bookPath = book.path
     val baseName = bookPath.nameWithoutExtension
 
@@ -46,7 +46,7 @@ class LocalArtworkProvider(
         .filter { supportedExtensions.contains(it.extension.lowercase()) }
         .filter { contentDetector.isImage(contentDetector.detectMediaType(it)) }
         .mapIndexed { index, path ->
-          logger.info { "Found file: $path" }
+          logger.info { "Found local thumbnail: bookId=${book.id}" }
           ThumbnailBook(
             url = path.toUri().toURL(),
             type = ThumbnailBook.Type.SIDECAR,
@@ -66,7 +66,7 @@ class LocalArtworkProvider(
       return emptyList()
     }
 
-    logger.info { "Looking for local thumbnails for series: $series" }
+    logger.info { "Looking for local thumbnails: seriesId=${series.id}" }
 
     return Files.list(series.path).use { dirStream ->
       dirStream
@@ -76,7 +76,7 @@ class LocalArtworkProvider(
         .filter { supportedExtensions.contains(it.extension.lowercase()) }
         .filter { contentDetector.isImage(contentDetector.detectMediaType(it)) }
         .mapIndexed { index, path ->
-          logger.info { "Found file: $path" }
+          logger.info { "Found local thumbnail: seriesId=${series.id}" }
           ThumbnailSeries(
             url = path.toUri().toURL(),
             seriesId = series.id,

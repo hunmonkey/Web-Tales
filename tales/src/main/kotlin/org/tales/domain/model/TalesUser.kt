@@ -92,5 +92,5 @@ data class TalesUser(
     return !ageDenied && !labelDenied
   }
 
-  override fun toString(): String = "TalesUser(createdDate=$createdDate, email='$email', roles=$roles, sharedLibrariesIds=$sharedLibrariesIds, sharedAllLibraries=$sharedAllLibraries, restrictions=$restrictions, id='$id', lastModifiedDate=$lastModifiedDate)"
+  override fun toString(): String = "TalesUser(id='$id')"
 }

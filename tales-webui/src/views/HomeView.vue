@@ -31,7 +31,7 @@
       app
       v-model="drawerVisible"
       :right="$vuetify.rtl"
-      width="292"
+      width="208"
       class="app-shell__drawer"
     >
       <search-box
@@ -47,9 +47,6 @@
         <v-list nav dense class="app-shell__nav">
           <!--   KEEP READING (이어보기)     -->
           <v-list-item :to="{name:'dashboard'}">
-            <v-list-item-icon>
-              <v-icon>mdi-book-open-page-variant</v-icon>
-            </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title>{{ $t('dashboard.keep_reading') }}</v-list-item-title>
             </v-list-item-content>
@@ -57,9 +54,6 @@
 
           <!--   LIBRARIES     -->
           <v-list-item :to="{name:'libraries', params: {libraryId: LIBRARIES_ALL}}">
-            <v-list-item-icon>
-              <v-icon>mdi-book-multiple</v-icon>
-            </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title>{{ $t('navigation.libraries') }}</v-list-item-title>
             </v-list-item-content>
@@ -73,8 +67,6 @@
                        :key="index"
                        :to="{name:'libraries', params: {libraryId: l.id}}"
           >
-            <v-list-item-icon>
-            </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title>{{ l.name }}</v-list-item-title>
               <v-list-item-subtitle
@@ -122,7 +114,6 @@
                  not icons a user has to guess at. Reuses `dialogAddLibrary`,
                  so no new API. -->
           <v-list-item v-if="isAdmin" @click="addLibrary">
-            <v-list-item-icon/>
             <v-list-item-content>
               <v-list-item-title>{{ $t('welcome.add_library') }}</v-list-item-title>
             </v-list-item-content>
@@ -130,9 +121,6 @@
 
           <!--   USERS     -->
           <v-list-item v-if="isAdmin" :to="{name: 'settings-users'}">
-            <v-list-item-icon>
-              <v-icon>mdi-account-multiple</v-icon>
-            </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title>{{ $t('users.users') }}</v-list-item-title>
             </v-list-item-content>
@@ -140,9 +128,6 @@
 
           <!--   PREFERENCES     -->
           <v-list-item :to="{name: 'preferences'}">
-            <v-list-item-icon>
-              <v-icon>mdi-cog</v-icon>
-            </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title>{{ $t('common.settings') }}</v-list-item-title>
             </v-list-item-content>
@@ -150,9 +135,6 @@
 
           <!--   LOGOUT     -->
           <v-list-item @click="logoutConfirmDialog = true">
-            <v-list-item-icon>
-              <v-icon>mdi-power</v-icon>
-            </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title>{{ $t('navigation.logout') }}</v-list-item-title>
             </v-list-item-content>

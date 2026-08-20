@@ -5459,26 +5459,22 @@ export default Vue.extend({
       if (!readerStage) return undefined
 
       const rect = readerStage.getBoundingClientRect()
-      // SV-1083 keeps the side zones for panning while the page is wider than
-      // the stage, which is why tap paging switches off there. That still holds
-      // while there is somewhere left to pan; what it also did was strand a
-      // reader who had panned all the way across a zoomed scan, because from
-      // there neither tapping nor swiping moved on (ADR-0018 Decision 6). So the
-      // zones go back to paging only once the page has run out of travel.
+      // SV-1083 keeps each side zone for panning while the page still has room
+      // to travel in that physical direction. Once the matching edge is reached,
+      // that side becomes paging again (ADR-0018 Decision 6).
       const maxScrollLeft = readerStage.scrollWidth - readerStage.clientWidth
       const scrolledLeft = Math.abs(readerStage.scrollLeft)
-      const pagingEnabled = this.tapPagingEnabled && (
-        maxScrollLeft <= 0 ||
-        scrolledLeft <= 1 ||
-        scrolledLeft >= maxScrollLeft - 1
-      )
+      const paging = {
+        left: this.tapPagingEnabled && (maxScrollLeft <= 0 || scrolledLeft <= 1),
+        right: this.tapPagingEnabled && (maxScrollLeft <= 0 || scrolledLeft >= maxScrollLeft - 1),
+      }
 
       return shelfViewTapAction(
         {x: start.x - rect.left, y: start.y - rect.top},
         {x: end.x - rect.left, y: end.y - rect.top},
         rect.width || readerStage.clientWidth,
         this.readingDirection,
-        pagingEnabled,
+        paging,
       )
     },
     readerPointerSelectionActive(): boolean {

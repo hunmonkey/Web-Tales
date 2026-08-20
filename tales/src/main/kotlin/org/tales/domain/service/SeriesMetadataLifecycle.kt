@@ -55,7 +55,9 @@ class SeriesMetadataLifecycle(
                 try {
                   provider.getSeriesMetadataFromBook(BookWithMedia(book, mediaRepository.findById(book.id)), library.importComicInfoSeriesAppendVolume)
                 } catch (e: Exception) {
-                  logger.error(e) { "Error while getting metadata from ${provider.javaClass.simpleName} for book: $book" }
+                  logger.error {
+                    "Series metadata-from-book provider failed: bookId=${book.id}, provider=${provider.javaClass.simpleName}, errorType=${e.javaClass.simpleName}"
+                  }
                   null
                 }
               }
@@ -84,7 +86,9 @@ class SeriesMetadataLifecycle(
             try {
               provider.getSeriesMetadata(series)
             } catch (e: Exception) {
-              logger.error(e) { "Error while getting metadata from ${provider::class.simpleName} for series: $series" }
+              logger.error {
+                "Series metadata provider failed: seriesId=${series.id}, provider=${provider::class.simpleName}, errorType=${e.javaClass.simpleName}"
+              }
               null
             }
 

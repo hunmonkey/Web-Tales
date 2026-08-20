@@ -21,6 +21,21 @@ describe('ShelfViewCanvasImagePage', () => {
     expect(image?.decoding).toBe('async')
     expect(image?.src).toBe('http://api.test/page.svg')
   })
+
+  it('cancels active filtering when the page component is destroyed', () => {
+    const abort = jest.fn()
+    const vm = {
+      processingToken: 3,
+      filterAbortController: {abort},
+    }
+
+    const beforeDestroy = (ShelfViewCanvasImagePage as any).options.beforeDestroy
+    const hook = Array.isArray(beforeDestroy) ? beforeDestroy[0] : beforeDestroy
+    hook.call(vm)
+
+    expect(vm.processingToken).toBe(4)
+    expect(abort).toHaveBeenCalledTimes(1)
+  })
 })
 
 class MockImage {
