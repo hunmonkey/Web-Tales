@@ -453,7 +453,7 @@
       </empty-state>
 
       <template v-else>
-        <v-pagination
+        <v-pagination class="browse-pagination--sticky"
           v-if="totalPages > 1"
           v-model="page"
           :total-visible="paginationVisible"

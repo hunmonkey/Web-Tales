@@ -455,3 +455,27 @@ html {
         transform: none;
     }
 }
+
+/* SV-1284. The browse toolbar is sticky and the pagination row sits right under
+   it, so the page numbers slid behind the toolbar after a few pixels of scroll
+   and could not be clicked. The top row now sticks to the bottom edge of the
+   toolbar (its offset plus its height, both of which change at the same
+   breakpoint as `ToolbarSticky`) and borrows the toolbar's own background, so
+   the two read as one bar. The negative inline margin covers the container
+   padding that `v-row`'s own negative margins let cards bleed into. */
+.browse-pagination--sticky {
+    background: var(--v-contrast-1-base);
+    margin-inline: -12px;
+    max-width: none;
+    padding-block: 6px;
+    position: sticky;
+    top: 128px;
+    width: calc(100% + 24px);
+    z-index: 1;
+}
+
+@media (max-width: 959.98px) {
+    .browse-pagination--sticky {
+        top: 112px;
+    }
+}

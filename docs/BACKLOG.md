@@ -1451,3 +1451,27 @@ be fixed together for the prefetch to reach the screen.
 - No sort control was added to the browse screens. The request was about the
   side menu, and `getLibraries` is shared, so those screens follow the same order
   without a second control.
+
+## The sticky header covers the page numbers, reported 2026-08-24
+
+- [x] SV-1284 Keep the top pagination row clear of the browse toolbar. Owner:
+  "상단에 헤더가 숫자버튼을 가려." The browse screens print the page numbers both
+  above and below the grid, and the row above sits directly beneath
+  `ToolbarSticky`. That bar is `position: sticky`, so a few pixels of scroll were
+  enough for the numbers to slide underneath it: on a folder whose page is barely
+  taller than the window, the top row was permanently half-hidden and unclickable.
+  The top row (`BrowseLibraries`, `BrowseSeries`, `BrowseBooks`) now carries
+  `browse-pagination--sticky` from `styles/global.css`, which sticks it to the
+  bottom edge of the toolbar — the toolbar's own offset plus its height, 128px on
+  `mdAndUp` and 112px below, matching where `ToolbarSticky` switches — and paints
+  it in the toolbar's `contrast-1`, so header and numbers read as one bar. Its
+  `z-index` stays below the toolbar's, and the bottom pagination is untouched.
+
+### Deliberately not done
+
+- `ToolbarSticky`'s 64px/56px top offset was left alone. It looks like a leftover
+  from the app bar SV-1201 removed, but the fixed menu button that reopens the
+  side drawer sits in exactly that band; dropping the offset to zero would park
+  that button on top of the toolbar's own actions menu on any screen where the
+  drawer is closed. Reclaiming that strip means moving the button first, which is
+  its own ticket.
