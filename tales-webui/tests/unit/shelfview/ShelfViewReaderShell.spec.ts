@@ -286,6 +286,30 @@ function setReaderStageRect(wrapper: Wrapper<Vue>) {
   return stage
 }
 
+/** The 35-65% centre zone tap that shows and hides the reader chrome. */
+async function tapReaderStageCentre(wrapper: Wrapper<Vue>, pointerId: number) {
+  const stage = setReaderStageRect(wrapper)
+
+  await (wrapper.vm as any).onReaderPointerDown({
+    pointerType: 'mouse',
+    button: 0,
+    pointerId,
+    clientX: 500,
+    clientY: 120,
+    target: stage.element,
+    cancelable: true,
+    preventDefault: jest.fn(),
+  })
+  await (wrapper.vm as any).onReaderPointerUp({
+    pointerId,
+    clientX: 504,
+    clientY: 126,
+    cancelable: true,
+    preventDefault: jest.fn(),
+  })
+  await Vue.nextTick()
+}
+
 async function chooseControlOption(wrapper: Wrapper<Vue>, toggleTestId: string, optionTestId: string) {
   if (overflowControlToggleTestIds.has(toggleTestId) && !(wrapper.vm as any).overflowMenuOpen) {
     const moreToggle = wrapper.find('[data-testid="shelfview-reader-more-toggle"]')
@@ -335,6 +359,51 @@ describe('ShelfViewReaderShell', () => {
       .toBe('shelfview_reader.reader_aria_label')
     expect(wrapper.find('[data-testid="shelfview-reader-live-status"]').text())
       .toBe('shelfview_reader.reader_live_status')
+  })
+
+  it('turns a page by updating the page element instead of replacing it', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    const beforeTurn = wrapper.find('[data-testid="shelfview-reader-page"]').element
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await Vue.nextTick()
+
+    const afterTurn = wrapper.find('[data-testid="shelfview-reader-page"]')
+    // A browser keeps the current image painted until the next one has decoded,
+    // so reusing the element is what stops the stage blanking for the length of
+    // a page load. A fresh element would start empty every turn.
+    expect(afterTurn.element).toBe(beforeTurn)
+    expect(afterTurn.attributes('src')).toBe('http://api.test/api/v1/books/book-1/pages/1?zero_based=true&v=tales-file-state%3Abook-1')
+    expect(afterTurn.attributes('data-page-index')).toBe('1')
+  })
+
+  it('replaces the page element when a broken page is retried, so the same URL is fetched again', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue({...manifest, pageCount: 4})})
+
+    await flushPromises()
+    await Vue.nextTick()
+    await wrapper.setData({readerLayout: 'DOUBLE_PAGE'})
+    await Vue.nextTick()
+
+    const pages = wrapper.findAll('[data-testid="shelfview-reader-page"]')
+    const survivingPage = pages.at(1).element
+
+    await pages.at(0).trigger('error')
+    await Vue.nextTick()
+    await wrapper.find('[data-testid="shelfview-reader-page-retry"]').trigger('click')
+    await Vue.nextTick()
+
+    // Reusing the element across turns must not cost the retry its reload: the
+    // src is unchanged, so only a new element re-requests the broken page.
+    const retried = wrapper.findAll('[data-testid="shelfview-reader-page"]')
+    expect(retried.length).toBe(2)
+    expect(retried.at(1).element).not.toBe(survivingPage)
+    expect(retried.at(0).attributes('data-page-reload')).toBe('1')
   })
 
   it('starts with the reader toolbar visible and keeps it up while reading', async () => {
@@ -910,7 +979,9 @@ describe('ShelfViewReaderShell', () => {
     await wrapper.find('[data-testid="shelfview-reader-end-next"]').trigger('click')
     await flushPromises()
 
-    expect(updateReadProgress).toHaveBeenCalledWith('book-1', {completed: true})
+    // Moving on to the next volume is not finishing this one (SV-1282); only
+    // the finish button takes a book out of keep reading.
+    expect(updateReadProgress).not.toHaveBeenCalled()
     expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
       name: 'read-book-v2',
       params: {bookId: 'book-2'},
@@ -943,7 +1014,8 @@ describe('ShelfViewReaderShell', () => {
     await wrapper.find('[data-testid="shelfview-reader-end-exit"]').trigger('click')
     await flushPromises()
 
-    expect(updateReadProgress).toHaveBeenCalledWith('book-1', {completed: true})
+    // Leaving the reader at the last page leaves the book in keep reading.
+    expect(updateReadProgress).not.toHaveBeenCalled()
     expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
       name: 'browse-book',
       params: {bookId: 'book-1', seriesId: 'series-1'},
@@ -951,7 +1023,53 @@ describe('ShelfViewReaderShell', () => {
     })
   })
 
-  it('keeps incognito end-of-book actions from marking the book completed', async () => {
+  it('finishes the book only from the finish button, and saves no position after it', async () => {
+    const updateReadProgress = jest.fn().mockResolvedValue({})
+    const savePosition = jest.fn().mockResolvedValue({})
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      shelfViewState: {savePosition},
+      talesBooks: {
+        getBookSiblingNext: jest.fn().mockRejectedValue(new Error('No next book')),
+        updateReadProgress,
+      },
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await (wrapper.vm as any).goToPageIndex(1)
+    await Vue.nextTick()
+    await (wrapper.vm as any).nextPage()
+    await flushPromises()
+    await Vue.nextTick()
+
+    // Reaching the last page on its own leaves the book in keep reading.
+    expect(updateReadProgress).not.toHaveBeenCalled()
+
+    await wrapper.find('[data-testid="shelfview-reader-end-finish"]').trigger('click')
+    await flushPromises()
+
+    expect(updateReadProgress).toHaveBeenCalledWith('book-1', {completed: true})
+    expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
+      name: 'browse-book',
+      params: {bookId: 'book-1', seriesId: 'series-1'},
+      query: {context: undefined, contextId: undefined},
+    })
+
+    // The last position write has to be the one before the finish. A position
+    // save mirrors into Tales read progress as an unfinished book, so one after
+    // the finish would put the book straight back into keep reading.
+    const savesBeforeFinish = savePosition.mock.calls.length
+    await (wrapper.vm as any).flushPositionSave()
+    ;(wrapper.vm as any).schedulePositionSave()
+    await flushPromises()
+
+    expect(savePosition).toHaveBeenCalledTimes(savesBeforeFinish)
+    expect((wrapper.vm as any).flushPositionSaveOnUnload()).toBe(false)
+  })
+
+  it('keeps an incognito finish from marking the book completed', async () => {
     const updateReadProgress = jest.fn().mockResolvedValue({})
     const wrapper = mountShell({
       getManifest: jest.fn().mockResolvedValue(manifest),
@@ -971,7 +1089,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
     await Vue.nextTick()
 
-    await wrapper.find('[data-testid="shelfview-reader-end-exit"]').trigger('click')
+    await wrapper.find('[data-testid="shelfview-reader-end-finish"]').trigger('click')
     await flushPromises()
 
     expect(updateReadProgress).not.toHaveBeenCalled()
@@ -1009,7 +1127,7 @@ describe('ShelfViewReaderShell', () => {
     await flushPromises()
 
     expect(preventDefault).toHaveBeenCalled()
-    expect(updateReadProgress).toHaveBeenCalledWith('book-1', {completed: true})
+    expect(updateReadProgress).not.toHaveBeenCalled()
     expect((wrapper.vm as any).$router.push).toHaveBeenCalledWith({
       name: 'read-book-v2',
       params: {bookId: 'book-2'},
@@ -2550,11 +2668,67 @@ describe('ShelfViewReaderShell', () => {
     await Vue.nextTick()
 
     expect((wrapper.vm as any).isFullscreen).toBe(true)
-    // Going fullscreen must not take the toolbar away with it.
+    // Fullscreen is asked for to see the page, so the toolbar goes away with it.
+    // The centre tap that hides the toolbar the rest of the time brings it back,
+    // so nothing in it becomes unreachable.
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
+    expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').isVisible()).toBe(false)
+
+    await tapReaderStageCentre(wrapper, 9)
+
     expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-toolbar"]').isVisible()).toBe(true)
 
     await wrapper.find('[data-testid="shelfview-reader-fullscreen-toggle"]').trigger('click')
     expect(mockScreenfull.exit).toHaveBeenCalled()
+
+    // Leaving fullscreen gives the chrome back rather than leaving the reader
+    // looking like it lost its controls.
+    mockScreenfull.isFullscreen = false
+    changeHandler()
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+  })
+
+  it('keeps the settings panel from reappearing with the toolbar after fullscreen hides it', async () => {
+    mockScreenfull.isEnabled = true
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-more-toggle"]').trigger('click')
+    expect((wrapper.vm as any).overflowMenuOpen).toBe(true)
+
+    const changeHandler = mockScreenfull.on.mock.calls.find((call: any[]) => call[0] === 'change')![1]
+    mockScreenfull.isFullscreen = true
+    changeHandler()
+    await Vue.nextTick()
+
+    expect((wrapper.vm as any).overflowMenuOpen).toBe(false)
+
+    await tapReaderStageCentre(wrapper, 11)
+
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
+    expect(wrapper.find('[data-testid="shelfview-reader-overflow"]').isVisible()).toBe(false)
+  })
+
+  it('opens a book straight into the page when the reader is already fullscreen', async () => {
+    mockScreenfull.isEnabled = true
+    mockScreenfull.isFullscreen = true
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(manifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    // setup() runs again for every book opened inside the reader, so without
+    // this the toolbar would come back over the page on each book change.
+    expect((wrapper.vm as any).chromeVisible).toBe(false)
+
+    await tapReaderStageCentre(wrapper, 13)
+
+    expect((wrapper.vm as any).chromeVisible).toBe(true)
   })
 
   it('toggles fullscreen with the F keyboard shortcut', async () => {

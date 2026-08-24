@@ -678,10 +678,16 @@
         :class="readerPagesClasses"
         data-testid="shelfview-reader-pages"
       >
-        <template v-for="page in visiblePageSources">
+        <!-- Keyed by the slot on the stage, not by the page number, so turning a
+             page updates the element that is already there instead of replacing
+             it. A browser keeps the current image painted until the next one has
+             decoded, so the reader no longer blanks for the length of a page
+             load. The reload nonce stays in the key because retrying a broken
+             page needs a genuinely new element to fetch the same URL again. -->
+        <template v-for="(page, slot) in visiblePageSources">
           <div
             v-if="pageImageFailedAt(page.pageIndex)"
-            :key="`page-failed-${page.pageIndex}`"
+            :key="`page-failed-${slot}-${pageImageReloadNonce}`"
             class="shelfview-reader-shell__page-failed"
             data-testid="shelfview-reader-page-failed"
           >
@@ -698,7 +704,7 @@
           </div>
           <ShelfViewCanvasImagePage
             v-else-if="canvasImageProcessingEnabled"
-            :key="`canvas-page-${page.pageIndex}-${pageImageReloadNonce}`"
+            :key="`canvas-page-${slot}-${pageImageReloadNonce}`"
             :src="page.url"
             :alt="`${bookTitle} - ${$t('shelfview_reader.page_n', {n: page.pageIndex + 1})}`"
             :page-index="page.pageIndex"
@@ -710,7 +716,7 @@
           />
           <img
             v-else
-            :key="`page-${page.pageIndex}-${pageImageReloadNonce}`"
+            :key="`page-${slot}-${pageImageReloadNonce}`"
             class="shelfview-reader-shell__page shelfview-page-content"
             :class="[pageImageClass, {'shelfview-reader-shell__page--pending': !pageImageLoadedAt(page.pageIndex)}]"
             :style="imageFilterStyle"
@@ -1920,6 +1926,16 @@
           >
             {{ $t('shelfview_reader.read_next_book') }}
           </v-btn>
+          <!-- The only control that takes a book out of keep reading (SV-1282).
+               Reaching the last page, moving on to the next volume and leaving
+               the reader all leave the book where it is. -->
+          <v-btn
+            class="shelfview-reader-shell__action"
+            data-testid="shelfview-reader-end-finish"
+            @click="finishBook"
+          >
+            {{ $t('shelfview_reader.finish_book') }}
+          </v-btn>
           <v-btn
             class="shelfview-reader-shell__action"
             data-testid="shelfview-reader-end-exit"
@@ -2220,6 +2236,9 @@ export default Vue.extend({
     fullscreenAvailable: false,
     isFullscreen: false,
     endOfBookPromptOpen: false,
+    // Set once the reader has finished this book, to stop any later position
+    // save putting it back into keep reading (SV-1282).
+    bookFinished: false,
     bookmarks: [] as ShelfViewBookmarkDto[],
     highlights: [] as ShelfViewHighlightDto[],
     bookmarksDrawerOpen: false,
@@ -3078,11 +3097,16 @@ export default Vue.extend({
       this.textSearchQuery = ''
       this.textSearchQueryApplied = ''
       this.textSearchMatchIndex = 0
-      this.chromeVisible = true
+      // Opening a book puts the toolbar up, except while fullscreen, where the
+      // reader has asked for the page and nothing else. Moving on to the next
+      // book inside the reader runs this too, so without the exception every
+      // book change would pop the chrome back over a fullscreen page.
+      this.chromeVisible = !this.isFullscreen
       this.overflowMenuOpen = false
       this.thumbnailStripOpen = false
       this.siblingNext = undefined
       this.endOfBookPromptOpen = false
+      this.bookFinished = false
       this.stopSlideshow()
       this.clearReaderStateTimers()
       this.setReaderStateStatus('IDLE', '')
@@ -3889,7 +3913,7 @@ export default Vue.extend({
       return undefined
     },
     schedulePositionSave() {
-      if (!this.adapter || !this.currentLocator) return
+      if (!this.adapter || !this.currentLocator || this.bookFinished) return
 
       if (this.positionSaveTimer !== undefined) window.clearTimeout(this.positionSaveTimer)
       this.setReaderStateStatus('PENDING', this.$t('shelfview_reader.status_saving') as string)
@@ -3922,7 +3946,7 @@ export default Vue.extend({
         window.clearTimeout(this.positionSaveTimer)
         this.positionSaveTimer = undefined
       }
-      if (!this.adapter || !this.currentLocator || this.browserOffline()) return false
+      if (!this.adapter || !this.currentLocator || this.bookFinished || this.browserOffline()) return false
 
       return this.$shelfViewState.savePositionOnUnload(this.bookId, {
         locator: this.currentLocator,
@@ -3934,7 +3958,10 @@ export default Vue.extend({
         window.clearTimeout(this.positionSaveTimer)
         this.positionSaveTimer = undefined
       }
-      if (!this.adapter || !this.currentLocator) return
+      // A finished book must not be given a position again: the save mirrors
+      // into Tales read progress as unfinished, which would put the book back
+      // into keep reading right after it was finished (SV-1282).
+      if (!this.adapter || !this.currentLocator || this.bookFinished) return
       if (this.browserOffline()) {
         this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
         return
@@ -4451,7 +4478,7 @@ export default Vue.extend({
       }
 
       this.endOfBookPromptOpen = false
-      await this.completeCurrentBookFromEndPrompt()
+      await this.flushReaderState()
       this.$router.push({
         name: getBookReadRouteFromMedia(this.siblingNext.media),
         params: {bookId: this.siblingNext.id.toString()},
@@ -4459,6 +4486,19 @@ export default Vue.extend({
       })
     },
     async exitEndOfBookPrompt() {
+      this.endOfBookPromptOpen = false
+      await this.closeBook()
+    },
+    /**
+     * The one action that finishes a book (SV-1282). Reading the last page no
+     * longer does it, and neither does moving to the next volume or leaving the
+     * reader, so a book stays in keep reading until this is pressed.
+     *
+     * The position is written first and the reader is left afterwards, because
+     * a position save mirrors into Tales read progress as an unfinished book.
+     * Anything that saved a position after this would undo the finish.
+     */
+    async finishBook() {
       this.endOfBookPromptOpen = false
       await this.completeCurrentBookFromEndPrompt()
       await this.closeBook()
@@ -4472,6 +4512,7 @@ export default Vue.extend({
 
       try {
         await this.$talesBooks.updateReadProgress(this.bookId, {completed: true})
+        this.bookFinished = true
       } catch (e) {
         this.setReaderStateStatus(this.browserOffline() ? 'OFFLINE' : 'ERROR', this.$t('shelfview_reader.status_save_failed') as string)
       }
@@ -4564,8 +4605,20 @@ export default Vue.extend({
         void screenfull.request(document.documentElement, {navigationUI: 'hide'})
       }
     },
+    /**
+     * Fullscreen is asked for to see the page, so entering it also puts the
+     * reader chrome away and leaving it brings the chrome back. The centre tap
+     * that hides and shows the toolbar the rest of the time is what reveals it
+     * again while fullscreen, so nothing becomes unreachable.
+     *
+     * This is narrower than the auto-hide SV-1072 removed: outside fullscreen
+     * the toolbar still stays up from the moment a book opens until the reader
+     * puts it away, which is what that ticket was about.
+     */
     onFullscreenChange() {
       this.isFullscreen = screenfull.isEnabled && screenfull.isFullscreen
+      this.chromeVisible = !this.isFullscreen
+      if (!this.chromeVisible) this.closeOverflowMenu()
     },
     closeBookmarksDrawer() {
       this.bookmarksDrawerOpen = false

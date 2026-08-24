@@ -1309,3 +1309,145 @@ goes from 4,072,013 bytes to 397,310 — a 90% reduction.
   and needs a font tool.
 - `ShelfViewReaderShell.vue` is 7,357 lines. Not a speed problem; recorded
   because everything in the reader has to be changed inside it.
+
+## Archive page turns blank for about a second, reported 2026-08-24
+
+Single page and double page both showed an empty stage for roughly a second on
+every turn of a ZIP/CBZ book, even though `FixedPageAdapter` already prefetches
+four pages ahead. Three separate causes, all in the browser, all of which have to
+be fixed together for the prefetch to reach the screen.
+
+- [x] SV-1278 Stop the page turn from cancelling the page it turns to.
+  `FixedPageAdapter.prefetchNextPage` built its window from offsets -1 to +4 and
+  explicitly skipped offset 0, so arriving at a page dropped that page's own
+  prefetch handle - and `defaultShelfViewPagePreloader.cancel` removes the `src`
+  attribute, which aborts a download still in flight. Reading faster than the
+  server serves therefore threw away the download of the page being turned to,
+  microseconds before the `<img>` for it rendered and started over from nothing.
+  The window now contains the current page, requested first, then the pages ahead
+  in reading order, then the page behind.
+- [x] SV-1279 Prefetch pages in the fetch mode they are displayed in. The
+  preloader and the canvas filter path both set `crossOrigin = 'use-credentials'`
+  while the plain `<img>` that shows almost every page (every filter preset
+  except the four canvas ones) sets no `crossorigin` at all. A browser keys a
+  cached image by its fetch mode, so the prefetched page was never the image the
+  `<img>` displayed and the page was fetched a second time on the turn. A
+  same-origin image - which is every deployed one - cannot taint a canvas, so
+  `shelfViewPageImageCrossOrigin` now asks for the CORS mode only when the page
+  really is cross-origin, which is the `VUE_APP_TALES_API_URL` development setup.
+- [x] SV-1280 Turn a page by updating the page element, not replacing it. The
+  page `:key` carried the page index, so every turn destroyed the `<img>` and
+  built a new one, which starts empty. Browsers keep the current image painted
+  until the next one has decoded, so keying by the slot on the stage removes the
+  blank gap even when the next page still has to be fetched. The reload nonce
+  stays in the key: retrying a broken page reuses the same URL and needs a
+  genuinely new element to request it again.
+
+### Not done, and why
+
+- Nothing on the server changed. Every page request still re-opens the archive,
+  re-scans its central directory, inflates the entry, and runs Tika detection
+  plus an ImageIO dimension read on the bytes (`ZipExtractor.getEntryStream` ->
+  `withPreflightedZip`), with no equivalent of the PDF document cache from
+  SV-1265. That per-request cost is what the prefetch hides, and the three fixes
+  above are what let it hide it. Whether it still needs its own cache is a
+  measurement question, not a code-reading one, and it has not been measured on
+  the deployed server.
+## Fullscreen keeps its own toolbar on screen, reported 2026-08-24
+
+- [x] SV-1281 Hide the reader chrome while fullscreen, and reveal it on a tap.
+  Owner report: "전체화면 보기시 상단에 메뉴 또는 헤더가 보여. 터치나 클릭 하면
+  나오게 해줘." Entering fullscreen left `chromeVisible` alone, so the pinned
+  toolbar stayed over the page. `onFullscreenChange` now hides the chrome on the
+  way in and restores it on the way out, and closes the settings panel with it so
+  a later tap does not bring the whole panel back. `setup()` also starts a book
+  with the chrome down while fullscreen, because it runs again for every book
+  opened inside the reader and would otherwise pop the toolbar back on each book
+  change.
+  **This narrows SV-1072 rather than undoing it.** That ticket removed the
+  timed auto-hide because the owner reported the toolbar, settings and back
+  button vanishing with no way back. Outside fullscreen nothing changes: the
+  toolbar is up from the moment a book opens and only goes away when the reader
+  puts it away with `Escape` or a centre tap. Fullscreen is the one mode the
+  reader explicitly asks for, and the same centre tap is what brings the chrome
+  back there, so nothing becomes unreachable. The reveal gesture already existed
+  and is unchanged (`shelfViewTapAction`, the 35-65% centre zone).
+## Books leave keep reading on their own, reported 2026-08-24
+
+- [x] SV-1282 Finish a book only when the reader says so.
+  Owner: "이어읽기가 종결 누르기 전까진 어떤 도서도 안사라지게 해줘." Keep reading
+  lists `IN_PROGRESS` books, and `BookLifecycle.markReadProgress` completed a
+  book whenever the saved page equalled the page count. The ShelfView reader
+  mirrors its position on a two-second autosave, so turning to the last page
+  finished the book and dropped it from the list on the spot. The same rule
+  existed twice more in the `R2Progression` overload, for page-based and EPUB
+  progressions.
+  All three now store `completed = false`; `markReadProgressCompleted` is the
+  only thing that finishes a book. The reader's end-of-book prompt gains a
+  labelled 종결 button that sends it, and "read next volume" and "exit" no longer
+  complete the book as a side effect. After a finish the reader stops writing
+  positions for that book, because a position save mirrors as unfinished and
+  `closeBook`, `pagehide` and `visibilitychange` all run one.
+  Owner decisions taken before implementing: turn the automatic completion off
+  everywhere rather than only in the ShelfView reader, and put the button in the
+  reader's end-of-book prompt rather than on the keep-reading cards. A book
+  abandoned before the end is still closed out from the card menu's "mark as
+  read", which calls the same endpoint.
+  [ADR-0021](ADR/ADR-0021-explicit-book-completion.md) has the reasoning and the
+  two rejected alternatives.
+
+### Known consequences, accepted
+
+- Read status is a statement rather than a measurement now. "Recently read", on
+  deck and a series' read/unread counts follow explicit finishes, so they look
+  emptier until books are finished.
+- `PATCH /api/v1/books/{id}/read-progress` with a page no longer completes a book
+  at the last page. The API shape is unchanged; its behaviour is not. This will
+  conflict on an upstream merge of `BookLifecycle`.
+- Books completed before this change stay completed and stay out of keep reading.
+  Reopening one and turning a page brings it back.
+
+### Verified
+
+- Verified 2026-08-24 after a JDK was installed on this machine: `:tales:compileKotlin`
+  succeeded, `:tales:ktlintCheck` passed, and the full `:tales:test` ran 1,101
+  tests with **0 failures** and the 7 existing conditional skips. That covers the
+  inverted `ShelfViewPositionControllerTest` assertion and everything that reads
+  read status — series read/unread counts, book search by `ReadStatus`, import and
+  re-analysis. This entry originally recorded that nothing backend had been
+  compiled; it has been.
+## Ordering the folder list in the side menu, requested 2026-08-24
+
+- [x] SV-1283 Let the side menu's folder list be ordered by name or by creation
+  date. Owner: "사이드 메뉴에 폴더 만들면 이름순 또는 생성일순으로 정렬될 수
+  있도록 필터 옵션 넣어줘." The list only had the hand-made order from the
+  reorder panel: `getLibraries` merged the per-user `webui.libraries` settings and
+  sorted on their `order`.
+  A new per-user setting `webui.libraries_sort` holds `MANUAL`, `NAME` or
+  `CREATED`, chosen from the folder list's existing actions menu — the one that
+  already carries "Reorder" — under a labelled **Order** heading with a tick on
+  the one in use. `MANUAL` is the default and is byte-for-byte the old
+  comparator, so nothing moves for anyone who does not pick an order.
+  `NAME` and `CREATED` are derived from the folders and never write `order`, so
+  the hand-made order survives underneath and comes back on switching to
+  `MANUAL`. Opening the reorder panel switches back to `MANUAL` by itself,
+  because dragging is invisible under a derived order; its existing
+  `immediate: true` watcher then stamps the order from what is already on screen,
+  so the switch moves nothing.
+  Creation date needed a field: `LibraryDto` gained `createdDate`, which
+  `Library` already had from `Auditable`. Additive only — no existing field
+  changed, and the API shape is otherwise untouched. `CREATED` is oldest first,
+  which is the order the folders were added in, and ties break by name. A server
+  that does not send the date falls back to name order rather than shuffling.
+  Name order uses `localeCompare` with `numeric: true`, so "Folder 2" precedes
+  "Folder 10" and Korean names sort as Korean rather than by code point.
+
+### Deliberately not done
+
+- The label says "Order" rather than "Folder order" because the shipped Korean
+  strings still call these 서재, while `CLAUDE.md` and ADR-0019 call them
+  folders. Settling that vocabulary is its own ticket; a neutral label reads
+  correctly either way.
+- No sort control was added to the browse screens. The request was about the
+  side menu, and `getLibraries` is shared, so those screens follow the same order
+  without a second control.

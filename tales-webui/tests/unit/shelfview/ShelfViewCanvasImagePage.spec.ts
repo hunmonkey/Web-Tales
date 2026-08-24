@@ -22,6 +22,21 @@ describe('ShelfViewCanvasImagePage', () => {
     expect(image?.src).toBe('http://api.test/page.svg')
   })
 
+  it('loads a same-origin page without a CORS mode, so it is the image the prefetch already fetched', async () => {
+    let image: MockImage | undefined
+    global.Image = jest.fn(() => {
+      image = new MockImage()
+      return image as unknown as HTMLImageElement
+    }) as unknown as typeof Image
+
+    const loadImage = (ShelfViewCanvasImagePage as any).options.methods.loadImage
+    // jsdom serves the test document from http://localhost; a same-origin image
+    // cannot taint the canvas, so its pixels stay readable without CORS.
+    await expect(loadImage('/api/v1/books/book-1/pages/0')).resolves.toBe(image)
+
+    expect(image?.crossOrigin).toBeNull()
+  })
+
   it('cancels active filtering when the page component is destroyed', () => {
     const abort = jest.fn()
     const vm = {

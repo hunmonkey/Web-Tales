@@ -42,6 +42,7 @@ import {
   shelfViewRenderWebglSharpen,
 } from '@/shelfview/functions/canvas-image-processing'
 import {shelfViewFilterImageData} from '@/shelfview/functions/canvas-filter-runner'
+import {shelfViewPageImageCrossOrigin} from '@/shelfview/functions/shelfview-urls'
 
 export default Vue.extend({
   name: 'ShelfViewCanvasImagePage',
@@ -155,7 +156,11 @@ export default Vue.extend({
         const image = new Image()
         image.onload = () => resolve(image)
         image.onerror = reject
-        image.crossOrigin = 'use-credentials'
+        // Only a cross-origin page needs the CORS mode to leave the canvas
+        // readable. Asking for it on a same-origin page would make this a
+        // different resource from the prefetched one and fetch the page twice.
+        const crossOrigin = shelfViewPageImageCrossOrigin(src)
+        if (crossOrigin) image.crossOrigin = crossOrigin
         image.decoding = 'async'
         image.src = src
       })

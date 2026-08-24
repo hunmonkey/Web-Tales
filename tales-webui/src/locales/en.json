@@ -230,6 +230,7 @@
     "end_of_book_title": "End of book",
     "end_of_book_message": "You've reached the end of this book.",
     "read_next_book": "Read next volume",
+    "finish_book": "Finish",
     "exit_reader": "Exit",
     "no_next_book": "This is the last volume.",
     "search": "Search text",
@@ -1173,6 +1174,12 @@
     "collections": "Collections",
     "readlists": "Read Lists",
     "recommended": "Recommended"
+  },
+  "libraries_sort": {
+    "title": "Order",
+    "manual": "Manual order",
+    "name": "By name",
+    "created": "By date created"
   },
   "login": {
     "create_user_account": "Create user account",

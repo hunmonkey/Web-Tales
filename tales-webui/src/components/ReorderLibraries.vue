@@ -51,7 +51,7 @@
 import Vue from 'vue'
 import draggable from 'vuedraggable'
 import {LibraryDto} from '@/types/tales-libraries'
-import {ClientSettingLibraryUpdate} from '@/types/tales-clientsettings'
+import {CLIENT_SETTING, ClientSettingLibraryUpdate} from '@/types/tales-clientsettings'
 
 export default Vue.extend({
   name: 'ReorderLibraries',
@@ -72,6 +72,16 @@ export default Vue.extend({
   },
   mounted() {
     this.localItems = this.$store.getters.getLibraries
+    // Dragging a folder has no visible effect while the list is ordered by name
+    // or by date, so opening this panel switches back to the manual order. The
+    // watcher below immediately stamps that order from what is on screen, so
+    // nothing moves at the moment of the switch.
+    if (this.$store.getters.getClientSettingsLibrariesSort !== 'MANUAL') {
+      this.$store.dispatch('saveUserPreference', {
+        key: CLIENT_SETTING.WEBUI_LIBRARIES_SORT,
+        value: 'MANUAL',
+      })
+    }
   },
   watch: {
     localItems: {

@@ -409,7 +409,11 @@ class BookLifecycle(
         null
       }
 
-    val progress = ReadProgress(book.id, user.id, page, page == media.pageCount, locator = locator)
+    // Reading the last page no longer finishes a book (SV-1282). A book leaves
+    // "keep reading" only when the reader says it is finished, which is
+    // markReadProgressCompleted, reached from the reader's end-of-book prompt
+    // and from the book menu's "mark as read".
+    val progress = ReadProgress(book.id, user.id, page, false, locator = locator)
 
     readProgressRepository.save(progress)
     eventPublisher.publishEvent(DomainEvent.ReadProgressChanged(progress))
@@ -463,7 +467,9 @@ class BookLifecycle(
             book.id,
             user.id,
             newProgression.locator.locations!!.position!!,
-            newProgression.locator.locations.position == media.pageCount,
+            // Same rule as the page-based call above: only an explicit finish
+            // completes a book (SV-1282).
+            false,
             newProgression.modified.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime(),
             newProgression.device.id,
             newProgression.device.name,
@@ -505,7 +511,8 @@ class BookLifecycle(
             book.id,
             user.id,
             totalProgression?.let { (media.pageCount * it).roundToInt() } ?: 0,
-            totalProgression?.let { it >= 0.99F } ?: false,
+            // Reaching the end of an EPUB does not finish it either (SV-1282).
+            false,
             newProgression.modified.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime(),
             newProgression.device.id,
             newProgression.device.name,

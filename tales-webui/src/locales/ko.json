@@ -230,6 +230,7 @@
     "end_of_book_title": "마지막 페이지",
     "end_of_book_message": "이 책을 끝까지 읽었습니다.",
     "read_next_book": "다음 권 이어보기",
+    "finish_book": "종결",
     "exit_reader": "나가기",
     "no_next_book": "마지막 권입니다.",
     "search": "본문 검색",
@@ -1173,6 +1174,12 @@
     "collections": "모음집",
     "readlists": "읽기 목록",
     "recommended": "추천"
+  },
+  "libraries_sort": {
+    "title": "정렬 순서",
+    "manual": "직접 정렬한 순서",
+    "name": "이름순",
+    "created": "생성일순"
   },
   "login": {
     "create_user_account": "사용자 계정 만들기",

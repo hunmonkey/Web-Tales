@@ -3,19 +3,23 @@ import {AxiosInstance} from 'axios'
 import _Vue from 'vue'
 import {Module} from 'vuex/types'
 import {LibraryDto} from '@/types/tales-libraries'
+import {sortLibraries} from '@/functions/library-sort'
 
 let service: TalesLibrariesService
 
-const vuexModule: Module<any, any> = {
+// Exported so the store getters can be exercised directly in tests, the same
+// way tales-settings.plugin.ts already is.
+export const vuexModule: Module<any, any> = {
   state: {
     libraries: [] as LibraryDto[],
   },
   getters: {
     getLibraries(state, getters) {
       const settings = getters.getClientSettingsLibraries
-      return state.libraries
-        .map((it: LibraryDto) => Object.assign({}, it, settings[it.id]))
-        .sort((a: LibraryDto, b: LibraryDto) => a.order - b.order)
+      return sortLibraries(
+        state.libraries.map((it: LibraryDto) => Object.assign({}, it, settings[it.id])),
+        getters.getClientSettingsLibrariesSort,
+      )
     },
     getLibraryById: (state, getters) => (id: number) => {
       return getters.getLibraries.find((l: any) => l.id === id)

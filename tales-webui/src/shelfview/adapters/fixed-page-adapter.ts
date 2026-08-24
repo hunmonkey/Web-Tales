@@ -1,5 +1,5 @@
 import {ReaderAdapter} from '@/shelfview/adapters/reader-adapter'
-import {shelfViewPageUrl} from '@/shelfview/functions/shelfview-urls'
+import {shelfViewPageImageCrossOrigin, shelfViewPageUrl} from '@/shelfview/functions/shelfview-urls'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {
   SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -137,24 +137,35 @@ export class FixedPageAdapter implements ReaderAdapter {
    * window are reused instead, and only the pages that fell out are cancelled.
    * The window reaches one page backwards so returning to check something does
    * not start from a blank screen.
+   *
+   * The current page is inside the window rather than skipped. Skipping it meant
+   * that arriving at a page cancelled that page's own prefetch, and cancelling
+   * aborts a download still in flight - so turning pages faster than they load
+   * threw away the page being turned to and made the reader fetch it again from
+   * nothing. It is requested first so the browser starts the page on screen
+   * ahead of its neighbours, then the pages ahead in reading order, then the
+   * page behind.
    */
   private prefetchNextPage(): void {
-    if (!this.manifest) {
+    const manifest = this.manifest
+    if (!manifest) {
       this.cancelPrefetch()
       return
     }
 
     const pageCount = this.getPagesCount()
+    const offsets = [0]
+    for (let offset = 1; offset <= SHELFVIEW_PREFETCH_PAGE_COUNT; offset++) offsets.push(offset)
+    offsets.push(-1)
+
     const wanted = new Map<string, number>()
-    for (let offset = -1; offset <= SHELFVIEW_PREFETCH_PAGE_COUNT; offset++) {
-      if (offset === 0) continue
-
+    offsets.forEach(offset => {
       const pageIndex = this.currentPageIndex + offset
-      if (pageIndex < 0 || pageIndex >= pageCount) continue
+      if (pageIndex < 0 || pageIndex >= pageCount) return
 
-      const url = this.resolvePageUrl(this.manifest, pageIndex)
+      const url = this.resolvePageUrl(manifest, pageIndex)
       if (url) wanted.set(url, pageIndex)
-    }
+    })
 
     const kept = new Map<string, ShelfViewPagePreload>()
     this.prefetchHandles.forEach((handle, url) => {
@@ -188,9 +199,12 @@ export class FixedPageAdapter implements ReaderAdapter {
 
 export function defaultShelfViewPagePreloader(url: string): ShelfViewPagePreload {
   const image = new Image()
-  // Match the fetch mode the canvas display path uses, so a prefetched page is
-  // reused there instead of being requested a second time.
-  image.crossOrigin = 'use-credentials'
+  // Match the fetch mode the display path uses, so a prefetched page is reused
+  // there instead of being requested a second time. Same-origin pages, which is
+  // every deployed one, are fetched without a CORS mode by both the plain `<img>`
+  // and the canvas.
+  const crossOrigin = shelfViewPageImageCrossOrigin(url)
+  if (crossOrigin) image.crossOrigin = crossOrigin
   image.src = url
 
   return {

@@ -1,4 +1,9 @@
-import {shelfViewEndpointUrl, shelfViewPageUrl, shelfViewThumbnailUrl} from '@/shelfview/functions/shelfview-urls'
+import {
+  shelfViewEndpointUrl,
+  shelfViewPageImageCrossOrigin,
+  shelfViewPageUrl,
+  shelfViewThumbnailUrl,
+} from '@/shelfview/functions/shelfview-urls'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 
 const manifest: ShelfViewManifest = {
@@ -54,5 +59,21 @@ describe('ShelfView URL helpers', () => {
     }, 1, 'http://api.test')).toBe(
       'http://api.test/api/v1/books/book-1/pages/2/thumbnail?v=tales-file-state%3Abook-1',
     )
+  })
+})
+
+describe('ShelfView page image fetch mode', () => {
+  it('asks for no CORS mode on a same-origin page, so the prefetch and the img tag share one fetch', () => {
+    expect(shelfViewPageImageCrossOrigin('/api/v1/books/book-1/pages/0', 'http://tales.test')).toBeUndefined()
+    expect(shelfViewPageImageCrossOrigin('http://tales.test/api/v1/books/book-1/pages/0', 'http://tales.test')).toBeUndefined()
+  })
+
+  it('keeps the CORS mode on a cross-origin page, so the canvas filters can read its pixels', () => {
+    expect(shelfViewPageImageCrossOrigin('http://api.test/api/v1/books/book-1/pages/0', 'http://tales.test')).toBe('use-credentials')
+    expect(shelfViewPageImageCrossOrigin('https://tales.test/api/v1/books/book-1/pages/0', 'http://tales.test')).toBe('use-credentials')
+  })
+
+  it('falls back to the CORS mode when the URL cannot be parsed', () => {
+    expect(shelfViewPageImageCrossOrigin('::not a url::', 'not-an-origin')).toBe('use-credentials')
   })
 })

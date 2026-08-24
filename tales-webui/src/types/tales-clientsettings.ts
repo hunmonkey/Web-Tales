@@ -18,6 +18,7 @@ export enum CLIENT_SETTING {
   WEBUI_POSTER_STRETCH = 'webui.poster.stretch',
   WEBUI_POSTER_BLUR_UNREAD = 'webui.poster.blur_unread',
   WEBUI_LIBRARIES = 'webui.libraries',
+  WEBUI_LIBRARIES_SORT = 'webui.libraries_sort',
   WEBUI_SERIES_GROUPS = 'webui.series_groups',
   WEBUI_RECOMMENDED = 'webui.recommended',
   WEBUI_THEME = 'webui.theme',
@@ -28,6 +29,16 @@ export interface ClientSettingLibrary {
   unpinned?: boolean,
   order?: number,
 }
+
+/** How the side menu orders folders. Stored per user, like the manual order. */
+export type LibrarySort =
+  | 'MANUAL'
+  | 'NAME'
+  | 'CREATED'
+
+export const LIBRARY_SORTS: LibrarySort[] = ['MANUAL', 'NAME', 'CREATED']
+
+export const LIBRARY_SORT_DEFAULT: LibrarySort = 'MANUAL'
 
 export interface ClientSettingLibraryUpdate {
   libraryId: string,

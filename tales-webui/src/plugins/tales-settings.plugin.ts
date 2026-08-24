@@ -9,6 +9,8 @@ import {
   ClientSettingLibraryUpdate,
   ClientSettingUserUpdateDto,
 } from '@/types/tales-clientsettings'
+import {LibrarySort} from '@/types/tales-clientsettings'
+import {normalizeLibrarySort} from '@/functions/library-sort'
 import {Theme} from '@/types/themes'
 import {KNOWN_LOCALES} from '@/i18n'
 
@@ -30,6 +32,9 @@ export const vuexModule: Module<any, any> = {
       } catch (e) {
       }
       return settings
+    },
+    getClientSettingsLibrariesSort(state): LibrarySort {
+      return normalizeLibrarySort(state.clientSettingsUser[CLIENT_SETTING.WEBUI_LIBRARIES_SORT]?.value)
     },
   },
   mutations: {

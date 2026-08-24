@@ -2,6 +2,7 @@ package org.tales.interfaces.api.rest.dto
 
 import org.tales.domain.model.Library
 import org.tales.infrastructure.web.toFilePath
+import java.time.LocalDateTime
 
 data class LibraryDto(
   val id: String,
@@ -35,6 +36,9 @@ data class LibraryDto(
   val analyzeDimensions: Boolean,
   val oneshotsDirectory: String?,
   val unavailable: Boolean,
+  // Exposed so the web UI can offer a creation-date order for the folder list
+  // in the side menu (SV-1283). Additive: no existing field changed.
+  val createdDate: LocalDateTime,
 )
 
 fun Library.toDto(includeRoot: Boolean) =
@@ -70,4 +74,5 @@ fun Library.toDto(includeRoot: Boolean) =
     analyzeDimensions = analyzeDimensions,
     oneshotsDirectory = oneshotsDirectory,
     unavailable = unavailableDate != null,
+    createdDate = createdDate,
   )

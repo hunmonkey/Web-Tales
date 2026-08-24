@@ -7,6 +7,21 @@
         </v-btn>
       </template>
       <v-list dense>
+        <v-subheader>{{ $t('libraries_sort.title') }}</v-subheader>
+        <v-list-item
+          v-for="option in sortOptions"
+          :key="option.value"
+          :data-testid="`libraries-sort-${option.value.toLowerCase()}`"
+          @click="selectSort(option.value)"
+        >
+          <v-list-item-title>{{ option.text }}</v-list-item-title>
+          <v-list-item-icon class="ma-0 ms-2">
+            <v-icon v-if="option.value === librarySort" small>mdi-check</v-icon>
+          </v-list-item-icon>
+        </v-list-item>
+
+        <v-divider/>
+
         <v-list-item @click="reorder">
           <v-list-item-title>{{ $t('common.reorder') }}</v-list-item-title>
         </v-list-item>
@@ -34,6 +49,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
+import {CLIENT_SETTING, LIBRARY_SORTS, LibrarySort} from '@/types/tales-clientsettings'
 
 export default Vue.extend({
   name: 'LibrariesActionsMenu',
@@ -47,8 +63,25 @@ export default Vue.extend({
     isAdmin(): boolean {
       return this.$store.getters.meAdmin
     },
+    librarySort(): LibrarySort {
+      return this.$store.getters.getClientSettingsLibrariesSort
+    },
+    sortOptions(): Array<{ value: LibrarySort, text: string }> {
+      return LIBRARY_SORTS.map(value => ({
+        value,
+        text: this.$t(`libraries_sort.${value.toLowerCase()}`) as string,
+      }))
+    },
   },
   methods: {
+    selectSort(sort: LibrarySort) {
+      if (sort === this.librarySort) return
+
+      this.$store.dispatch('saveUserPreference', {
+        key: CLIENT_SETTING.WEBUI_LIBRARIES_SORT,
+        value: sort,
+      })
+    },
     reorder() {
       this.$emit('reorder')
     },

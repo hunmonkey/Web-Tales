@@ -1,4 +1,4 @@
-import {FixedPageAdapter} from '@/shelfview/adapters/fixed-page-adapter'
+import {FixedPageAdapter, defaultShelfViewPagePreloader} from '@/shelfview/adapters/fixed-page-adapter'
 import {ShelfViewManifest} from '@/shelfview/models/shelfview-manifest'
 import {SHELFVIEW_LOCATOR_SCHEMA_VERSION} from '@/shelfview/models/shelfview-locator'
 
@@ -41,14 +41,15 @@ describe('FixedPageAdapter', () => {
       contentFingerprint: 'tales-file-state:book-1',
     })
     expect(adapter.getProgression()).toBe(1 / 3)
-    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2'])
+    // The current page leads the window: it is the one the reader is waiting for.
+    expect(preloads.map(x => x.url)).toEqual(['page-0', 'page-1', 'page-2'])
   })
 
   it('prefetches two double page spreads ahead and stops at the last page', async () => {
     const {adapter, preloads} = createAdapter()
 
     await adapter.open({...manifest, pageCount: 6})
-    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2', 'page-3', 'page-4'])
+    expect(preloads.map(x => x.url)).toEqual(['page-0', 'page-1', 'page-2', 'page-3', 'page-4'])
 
     await adapter.goTo({
       schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -59,7 +60,7 @@ describe('FixedPageAdapter', () => {
     })
     // Pages 3 and 4 are already loading and stay; only what entered the window
     // is requested, so a page turn no longer restarts downloads in flight.
-    expect(preloads.slice(4).map(x => x.url)).toEqual(['page-5'])
+    expect(preloads.slice(5).map(x => x.url)).toEqual(['page-5'])
 
     await adapter.goTo({
       schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
@@ -68,7 +69,7 @@ describe('FixedPageAdapter', () => {
       offset: 0,
       contentFingerprint: manifest.contentFingerprint,
     })
-    expect(preloads.slice(5).map(x => x.url)).toEqual([])
+    expect(preloads.slice(6).map(x => x.url)).toEqual([])
   })
 
   it('keeps the previous page prefetched so turning back is not a blank screen', async () => {
@@ -122,22 +123,33 @@ describe('FixedPageAdapter', () => {
     expect(adapter.getCurrentPageIndex()).toBe(2)
   })
 
-  it('cancels stale prefetches when moving pages and destroying the adapter', async () => {
+  it('keeps the page it moves to loading, and cancels only what leaves the window', async () => {
     const {adapter, preloads} = createAdapter()
 
-    await adapter.open(manifest)
-    const firstPrefetch = preloads[0]
+    await adapter.open({...manifest, pageCount: 6})
+    const pageBeingTurnedTo = preloads.find(x => x.url === 'page-1')!
 
     await adapter.next()
-    // page-1 became the current page, so it leaves the window; page-2 is kept
-    // and page-0 joins it as the page behind.
-    expect(firstPrefetch.cancel).toHaveBeenCalled()
-    expect(preloads.map(x => x.url)).toEqual(['page-1', 'page-2', 'page-0'])
+    // Arriving at page 1 must not cancel page 1. Cancelling aborts a download
+    // still in flight, and this is the page the reader is about to show, so the
+    // turn used to throw away the very page it was waiting for.
+    expect(pageBeingTurnedTo.cancel).not.toHaveBeenCalled()
+    expect(preloads.map(x => x.url)).toEqual(['page-0', 'page-1', 'page-2', 'page-3', 'page-4', 'page-5'])
 
-    const latestPrefetch = preloads[preloads.length - 1]
+    await adapter.goTo({
+      schemaVersion: SHELFVIEW_LOCATOR_SCHEMA_VERSION,
+      kind: 'PAGE',
+      page: 5,
+      offset: 0,
+      contentFingerprint: manifest.contentFingerprint,
+    })
+    // Only the last page and the one behind it are still in the window.
+    expect(preloads.filter(x => x.cancel.mock.calls.length > 0).map(x => x.url))
+      .toEqual(['page-0', 'page-1', 'page-2', 'page-3'])
+
     adapter.destroy()
 
-    expect(latestPrefetch.cancel).toHaveBeenCalled()
+    expect(preloads.find(x => x.url === 'page-5')!.cancel).toHaveBeenCalled()
     expect(adapter.getProgression()).toBe(0)
     expect(adapter.getCurrentPageUrl()).toBeUndefined()
   })
@@ -176,6 +188,64 @@ describe('FixedPageAdapter', () => {
     expect(preloads).toEqual([])
   })
 })
+
+describe('defaultShelfViewPagePreloader', () => {
+  const originalImage = global.Image
+  let image: MockImage | undefined
+
+  beforeEach(() => {
+    global.Image = jest.fn(() => {
+      image = new MockImage()
+      return image as unknown as HTMLImageElement
+    }) as unknown as typeof Image
+  })
+
+  afterEach(() => {
+    global.Image = originalImage
+    image = undefined
+  })
+
+  it('prefetches a same-origin page in the same fetch mode the reader displays it in', () => {
+    // jsdom serves the test document from http://localhost.
+    defaultShelfViewPagePreloader('/api/v1/books/book-1/pages/0')
+
+    expect(image?.crossOrigin).toBeNull()
+    expect(image?.src).toBe('/api/v1/books/book-1/pages/0')
+  })
+
+  it('prefetches a cross-origin page with credentials so the canvas can read it', () => {
+    defaultShelfViewPagePreloader('http://api.test/api/v1/books/book-1/pages/0')
+
+    expect(image?.crossOrigin).toBe('use-credentials')
+  })
+
+  it('stops a cancelled prefetch without pointing the image at the document', () => {
+    const preload = defaultShelfViewPagePreloader('/api/v1/books/book-1/pages/0')
+
+    preload.cancel()
+
+    expect(image?.src).toBe('')
+  })
+})
+
+class MockImage {
+  onload: (() => void) | null = null
+  onerror: (() => void) | null = null
+  crossOrigin: string | null = null
+  private imageSrc = ''
+
+  set src(value: string) {
+    this.imageSrc = value
+  }
+
+  get src(): string {
+    return this.imageSrc
+  }
+
+  removeAttribute(name: string) {
+    if (name === 'src') this.imageSrc = ''
+  }
+}
 
 function createAdapter() {
   const preloads: Array<{ url: string, cancel: jest.Mock }> = []

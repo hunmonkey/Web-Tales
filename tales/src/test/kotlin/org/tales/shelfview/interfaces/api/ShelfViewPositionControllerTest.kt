@@ -131,7 +131,9 @@ class ShelfViewPositionControllerTest(
     val readProgress = readProgressRepository.findByBookIdAndUserIdOrNull(book.id, USER_1_ID)
     assertThat(readProgress).isNotNull
     assertThat(readProgress!!.page).isEqualTo(2)
-    assertThat(readProgress.completed).isTrue()
+    // The last page is mirrored as a position, not as a finished book (SV-1282):
+    // the book stays in "keep reading" until the reader explicitly finishes it.
+    assertThat(readProgress.completed).isFalse()
   }
 
   @Test

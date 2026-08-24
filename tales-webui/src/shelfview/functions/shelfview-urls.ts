@@ -57,3 +57,25 @@ function shelfViewPageEndpoint(
     .replace('{pageOneBased}', (pageIndex + 1).toString())
     .replace('{page}', pageIndex.toString())
 }
+
+/**
+ * The fetch mode a page image has to be requested with, or `undefined` for none.
+ *
+ * A same-origin image cannot taint a canvas, so it needs no CORS request, and
+ * asking for one anyway is not free: the browser treats the same URL fetched in
+ * two different modes as two different resources. A page prefetched as CORS is
+ * then not the image the plain `<img>` displays, so it is downloaded again at
+ * the moment of the page turn - exactly when the reader is waiting. Only a page
+ * served from another origin, which is the development setup, still needs the
+ * CORS mode so the canvas filters can read its pixels.
+ */
+export function shelfViewPageImageCrossOrigin(
+  url: string,
+  pageOrigin: string = window.location.origin,
+): 'use-credentials' | undefined {
+  try {
+    return new URL(url, pageOrigin).origin === pageOrigin ? undefined : 'use-credentials'
+  } catch (_error) {
+    return 'use-credentials'
+  }
+}
