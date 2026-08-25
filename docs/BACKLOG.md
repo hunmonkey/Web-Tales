@@ -1475,3 +1475,67 @@ be fixed together for the prefetch to reach the screen.
   that button on top of the toolbar's own actions menu on any screen where the
   drawer is closed. Reclaiming that strip means moving the button first, which is
   its own ticket.
+
+## The browse header leaves an empty strip above itself, 2026-08-25
+
+- [x] SV-1285 Stick the browse toolbar to the top of the viewport. Recorded in
+  `Rule_ToDo_Done.txt` by the session that wrote it; entered here so the backlog
+  carries it too.
+  `ToolbarSticky` set an inline `top` of 56px (`xs`/`sm`) or 64px through a
+  `barStyle` computed. That offset was the height of the `v-app-bar` the bar used
+  to sit under, and SV-1201 removed that app bar, so all it left was an empty
+  strip that page content scrolled through above the toolbar.
+  `barStyle` is gone and the scoped `.sticky-bar` rule carries `top: 0`.
+  `.browse-pagination--sticky` follows it down: 128px becomes 64px and the
+  sub-960px override 112px becomes 56px — SV-1284's arithmetic with the toolbar's
+  own offset now zero.
+  At `top: 0` the toolbar's first control lands under the fixed menu button that
+  `HomeView` floats in the top-left corner while the drawer is closed, so
+  `HomeView` now marks its root `app-shell--menu-visible` in exactly that state
+  and `global.css` pads `.sticky-bar .v-toolbar__content` by 56px under it.
+
+### Deliberately not done
+
+- Nothing was done about the menu button itself. Reclaiming the top-left strip by
+  moving it is the ticket SV-1284 already deferred; this change works around the
+  button rather than relocating it.
+
+## Keep Reading fills the first screen with one book, reported 2026-08-25
+
+- [x] SV-1286 Turn the Keep Reading banner into a compact row of cards, one per
+  book still in progress, each with a control that takes it out of the row.
+  Owner: "이어보기가 너무 큰 공간을 차지해. 또한 여러 책을 읽고 있는데 딱 1개만
+  이어보기가 나와. 추가적으로 이어보기 카드에 삭제 버튼이 있어서 내가 정리할 수
+  있는 기능이 있었으면 좋겠어."
+  The banner added in SV-1060 read `loaderKeepReadingBooks.items[0]` and drew it
+  as a bordered block with a 96px cover and a full "Resume reading" button, so
+  the first screenful was one book and every other book in progress was
+  invisible — the loader had already fetched them.
+  `DashboardView` now draws the same loader as a `horizontal-scroller` row of
+  `resume-card` articles inside the shared `.dashboard-section` surface, so the
+  row reads as one more shelf. The cards are sized below `fixedCardWidth` (96/104/112/120px by
+  breakpoint) because the row is a reminder of what is open, not a shelf to
+  browse. The cover opens the reader (what the banner's button did), the title
+  opens the book page (what the banner's title did), progress is a 4px bar
+  across the bottom of the cover plus the existing `dashboard.resume_progress`
+  line, and `scroll-changed` pages the loader like every other shelf.
+  The cross on each cover deletes that book's read progress through the existing
+  `deleteReadProgress` API, behind `ConfirmationDialog` — `CLAUDE.md` names
+  "기록 삭제" as an action that must be confirmed. The dialog body is bound to
+  `:body`, not `:body-html`, because the book title is metadata. Removal reloads
+  the Keep Reading loader directly rather than waiting for the SSE reload, which
+  shares a 5s throttle with every other section.
+  The poster cache-bust kept for `THUMBNAILBOOK_ADDED` became a `Record<string,
+  string>` keyed by book id, since the row holds several covers.
+
+### Deliberately not done
+
+- No "hide from the list but keep my page" state. The owner chose read-progress
+  deletion; a hide list would need a new per-user setting and a new server
+  concept, and is its own ticket if it is ever wanted.
+- `ItemCard` was left alone. A cross on every card everywhere is a different
+  decision from a cross on the Keep Reading row, and the row's cards carry
+  progress and a reader link that the shelf cards do not.
+- The remove button is positioned `right: 4px` rather than through the RTL
+  helpers the shelves use. The banner it replaces was not RTL-aware either;
+  making the whole dashboard RTL-correct is its own ticket.

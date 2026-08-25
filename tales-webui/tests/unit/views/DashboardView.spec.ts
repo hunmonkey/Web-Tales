@@ -84,7 +84,7 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-testid="dashboard-resume"]').exists()).toBe(true)
   })
 
-  it('refreshes the banner poster when the book gets a new thumbnail', async () => {
+  it('refreshes the card poster when the book gets a new thumbnail', async () => {
     const wrapper = mountDashboard({
       getBooksList: jest.fn()
         .mockResolvedValueOnce(pageOf([resumeBook]))
@@ -93,18 +93,18 @@ describe('DashboardView', () => {
     await flushPromises()
     await wrapper.vm.$nextTick()
 
-    const before = (wrapper.vm as any).resumeBookThumbnailUrl
+    const before = (wrapper.vm as any).resumeThumbnailUrl(resumeBook)
     expect(before).not.toContain('?')
 
     ;(wrapper.vm as any).thumbnailBookChanged({selected: true, bookId: 'book1'})
     await wrapper.vm.$nextTick()
 
-    const after = (wrapper.vm as any).resumeBookThumbnailUrl
+    const after = (wrapper.vm as any).resumeThumbnailUrl(resumeBook)
     expect(after).toContain('?')
     expect(after.split('?')[0]).toBe(before)
   })
 
-  it('ignores thumbnail events for a book that is not in the banner', async () => {
+  it('ignores thumbnail events for a book that is not in the row', async () => {
     const wrapper = mountDashboard({
       getBooksList: jest.fn()
         .mockResolvedValueOnce(pageOf([resumeBook]))
@@ -113,17 +113,53 @@ describe('DashboardView', () => {
     await flushPromises()
     await wrapper.vm.$nextTick()
 
-    const before = (wrapper.vm as any).resumeBookThumbnailUrl
+    const before = (wrapper.vm as any).resumeThumbnailUrl(resumeBook)
     ;(wrapper.vm as any).thumbnailBookChanged({selected: true, bookId: otherBook.id})
     await wrapper.vm.$nextTick()
 
-    expect((wrapper.vm as any).resumeBookThumbnailUrl).toBe(before)
+    expect((wrapper.vm as any).resumeThumbnailUrl(resumeBook)).toBe(before)
+  })
+
+  it('keeps every book that is still in progress, not just the most recent one', async () => {
+    const wrapper = mountDashboard({
+      getBooksList: jest.fn()
+        .mockResolvedValueOnce(pageOf([resumeBook, otherBook]))
+        .mockResolvedValue(pageOf([])),
+    })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect((wrapper.vm as any).resumeBooks.map((b: any) => b.id)).toEqual(['book1', 'book2'])
+  })
+
+  it('deletes the read progress of the book removed from Keep Reading, and reloads the row', async () => {
+    const getBooksList = jest.fn()
+      .mockResolvedValueOnce(pageOf([resumeBook, otherBook]))
+      .mockResolvedValue(pageOf([]))
+    const deleteReadProgress = jest.fn().mockResolvedValue(undefined)
+
+    const wrapper = mountDashboard({getBooksList, deleteReadProgress})
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // The cross asks first: nothing is deleted until the dialog is confirmed.
+    ;(wrapper.vm as any).confirmRemoveResume(otherBook)
+    expect((wrapper.vm as any).removeResumeDialog).toBe(true)
+    expect(deleteReadProgress).not.toHaveBeenCalled()
+
+    const callsBefore = getBooksList.mock.calls.length
+    await (wrapper.vm as any).removeResume()
+
+    expect(deleteReadProgress).toHaveBeenCalledWith('book2')
+    // The row is reloaded rather than left to the throttled SSE reload.
+    expect(getBooksList.mock.calls.length).toBeGreaterThan(callsBefore)
   })
 })
 
 function mountDashboard(services: {
   getBooksList: jest.Mock,
   getBooksOnDeck?: jest.Mock,
+  deleteReadProgress?: jest.Mock,
 }) {
   return shallowMount(DashboardView, {
     mocks: {
@@ -144,6 +180,7 @@ function mountDashboard(services: {
       $talesBooks: {
         getBooksList: services.getBooksList,
         getBooksOnDeck: services.getBooksOnDeck ?? jest.fn().mockResolvedValue(pageOf([])),
+        deleteReadProgress: services.deleteReadProgress ?? jest.fn().mockResolvedValue(undefined),
       },
       $talesSeries: {
         getNewSeries: jest.fn().mockResolvedValue(pageOf([])),
@@ -152,6 +189,7 @@ function mountDashboard(services: {
       $vuetify: {breakpoint: {xs: false, sm: false, md: false}},
     },
     stubs: [
+      'confirmation-dialog',
       'edit-recommended-dialog',
       'empty-state',
       'horizontal-scroller',

@@ -569,6 +569,7 @@
     "keep_reading": "이어보기",
     "resume_reading": "이어서 읽기",
     "resume_progress": "{page}쪽 / 전체 {total}쪽",
+    "resume_remove": "이어보기에서 삭제",
     "on_deck": "올려 두기",
     "recently_added_books": "최근 추가된 책",
     "recently_added_series": "최근 추가된 시리즈",
@@ -684,6 +685,11 @@
       "dialog_title_multiple": "읽기 목록 삭제",
       "warning_html": "읽기 목록 <b>{name}</b> 이(가) 이 서버에서 제거됩니다. 미디어 파일은 영향을 받지 않습니다. <b>이 일은 되돌릴 수 없습니다.</b> 계속하시겠습니까?",
       "warning_multiple_html": "{count}개의 읽기 목록이 서버에서 제거됩니다. 미디어 파일은 영향을 받지 않습니다. <b>이 작업은 되돌릴 수 없습니다.</b> 계속하시겠습니까?"
+    },
+    "delete_read_progress": {
+      "button_confirm": "삭제",
+      "dialog_title": "읽기 기록 삭제",
+      "warning": "\"{name}\"의 읽기 기록이 삭제되어 안 읽음 상태로 돌아갑니다. 이어보기 목록에서 사라지고, 다시 열면 첫 쪽부터 시작합니다. 책 파일 자체는 영향을 받지 않습니다. 계속하시겠습니까?"
     },
     "delete_series": {
       "button_confirm": "삭제",

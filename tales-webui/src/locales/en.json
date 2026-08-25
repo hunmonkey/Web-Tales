@@ -569,6 +569,7 @@
     "keep_reading": "Keep Reading",
     "resume_reading": "Resume reading",
     "resume_progress": "Page {page} of {total}",
+    "resume_remove": "Remove from Keep Reading",
     "on_deck": "On Deck",
     "recently_added_books": "Recently Added Books",
     "recently_added_series": "Recently Added Series",
@@ -684,6 +685,11 @@
       "dialog_title_multiple": "Delete Read Lists",
       "warning_html": "The read list <b>{name}</b> will be removed from this server. Your media files will not be affected. This <b>cannot</b> be undone. Continue?",
       "warning_multiple_html": "{count} read lists will be removed from this server. Your media files will not be affected. This <b>cannot</b> be undone. Continue?"
+    },
+    "delete_read_progress": {
+      "button_confirm": "Delete",
+      "dialog_title": "Delete read progress",
+      "warning": "The read progress for \"{name}\" will be deleted and the book goes back to unread, so it leaves Keep Reading and starts from the first page next time. The file itself is not affected. Continue?"
     },
     "delete_series": {
       "button_confirm": "Delete",

@@ -22,6 +22,15 @@
       @delete="deleteBooks"
     />
 
+    <confirmation-dialog
+      v-model="removeResumeDialog"
+      :title="$t('dialog.delete_read_progress.dialog_title')"
+      :body="removeResumeBody"
+      :button-confirm="$t('dialog.delete_read_progress.button_confirm')"
+      button-confirm-color="error"
+      @confirm="removeResume"
+    />
+
     <v-container fluid class="dashboard">
       <header class="dashboard__heading">
         <div>
@@ -30,50 +39,68 @@
         </div>
       </header>
 
-      <!-- Puts the book that is actually in progress on the first screen, so
-           coming back to Tales does not start with scrolling. -->
+      <!-- Puts the books that are actually in progress on the first screen, so
+           coming back to Tales does not start with scrolling. A row of compact
+           cards rather than the single large banner it replaces (SV-1286): that
+           banner spent a whole screenful on one book and hid every other book
+           being read. Cover opens the reader, title opens the book, and the
+           cross drops the book out of the row. -->
       <section
-        v-if="resumeBook"
-        class="dashboard-resume"
+        v-if="resumeBooks.length > 0"
+        class="dashboard-section mb-8"
         data-testid="dashboard-resume"
       >
-        <router-link
-          :to="resumeBookTo"
-          class="dashboard-resume__cover link-none"
-          tabindex="-1"
-          aria-hidden="true"
+        <horizontal-scroller
+          :tick="loaderKeepReadingBooks ? loaderKeepReadingBooks.tick : 0"
+          @scroll-changed="(percent) => scrollChanged(loaderKeepReadingBooks, percent)"
         >
-          <img
-            :src="resumeBookThumbnailUrl"
-            alt=""
-          />
-        </router-link>
-
-        <div class="dashboard-resume__body">
-          <p class="dashboard-resume__eyebrow">{{ $t('dashboard.keep_reading') }}</p>
-          <router-link
-            :to="resumeBookTo"
-            class="dashboard-resume__title link-none"
-            data-testid="dashboard-resume-title"
-          >{{ resumeBookTitle }}</router-link>
-          <p class="dashboard-resume__meta">{{ resumeBookProgressLabel }}</p>
-          <v-progress-linear
-            :value="resumeBookPercentage"
-            color="secondary"
-            height="6"
-            rounded
-            class="dashboard-resume__progress"
-          />
-          <v-btn
-            color="primary"
-            class="dashboard-resume__action"
-            :to="resumeBookReadTo"
-            data-testid="dashboard-resume-read"
-          >
-            <v-icon left>mdi-book-open-page-variant</v-icon>
-            {{ $t('dashboard.resume_reading') }}
-          </v-btn>
-        </div>
+          <template v-slot:prepend>
+            <div class="dashboard-section__title">{{ $t('dashboard.keep_reading') }}</div>
+          </template>
+          <template v-slot:content>
+            <article
+              v-for="book in resumeBooks"
+              :key="book.id"
+              class="resume-card mx-2 my-2"
+              :style="{width: resumeCardWidth + 'px'}"
+              data-testid="dashboard-resume-card"
+            >
+              <div class="resume-card__cover">
+                <router-link
+                  :to="resumeReadTo(book)"
+                  class="link-none"
+                  :aria-label="$t('dashboard.resume_reading')"
+                >
+                  <img :src="resumeThumbnailUrl(book)" alt=""/>
+                </router-link>
+                <v-progress-linear
+                  :value="resumePercentage(book)"
+                  color="secondary"
+                  height="4"
+                  class="resume-card__progress"
+                />
+                <v-btn
+                  icon
+                  x-small
+                  class="resume-card__remove"
+                  :aria-label="$t('dashboard.resume_remove')"
+                  :title="$t('dashboard.resume_remove')"
+                  data-testid="dashboard-resume-remove"
+                  @click="confirmRemoveResume(book)"
+                >
+                  <v-icon small>mdi-close</v-icon>
+                </v-btn>
+              </div>
+              <router-link
+                :to="resumeDetailTo(book)"
+                class="resume-card__title link-none"
+                :title="resumeTitle(book)"
+                data-testid="dashboard-resume-title"
+              >{{ resumeTitle(book) }}</router-link>
+              <p class="resume-card__meta">{{ resumeProgressLabel(book) }}</p>
+            </article>
+          </template>
+        </horizontal-scroller>
       </section>
 
       <empty-state v-if="allEmpty && !loading"
@@ -223,6 +250,7 @@ import {
   RecommendedViewSection,
 } from '@/types/tales-clientsettings'
 import EditRecommendedDialog from '@/components/dialogs/EditRecommendedDialog.vue'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 
 interface SectionConfig {
   loader: PageLoader<any> | undefined,
@@ -239,6 +267,7 @@ enum SectionType {
 export default Vue.extend({
   name: 'DashboardView',
   components: {
+    ConfirmationDialog,
     EditRecommendedDialog,
     HorizontalScroller,
     ItemCardSkeleton,
@@ -261,10 +290,12 @@ export default Vue.extend({
       loaderRecentlyReadBooks: undefined as PageLoader<BookDto> | undefined,
       selectedSeries: [] as SeriesDto[],
       selectedBooks: [] as BookDto[],
-      // The banner poster is cached for a day like every other image, so a
-      // replaced cover only reaches it through a new URL. ItemCard does the
-      // same for the cards.
-      resumeThumbnailCacheBust: '',
+      // Keep Reading posters are cached for a day like every other image, so a
+      // replaced cover only reaches them through a new URL. ItemCard does the
+      // same for the cards. Keyed by book id: the row holds several covers.
+      resumeThumbnailCacheBust: {} as Record<string, string>,
+      removeResumeDialog: false,
+      resumeToRemove: undefined as BookDto | undefined,
     }
   },
   created() {
@@ -377,50 +408,31 @@ export default Vue.extend({
         (this.loaderRecentlyReleasedBooks == undefined || this.loaderRecentlyReleasedBooks?.items.length === 0) &&
         (this.loaderRecentlyReadBooks == undefined || this.loaderRecentlyReadBooks?.items.length === 0)
     },
-    // The most recently read book still in progress. Absent until the loader has
-    // returned something, when the Keep Reading section is switched off, or when
-    // nothing is in progress, in which case the dashboard simply starts with its
-    // shelves as before.
+    // Every book still in progress, most recently read first. Empty until the
+    // loader has returned something, when the Keep Reading section is switched
+    // off, or when nothing is in progress, in which case the dashboard simply
+    // starts with its shelves as before.
     //
     // Deliberately not gated on `loading`. A reload keeps the previous items
-    // until the new page replaces them, so gating here would unmount the banner
+    // until the new page replaces them, so gating here would unmount the row
     // on every read-progress event and shift the page up and back down - the
     // exact movement SV-1060 exists to remove.
-    resumeBook(): BookDto | undefined {
-      return this.loaderKeepReadingBooks?.items[0]
+    resumeBooks(): BookDto[] {
+      return this.loaderKeepReadingBooks?.items ?? []
     },
-    resumeBookTitle(): string {
-      const book = this.resumeBook
-      if (!book) return ''
-      const series = book.seriesTitle
-      return series && !book.oneshot ? `${series} · ${book.metadata.title}` : book.metadata.title
+    // Deliberately smaller than `fixedCardWidth`: this row is a reminder of
+    // what is open, not a shelf to browse.
+    resumeCardWidth(): number {
+      if (this.$vuetify.breakpoint.xs) return 96
+      if (this.$vuetify.breakpoint.sm) return 104
+      if (this.$vuetify.breakpoint.md) return 112
+      return 120
     },
-    resumeBookThumbnailUrl(): string {
-      return this.resumeBook ? bookThumbnailUrl(this.resumeBook.id) + this.resumeThumbnailCacheBust : ''
-    },
-    resumeBookPercentage(): number {
-      return this.resumeBook ? getReadProgressPercentage(this.resumeBook) : 0
-    },
-    resumeBookProgressLabel(): string {
-      const book = this.resumeBook
-      if (!book) return ''
-      return this.$t('dashboard.resume_progress', {
-        page: book.readProgress?.page ?? 1,
-        total: book.media.pagesCount,
+    removeResumeBody(): string {
+      if (!this.resumeToRemove) return ''
+      return this.$t('dialog.delete_read_progress.warning', {
+        name: this.resumeTitle(this.resumeToRemove),
       }).toString()
-    },
-    resumeBookTo(): RawLocation {
-      const book = this.resumeBook as BookDto
-      return book.oneshot
-        ? {name: 'browse-oneshot', params: {seriesId: book.seriesId}}
-        : {name: 'browse-book', params: {bookId: book.id}}
-    },
-    resumeBookReadTo(): RawLocation {
-      const book = this.resumeBook as BookDto
-      return {
-        name: getBookReadRouteFromMedia(book.media),
-        params: {bookId: book.id},
-      }
     },
     selectedOneshots(): boolean {
       return this.selectedBooks.every(b => b.oneshot)
@@ -514,12 +526,55 @@ export default Vue.extend({
       if (this.loaderRecentlyUpdatedSeries?.items.some(s => s.id === event.seriesId)) this.reload()
       else if (this.loaderRecentlyAddedSeries?.items.some(s => s.id === event.seriesId)) this.reload()
     },
-    // Only the banner needs this. The cards below it are ItemCard instances,
-    // which already bust their own poster cache on the same event.
+    // Only the Keep Reading row needs this. The cards below it are ItemCard
+    // instances, which already bust their own poster cache on the same event.
     thumbnailBookChanged(event: ThumbnailBookSseDto) {
-      if (event.selected && event.bookId === this.resumeBook?.id) {
-        this.resumeThumbnailCacheBust = '?' + random(1000)
+      if (event.selected && this.resumeBooks.some(b => b.id === event.bookId)) {
+        this.$set(this.resumeThumbnailCacheBust, event.bookId, '?' + random(1000))
       }
+    },
+    resumeTitle(book: BookDto): string {
+      const series = book.seriesTitle
+      return series && !book.oneshot ? `${series} · ${book.metadata.title}` : book.metadata.title
+    },
+    resumeThumbnailUrl(book: BookDto): string {
+      return bookThumbnailUrl(book.id) + (this.resumeThumbnailCacheBust[book.id] ?? '')
+    },
+    resumePercentage(book: BookDto): number {
+      return getReadProgressPercentage(book)
+    },
+    resumeProgressLabel(book: BookDto): string {
+      return this.$t('dashboard.resume_progress', {
+        page: book.readProgress?.page ?? 1,
+        total: book.media.pagesCount,
+      }).toString()
+    },
+    resumeDetailTo(book: BookDto): RawLocation {
+      return book.oneshot
+        ? {name: 'browse-oneshot', params: {seriesId: book.seriesId}}
+        : {name: 'browse-book', params: {bookId: book.id}}
+    },
+    resumeReadTo(book: BookDto): RawLocation {
+      return {
+        name: getBookReadRouteFromMedia(book.media),
+        params: {bookId: book.id},
+      }
+    },
+    confirmRemoveResume(book: BookDto) {
+      this.resumeToRemove = book
+      this.removeResumeDialog = true
+    },
+    // Deleting the read progress is what takes a book out of Keep Reading;
+    // the server has no separate "hide" state. The book goes back to unread and
+    // starts from page one when it is opened again - hence the confirmation.
+    async removeResume() {
+      const book = this.resumeToRemove
+      if (!book) return
+      this.resumeToRemove = undefined
+      await this.$talesBooks.deleteReadProgress(book.id)
+      // The SSE event that follows shares the 5s reload throttle; the row the
+      // user just acted on should not wait for it.
+      await this.loaderKeepReadingBooks?.reload()
     },
     reload: throttle(function (this: any) {
       this.loadAll(true)
@@ -685,90 +740,54 @@ export default Vue.extend({
   overflow: hidden;
 }
 
-.dashboard-resume {
-  align-items: center;
-  background: var(--tales-surface);
-  border: 1px solid var(--tales-border);
-  border-radius: var(--tales-radius-lg);
-  box-shadow: var(--tales-card-shadow);
-  display: flex;
-  gap: 20px;
-  margin-bottom: 32px;
-  padding: 20px;
-}
-
-.dashboard-resume__cover {
+.resume-card {
   flex: 0 0 auto;
 }
 
-.dashboard-resume__cover img {
-  aspect-ratio: 0.7071;
+.resume-card__cover {
   border-radius: var(--tales-radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.resume-card__cover img {
+  aspect-ratio: 0.7071;
   display: block;
   object-fit: cover;
-  width: 96px;
+  width: 100%;
 }
 
-.dashboard-resume__body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
+.resume-card__progress {
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
 }
 
-.dashboard-resume__eyebrow {
-  color: var(--v-secondary-base);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  margin: 0;
-  text-transform: uppercase;
+/* Always visible rather than shown on hover: a touch screen has no hover, and
+   this is the only way out of the row. */
+.resume-card__remove {
+  background: rgba(0, 0, 0, 0.55);
+  position: absolute;
+  right: 4px;
+  top: 4px;
 }
 
-.dashboard-resume__title {
+.resume-card__title {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--tales-text);
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  display: -webkit-box;
+  font-size: 0.82rem;
+  font-weight: 600;
   line-height: 1.3;
+  margin-top: 6px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.dashboard-resume__meta {
+.resume-card__meta {
   color: var(--tales-muted);
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.dashboard-resume__progress {
-  max-width: 320px;
-}
-
-.dashboard-resume__action {
-  align-self: flex-start;
-  border-radius: var(--tales-radius-sm);
-  font-weight: 700;
-  letter-spacing: 0;
-  margin-top: 8px;
-  text-transform: none;
-}
-
-@media (max-width: 600px) {
-  .dashboard-resume {
-    gap: 14px;
-    margin-bottom: 24px;
-    padding: 14px;
-  }
-
-  .dashboard-resume__cover img {
-    width: 72px;
-  }
-
-  .dashboard-resume__title {
-    font-size: 1.05rem;
-    white-space: normal;
-  }
+  font-size: 0.72rem;
+  margin: 2px 0 0;
 }
 </style>
