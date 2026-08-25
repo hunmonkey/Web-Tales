@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell fill-height">
+  <div class="app-shell fill-height" :class="{'app-shell--menu-visible': !drawerVisible}">
     <confirmation-dialog
       v-model="logoutConfirmDialog"
       :title="$t('dialog.logout.dialog_title')"
