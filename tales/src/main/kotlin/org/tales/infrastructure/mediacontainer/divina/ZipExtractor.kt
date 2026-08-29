@@ -1,6 +1,7 @@
 package org.tales.infrastructure.mediacontainer.divina
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import jakarta.annotation.PreDestroy
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
@@ -22,6 +23,7 @@ import org.tales.shelfview.infrastructure.archive.readArchiveBytes
 import org.tales.shelfview.infrastructure.archive.withArchiveBudget
 import org.tales.shelfview.infrastructure.archive.withArchiveByteLimit
 import org.tales.shelfview.infrastructure.archive.withPreflightedZip
+import org.tales.shelfview.interfaces.api.ShelfViewNestedArchiveCache
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.deleteIfExists
@@ -37,6 +39,12 @@ class ZipExtractor(
   private val archiveProperties: ShelfViewArchiveProperties,
 ) : DivinaExtractor {
   private val natSortComparator: Comparator<String> = CaseInsensitiveSimpleNaturalComparator.getInstance()
+  private val nestedArchiveCache = ShelfViewNestedArchiveCache()
+
+  @PreDestroy
+  fun closeNestedArchiveCache() {
+    nestedArchiveCache.close()
+  }
 
   override fun mediaTypes(): List<String> = listOf(MediaType.ZIP.type)
 
@@ -211,7 +219,7 @@ class ZipExtractor(
       val outerEntry = zip.listEntries(budget).firstOrNull { it.name == outerName } ?: throw EntryNotFoundException("Archive entry does not exist")
       ensureEntryCanBeRead(zip, outerEntry)
       ensureEntrySizeWithinLimit(outerEntry, archiveProperties.maxNestedArchiveBytes)
-      withNestedZip(zip, outerEntry, budget) { nestedZip ->
+      withCachedNestedZip(path, zip, outerEntry, budget) { nestedZip ->
         val innerEntry = nestedZip.listEntries(budget).firstOrNull { it.name == innerName } ?: throw EntryNotFoundException("Nested archive entry does not exist")
 
         ensureEntryCanBeRead(nestedZip, innerEntry)
@@ -224,6 +232,48 @@ class ZipExtractor(
       }
     }
   }
+
+  /**
+   * Serves pages of a nested archive from one cached extraction instead of
+   * decompressing the whole inner archive again for every page. Falls back to
+   * the one-shot copy when the outer file has no readable identity to key on.
+   * Analysis keeps using [withNestedZip] directly: it runs once per scan.
+   */
+  private fun <T> withCachedNestedZip(
+    path: Path,
+    zip: ZipFile,
+    entry: ZipArchiveEntry,
+    budget: ArchiveReadBudget,
+    block: (ZipFile) -> T,
+  ): T {
+    val key = nestedArchiveCacheKey(path, entry.name) ?: return withNestedZip(zip, entry, budget, block)
+
+    val cachedPath =
+      nestedArchiveCache.get(key) { tempPath ->
+        zip.getInputStream(entry).use { input ->
+          Files.newOutputStream(tempPath).use { output ->
+            input.copyArchiveTo(
+              output,
+              archiveProperties.maxNestedArchiveBytes,
+              "SHELFVIEW_NESTED_ARCHIVE_TOO_LARGE",
+              entry.knownSizeOrNull(),
+              budget,
+            )
+          }
+        }
+      }
+    return withPreflightedZip(cachedPath, archiveProperties, block = block)
+  }
+
+  private fun nestedArchiveCacheKey(
+    path: Path,
+    entryName: String,
+  ): String? =
+    try {
+      "${path.toAbsolutePath()}|${Files.getLastModifiedTime(path).toMillis()}|${Files.size(path)}|$entryName"
+    } catch (_: Exception) {
+      null
+    }
 
   private fun <T> withNestedZip(
     zip: ZipFile,

@@ -9,12 +9,16 @@ import kotlin.io.path.deleteIfExists
 import kotlin.io.path.name
 
 /**
- * Owns one process-scoped directory for mixed-archive PDF originals. A process
- * identity in each directory name lets a later JVM remove crash leftovers
- * without deleting files that another live Tales process is still using.
+ * Owns one process-scoped directory of cache files extracted from archives -
+ * mixed-archive PDF originals by default, nested image archives through the
+ * prefix and suffix parameters. A process identity in each directory name lets
+ * a later JVM remove crash leftovers without deleting files that another live
+ * Tales process is still using.
  */
 internal class ShelfViewPdfCacheFiles(
   private val root: Path = Path.of(System.getProperty("java.io.tmpdir")).resolve("shelfview-mixed-pdf-cache"),
+  private val prefix: String = "mixed-pdf-",
+  private val suffix: String = ".pdf",
 ) : AutoCloseable {
   private val process = ProcessHandle.current()
   private val processStart =
@@ -33,7 +37,7 @@ internal class ShelfViewPdfCacheFiles(
     cleanupStaleSessions()
   }
 
-  fun createTempFile(): Path = Files.createTempFile(directory, "mixed-pdf-", ".pdf")
+  fun createTempFile(): Path = Files.createTempFile(directory, prefix, suffix)
 
   fun delete(path: Path) {
     if (path.parent != directory || !isOwnedCacheFile(path)) return
@@ -111,7 +115,7 @@ internal class ShelfViewPdfCacheFiles(
   }
 
   private fun isOwnedCacheFile(path: Path): Boolean =
-    path.name.startsWith("mixed-pdf-") &&
-      path.name.endsWith(".pdf") &&
+    path.name.startsWith(prefix) &&
+      path.name.endsWith(suffix) &&
       Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
 }
