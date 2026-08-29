@@ -22,6 +22,7 @@ import org.springframework.core.io.ClassPathResource
 import org.tales.infrastructure.image.ImageType
 import org.tales.shelfview.infrastructure.archive.ArchiveLimitExceededException
 import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
+import java.nio.file.Files
 import java.nio.file.Path
 
 class PdfExtractorTest {
@@ -79,8 +80,51 @@ class PdfExtractorTest {
   }
 
   @Test
-  fun `given Error while rendering then locally loaded document is closed`() {
+  fun `given rendered page when document cache is gone then page is served from the page image cache`() {
     val path = ClassPathResource("pdf/tales.pdf").file.toPath()
+
+    val first = pdfExtractor.getPageContentAsImage(path, 1)
+    pdfExtractor.closeCachedDocuments()
+
+    mockkStatic(Loader::class)
+    try {
+      every { Loader.loadPDF(path.toFile()) } throws AssertionError("page should come from the page image cache")
+
+      val second = pdfExtractor.getPageContentAsImage(path, 1)
+
+      assertThat(second.bytes).isEqualTo(first.bytes)
+      assertThat(second.mediaType).isEqualTo(first.mediaType)
+    } finally {
+      unmockkStatic(Loader::class)
+    }
+  }
+
+  @Test
+  fun `given rendered page when its source is evicted then the page image cache forgets it`() {
+    val path = ClassPathResource("pdf/tales.pdf").file.toPath()
+
+    pdfExtractor.getPageContentAsImage(path, 1)
+    pdfExtractor.evictCachedDocument(path)
+
+    mockkStatic(Loader::class)
+    try {
+      every { Loader.loadPDF(path.toFile()) } throws AssertionError("eviction must drop the rendered page")
+
+      assertThatThrownBy { pdfExtractor.getPageContentAsImage(path, 1) }
+        .isInstanceOf(AssertionError::class.java)
+    } finally {
+      unmockkStatic(Loader::class)
+    }
+  }
+
+  @Test
+  fun `given Error while rendering then locally loaded document is closed`(
+    @TempDir directory: Path,
+  ) {
+    // A private copy keeps the page image cache cold for this path; tests share
+    // one extractor instance under the per_class lifecycle.
+    val path = directory.resolve("render-error.pdf")
+    Files.copy(ClassPathResource("pdf/tales.pdf").file.toPath(), path)
     val document = mockk<PDDocument>()
     mockkStatic(Loader::class)
     try {
@@ -113,9 +157,14 @@ class PdfExtractorTest {
   }
 
   @Test
-  fun `given encoded pdf page over byte limit when rendering then rejects output`() {
+  fun `given encoded pdf page over byte limit when rendering then rejects output`(
+    @TempDir directory: Path,
+  ) {
     archiveProperties.maxImageBytes = 1
-    val path = ClassPathResource("pdf/tales.pdf").file.toPath()
+    // A private copy keeps the page image cache cold for this path; tests share
+    // one extractor instance under the per_class lifecycle.
+    val path = directory.resolve("over-byte-limit.pdf")
+    Files.copy(ClassPathResource("pdf/tales.pdf").file.toPath(), path)
 
     assertThatThrownBy { pdfExtractor.getPageContentAsImage(path, 1) }
       .isInstanceOf(ArchiveLimitExceededException::class.java)

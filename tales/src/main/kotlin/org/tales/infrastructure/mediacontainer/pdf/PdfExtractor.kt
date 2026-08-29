@@ -59,6 +59,23 @@ class PdfExtractor(
       .removalListener<String, CachedPdfDocument> { _, cached, _ -> cached?.close() }
       .build<String, CachedPdfDocument>()
 
+  /**
+   * Rendered page images, keyed by document identity and page number. Rendering
+   * is the expensive step this class performs - seconds of CPU per page at the
+   * configured resolution - and the reader, its prefetch burst and the page
+   * thumbnail endpoint all ask for the same pages. An entry that falls out is
+   * simply rendered again, so eviction costs time, never correctness. Bounded
+   * by bytes rather than entries so unusually large pages cannot grow the
+   * worst case.
+   */
+  private val pageImageCache =
+    Caffeine
+      .newBuilder()
+      .maximumWeight(64L * 1024 * 1024)
+      .weigher<String, TypedBytes> { _, page -> page.bytes.size }
+      .expireAfterAccess(30, TimeUnit.MINUTES)
+      .build<String, TypedBytes>()
+
   fun getPages(
     path: Path,
     analyzeDimensions: Boolean,
@@ -75,12 +92,22 @@ class PdfExtractor(
     path: Path,
     pageNumber: Int,
   ): TypedBytes {
-    val key = cacheKey(path)
+    // No readable file attributes means no stable identity to cache under.
+    val key = cacheKey(path) ?: return renderPageContent(path, null, pageNumber)
 
+    // Caffeine computes one entry at a time, so concurrent requests for the
+    // same page share a single render instead of each paying for their own.
+    return requireNotNull(pageImageCache.get("$key|$pageNumber") { renderPageContent(path, key, pageNumber) })
+  }
+
+  private fun renderPageContent(
+    path: Path,
+    key: String?,
+    pageNumber: Int,
+  ): TypedBytes {
     if (key != null) renderFromCache(key, pageNumber)?.let { return it }
 
-    // Cache miss, or another request is already rendering from the cached
-    // handle. Either way this costs exactly what the method cost before the
+    // Document cache miss. This costs exactly what the method cost before the
     // cache existed, and it leaves a warm document behind for the next page.
     val document = Loader.loadPDF(path.toFile())
     var cacheOwnsDocument = false
@@ -116,33 +143,39 @@ class PdfExtractor(
   }
 
   internal fun evictCachedDocument(path: Path) {
-    cacheKey(path)?.let(documentCache::invalidate)
+    cacheKey(path)?.let { key ->
+      documentCache.invalidate(key)
+      // The key embeds the file identity, so this drops exactly that
+      // document's rendered pages.
+      pageImageCache.asMap().keys.removeIf { it.startsWith("$key|") }
+    }
     documentCache.cleanUp()
   }
 
   /**
-   * Renders from the cached document, or returns null to say "do it the old
-   * way". Never waits for the lock: `PDDocument` cannot render concurrently, and
-   * blocking here would serialise the reader's prefetch burst, which is the one
-   * way this cache could end up slower than no cache at all.
+   * Renders from the cached document, or returns null to say "load the file
+   * again". Waits for the lock: `PDDocument` cannot render concurrently, and
+   * with the page-image cache deduplicating repeat requests, a queue here is at
+   * most one render per distinct page. The old non-waiting fallback re-parsed
+   * the whole file once per concurrent request in the reader's prefetch burst,
+   * which cost far more than the wait it avoided.
    */
   private fun renderFromCache(
     key: String,
     pageNumber: Int,
   ): TypedBytes? {
     val cached = documentCache.getIfPresent(key) ?: return null
-    if (!cached.lock.tryLock()) return null
 
     val rendered =
-      try {
-        renderPage(cached.document, pageNumber)
-      } catch (e: ArchiveLimitExceededException) {
-        throw e
-      } catch (e: Exception) {
-        logger.debug { "Cached PDF render failed; loading the file again: page=$pageNumber, errorType=${e.javaClass.simpleName}" }
-        null
-      } finally {
-        cached.lock.unlock()
+      cached.lock.withLock {
+        try {
+          renderPage(cached.document, pageNumber)
+        } catch (e: ArchiveLimitExceededException) {
+          throw e
+        } catch (e: Exception) {
+          logger.debug { "Cached PDF render failed; loading the file again: page=$pageNumber, errorType=${e.javaClass.simpleName}" }
+          null
+        }
       }
 
     // A cached document that cannot render is spent - it was closed under us by

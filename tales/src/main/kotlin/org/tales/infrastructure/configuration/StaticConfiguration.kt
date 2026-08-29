@@ -13,5 +13,5 @@ class StaticConfiguration {
   fun pdfImageType() = ImageType.JPEG
 
   @Bean("pdfResolution")
-  fun pdfResolution(): Float = 3200F
+  fun pdfResolution(talesProperties: TalesProperties): Float = talesProperties.pdfResolution
 }

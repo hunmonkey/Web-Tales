@@ -32,6 +32,12 @@ class TalesProperties {
   @Positive
   var epubDivinaLetterCountThreshold: Int = 15
 
+  // Shortest page edge, in pixels, a PDF page is rendered at when served as an
+  // image. Upstream used 3200; 2400 halves render time and transfer size while
+  // staying sharp on common screens. Override with `tales.pdf-resolution`.
+  @Positive
+  var pdfResolution: Float = 2400F
+
   var oauth2AccountCreation: Boolean = false
 
   var oidcEmailVerification: Boolean = true
