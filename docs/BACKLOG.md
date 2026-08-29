@@ -1539,3 +1539,56 @@ be fixed together for the prefetch to reach the screen.
 - The remove button is positioned `right: 4px` rather than through the RTL
   helpers the shelves use. The banner it replaces was not RTL-aware either;
   making the whole dashboard RTL-correct is its own ticket.
+
+## Turning a page waits on the server, reported 2026-08-29
+
+- [x] SV-1287 Serve PDF pages from a rendered-page cache instead of re-rendering
+  per request, wait for the shared document instead of re-parsing it, and make
+  the render resolution a property. Owner: "도서나 만화를 볼 때 다음페이지를
+  불러오는게 너무 느린것 같아 … 집 또는 외부 모두 비슷하게 느려."
+  Every page request rendered the PDF page again at min-edge 3200px (upstream's
+  value) and JPEG-encoded it — seconds of CPU per page on the server. Worse, the
+  reader prefetches six pages at once and `PDDocument` cannot render
+  concurrently, so `renderFromCache`'s `tryLock` sent every concurrent request
+  down the miss path: each one re-parsed the whole file with `Loader.loadPDF`
+  and then threw its document away when `putIfAbsent` lost. The page thumbnail
+  endpoint renders the same full page before resizing to 300px, so opening the
+  thumbnail strip multiplied all of it.
+  `PdfExtractor` now keeps a `pageImageCache` (Caffeine, 64MB by weight, 30min
+  idle) keyed by file identity and page number; Caffeine computes one entry at
+  a time, so the prefetch burst and the thumbnail endpoint share single renders.
+  `renderFromCache` waits on the document lock — with renders deduplicated, a
+  queue is at most one render per distinct page, and the old non-waiting
+  re-parse cost far more than the wait. `evictCachedDocument` drops that
+  document's rendered pages along with the document. The resolution moved to
+  `TalesProperties.pdfResolution` (`tales.pdf-resolution`), default 2400 —
+  roughly half the render time and transfer size of 3200; set 3200 to restore
+  the upstream look. Stored page dimensions from earlier analyses still carry
+  the 3200-scale numbers until a book is re-analyzed; only metadata display
+  reads them.
+- [x] SV-1288 Extract a nested image archive once and serve its pages from the
+  cached extraction. Owner: "가끔 ZIP파일 안에 다시 압축파일이 있는것도 있어."
+  Both nested-archive paths — `ZipExtractor.getNestedEntryBytes` for a ZIP the
+  scanner expanded into pages, and `ShelfViewZipMixedContentProvider`'s
+  `withNestedImageArchive` for a mixed book — copied the entire inner archive to
+  a temp file, read one page and deleted the file, for every page and every
+  prefetch. The mixed PDF path already cached its extracted original
+  (`pdfCache`); the image-archive paths did not.
+  `ShelfViewNestedArchiveCache` now holds extracted inner archives (Caffeine, 8
+  entries, 30min idle, temp files under a process-scoped session directory via
+  the generalized `ShelfViewPdfCacheFiles`). The mixed provider keys entries by
+  `itemContentFingerprint`, the Divina path by outer file identity plus entry
+  name, with a fall-through to the old one-shot copy when file attributes are
+  unreadable. Analysis keeps the uncached path: it runs once per scan.
+
+### Deliberately not done
+
+- No cache for regular (non-nested) CBZ page serving. Opening the archive and
+  inflating one entry is tens of milliseconds; the observed slowness lives in
+  PDF rendering and nested extraction.
+- No resize/downscale option on the page endpoint for remote readers. Transfer
+  size of original scans is a real cost on mobile, but it is a new API surface
+  and its own ticket if wanted.
+- `readPage` in the mixed provider still enumerates every outer entry to find
+  the item; that walk is in-memory central-directory work, cheap next to the
+  extraction it used to sit beside.
