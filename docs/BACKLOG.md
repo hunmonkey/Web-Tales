@@ -1592,3 +1592,78 @@ be fixed together for the prefetch to reach the screen.
 - `readPage` in the mixed provider still enumerates every outer entry to find
   the item; that walk is in-memory central-directory work, cheap next to the
   extraction it used to sit beside.
+
+## Keep Reading shows one sideways row, reported 2026-08-30
+
+- [x] SV-1289 Lay Keep Reading out as a wrapping grid on the page instead of a
+  boxed horizontal row. Owner: "지금 이어보기가 하나의 칸반 안에 여러 책들이
+  보이고 있어. 칸반을 없애고 이어보기 페이지에 책들이 오와 열을 맞춰서 보일 수
+  있도록 조정해줘."
+  The SV-1286 row drew the `resume-card` articles inside a `horizontal-scroller`
+  wrapped in the `.dashboard-section` surface, so everything past the first
+  screenful hid behind a sideways scroll inside one bordered box.
+  `DashboardView` now drops the `.dashboard-section` box and the scroller for
+  this section and renders the same cards in a `.resume-grid` flex-wrap
+  container under the same `dashboard-section__title`; the cards keep their
+  fixed per-breakpoint width (96/104/112/120px), which is what lines them up in
+  columns as well as rows. The scroller's `scroll-changed` paging went with it,
+  so `loadAll` now drains the Keep Reading loader's remaining pages right after
+  the initial load — bounded by the number of books actually in progress, and
+  `PageLoader.reload()` keeps every drained page across SSE reloads.
+
+### Deliberately not done
+
+- The other recommended shelves keep their boxed `horizontal-scroller` rows; the
+  owner asked about the Keep Reading page only.
+- Card size, the remove control, and the confirmation flow from SV-1286 are
+  unchanged; only the layout moved.
+
+## Libraries need a password, reported 2026-08-30
+
+- [x] SV-1290 PIN-locked libraries, enforced server-side per session
+  (ADR-0022). Owner: "서재에 비밀번호 옵션을 둬서 특정 서재는 비밀번호 입력후
+  승인되면 들어갈 수 있게 하고 싶어." Chosen through explicit questions: real
+  server enforcement (not a UI-only gate), the library's name stays visible
+  with a lock mark but its contents must be unreadable, and an unlock holds
+  until logout. Applies to every account including admins, since the owner is
+  the admin.
+  Storage is a new `SHELFVIEW_LIBRARY_ACCESS` table (BCrypt hash per library,
+  FK cascade); the upstream `LIBRARY` table, model, and DTO are untouched.
+  Enforcement is one choke point: `ShelfViewLibraryLockFilter` runs after
+  Spring Security and swaps the request's `TalesUser` for a copy whose
+  authorized libraries exclude `pinned − unlocked(session)`, which the 80+
+  existing authorization call sites (browse, search, dashboard, referential,
+  OPDS, thumbnails, page streaming) then enforce unchanged. `TalesUser` gains
+  one never-persisted field, `lockedLibraryIds`, and `canAccessAllLibraries()`
+  gains `&& lockedLibraryIds.isEmpty()` — the line that suspends the admin
+  bypass. Sessions are Spring Session entries (TALES-SESSION cookie), so
+  logout or expiry relocks, and cookie-less clients (OPDS, API keys) simply
+  never see a locked library.
+  API under `/api/shelfview/v1/library-locks`: list lock states (id, name,
+  unlocked — the only place a locked library's name may appear), `POST
+  {id}/unlock` (404 for a library the sharing rules already hide, 403 on
+  mismatch, 429 after 5 straight failures for 30s on top of BCrypt's cost),
+  `DELETE {id}/unlock` to relock the session, and admin `PUT`/`DELETE {id}` to
+  set or remove the PIN — setting one auto-unlocks the setter's session.
+  Web UI: locked libraries render as sidebar entries with an `mdi-lock` icon
+  fed by the lock list (the server hides them from `/api/v1/libraries`);
+  clicking one opens `LibraryPinDialog`, which stays open with the error on a
+  wrong PIN and, on success, refreshes the store and navigates into the
+  library. `LibraryActionsMenu` gains labelled admin entries — set/change
+  password, remove password (confirmed), and "lock now" for the current
+  session — with lock state fetched when the menu opens and every change
+  broadcast over `$eventHub` as `shelfview-library-locks-changed`.
+
+### Deliberately not done
+
+- No client-side lock screen for a direct URL into a locked library; the
+  server already refuses, and the sidebar is the entry point. A friendlier
+  in-place unlock prompt is its own ticket if wanted.
+- No PIN field in the add-library dialog; the library actions menu sets one
+  after creation.
+- Manual relock is an admin menu entry only; a non-admin relocks by logging
+  out, which is the lifetime the owner chose.
+- SSE keeps broadcasting opaque ids to locked sessions, matching what
+  upstream already does for share-restricted users; titles never leak.
+- The in-memory failure throttle is per-process. A distributed rate limiter
+  is pointless on a single-container deployment.
