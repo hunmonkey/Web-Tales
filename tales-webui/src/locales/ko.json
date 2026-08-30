@@ -570,6 +570,10 @@
     "resume_reading": "이어서 읽기",
     "resume_progress": "{page}쪽 / 전체 {total}쪽",
     "resume_remove": "이어보기에서 삭제",
+    "resume_remove_all": "전체 삭제",
+    "resume_remove_selected": "선택 삭제 ({count})",
+    "resume_select": "이 책 선택",
+    "resume_select_all": "전체 선택",
     "on_deck": "올려 두기",
     "recently_added_books": "최근 추가된 책",
     "recently_added_series": "최근 추가된 시리즈",
@@ -694,7 +698,8 @@
     "delete_read_progress": {
       "button_confirm": "삭제",
       "dialog_title": "읽기 기록 삭제",
-      "warning": "\"{name}\"의 읽기 기록이 삭제되어 안 읽음 상태로 돌아갑니다. 이어보기 목록에서 사라지고, 다시 열면 첫 쪽부터 시작합니다. 책 파일 자체는 영향을 받지 않습니다. 계속하시겠습니까?"
+      "warning": "\"{name}\"의 읽기 기록이 삭제되어 안 읽음 상태로 돌아갑니다. 이어보기 목록에서 사라지고, 다시 열면 첫 쪽부터 시작합니다. 책 파일 자체는 영향을 받지 않습니다. 계속하시겠습니까?",
+      "warning_multiple": "선택한 {count}권의 읽기 기록이 삭제되어 안 읽음 상태로 돌아갑니다. 이어보기 목록에서 사라지고, 다시 열면 첫 쪽부터 시작합니다. 책 파일 자체는 영향을 받지 않습니다. 계속하시겠습니까?"
     },
     "delete_series": {
       "button_confirm": "삭제",

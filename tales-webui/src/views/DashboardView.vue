@@ -35,7 +35,37 @@
       <header class="dashboard__heading">
         <div>
           <div class="dashboard__eyebrow">Tales</div>
-          <h1 class="dashboard__title">{{ $t('common.all_libraries') }}</h1>
+          <h1 class="dashboard__title">{{ $t('dashboard.keep_reading') }}</h1>
+        </div>
+        <!-- The heading now names the resume grid, so the bulk controls belong
+             next to it rather than above the cards (SV-1297). -->
+        <div v-if="resumeBooks.length > 0" class="resume-actions">
+          <v-checkbox
+            :input-value="allResumeSelected"
+            :indeterminate="someResumeSelected"
+            :label="$t('dashboard.resume_select_all')"
+            class="ma-0 pa-0"
+            color="secondary"
+            dense
+            hide-details
+            data-testid="dashboard-resume-select-all"
+            @change="toggleAllResume"
+          />
+          <v-btn
+            text
+            small
+            :disabled="selectedResume.length === 0"
+            data-testid="dashboard-resume-remove-selected"
+            @click="confirmRemoveResume(selectedResumeBooks)"
+          >{{ $t('dashboard.resume_remove_selected', {count: selectedResume.length}) }}
+          </v-btn>
+          <v-btn
+            text
+            small
+            data-testid="dashboard-resume-remove-all"
+            @click="confirmRemoveResume(resumeBooks)"
+          >{{ $t('dashboard.resume_remove_all') }}
+          </v-btn>
         </div>
       </header>
 
@@ -50,7 +80,6 @@
         class="mb-8"
         data-testid="dashboard-resume"
       >
-        <div class="dashboard-section__title">{{ $t('dashboard.keep_reading') }}</div>
         <div class="resume-grid">
           <article
             v-for="book in resumeBooks"
@@ -73,6 +102,17 @@
                 height="4"
                 class="resume-card__progress"
               />
+              <v-checkbox
+                :input-value="selectedResume.includes(book.id)"
+                :aria-label="$t('dashboard.resume_select')"
+                class="resume-card__select ma-0 pa-0"
+                color="secondary"
+                dense
+                hide-details
+                :ripple="false"
+                data-testid="dashboard-resume-select"
+                @change="setResumeSelection(book.id, $event)"
+              />
               <v-btn
                 icon
                 x-small
@@ -80,7 +120,7 @@
                 :aria-label="$t('dashboard.resume_remove')"
                 :title="$t('dashboard.resume_remove')"
                 data-testid="dashboard-resume-remove"
-                @click="confirmRemoveResume(book)"
+                @click="confirmRemoveResume([book])"
               >
                 <v-icon small>mdi-close</v-icon>
               </v-btn>
@@ -288,7 +328,12 @@ export default Vue.extend({
       // same for the cards. Keyed by book id: the grid holds several covers.
       resumeThumbnailCacheBust: {} as Record<string, string>,
       removeResumeDialog: false,
-      resumeToRemove: undefined as BookDto | undefined,
+      // Books queued for the confirmation dialog: one card's cross, the current
+      // selection, or the whole grid all end up here.
+      resumeToRemove: [] as BookDto[],
+      // Ids rather than DTOs, so a reload that replaces the objects keeps the
+      // selection.
+      selectedResume: [] as string[],
     }
   },
   created() {
@@ -421,10 +466,25 @@ export default Vue.extend({
       if (this.$vuetify.breakpoint.md) return 112
       return 120
     },
+    // Filtered against the grid rather than trusted as-is: a reload can drop a
+    // book that is still in `selectedResume`.
+    selectedResumeBooks(): BookDto[] {
+      return this.resumeBooks.filter(b => this.selectedResume.includes(b.id))
+    },
+    allResumeSelected(): boolean {
+      return this.resumeBooks.length > 0 && this.selectedResumeBooks.length === this.resumeBooks.length
+    },
+    someResumeSelected(): boolean {
+      return this.selectedResumeBooks.length > 0 && !this.allResumeSelected
+    },
     removeResumeBody(): string {
-      if (!this.resumeToRemove) return ''
-      return this.$t('dialog.delete_read_progress.warning', {
-        name: this.resumeTitle(this.resumeToRemove),
+      if (this.resumeToRemove.length === 0) return ''
+      if (this.resumeToRemove.length === 1)
+        return this.$t('dialog.delete_read_progress.warning', {
+          name: this.resumeTitle(this.resumeToRemove[0]),
+        }).toString()
+      return this.$t('dialog.delete_read_progress.warning_multiple', {
+        count: this.resumeToRemove.length,
       }).toString()
     },
     selectedOneshots(): boolean {
@@ -553,18 +613,27 @@ export default Vue.extend({
         params: {bookId: book.id},
       }
     },
-    confirmRemoveResume(book: BookDto) {
-      this.resumeToRemove = book
+    setResumeSelection(bookId: string, selected: boolean) {
+      const rest = this.selectedResume.filter((id: string) => id !== bookId)
+      this.selectedResume = selected ? [...rest, bookId] : rest
+    },
+    toggleAllResume(selected: boolean) {
+      this.selectedResume = selected ? this.resumeBooks.map(b => b.id) : []
+    },
+    confirmRemoveResume(books: BookDto[]) {
+      if (books.length === 0) return
+      this.resumeToRemove = books
       this.removeResumeDialog = true
     },
     // Deleting the read progress is what takes a book out of Keep Reading;
-    // the server has no separate "hide" state. The book goes back to unread and
-    // starts from page one when it is opened again - hence the confirmation.
+    // the server has no separate "hide" state. The books go back to unread and
+    // start from page one when opened again - hence the confirmation.
     async removeResume() {
-      const book = this.resumeToRemove
-      if (!book) return
-      this.resumeToRemove = undefined
-      await this.$talesBooks.deleteReadProgress(book.id)
+      const books = this.resumeToRemove
+      if (books.length === 0) return
+      this.resumeToRemove = []
+      await Promise.all(books.map(b => this.$talesBooks.deleteReadProgress(b.id)))
+      this.selectedResume = []
       // The SSE event that follows shares the 5s reload throttle; the grid the
       // user just acted on should not wait for it.
       await this.loaderKeepReadingBooks?.reload()
@@ -623,6 +692,7 @@ export default Vue.extend({
       if (this.library != undefined) document.title = `Tales - ${this.library.name}`
       this.selectedSeries = []
       this.selectedBooks = []
+      this.selectedResume = []
 
       const loaders = [
         this.loaderKeepReadingBooks,
@@ -769,6 +839,24 @@ export default Vue.extend({
   left: 0;
   position: absolute;
   right: 0;
+}
+
+/* Wraps under the heading on a narrow screen rather than squeezing the title. */
+.resume-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+/* Same treatment as the cross opposite it, for the same reason. */
+.resume-card__select {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 50%;
+  left: 4px;
+  padding: 2px;
+  position: absolute;
+  top: 4px;
 }
 
 /* Always visible rather than shown on hover: a touch screen has no hover, and

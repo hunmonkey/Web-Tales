@@ -163,7 +163,7 @@ describe('DashboardView', () => {
     await wrapper.vm.$nextTick()
 
     // The cross asks first: nothing is deleted until the dialog is confirmed.
-    ;(wrapper.vm as any).confirmRemoveResume(otherBook)
+    ;(wrapper.vm as any).confirmRemoveResume([otherBook])
     expect((wrapper.vm as any).removeResumeDialog).toBe(true)
     expect(deleteReadProgress).not.toHaveBeenCalled()
 
@@ -174,7 +174,113 @@ describe('DashboardView', () => {
     // The row is reloaded rather than left to the throttled SSE reload.
     expect(getBooksList.mock.calls.length).toBeGreaterThan(callsBefore)
   })
+
+  it('selects and unselects every book from the header checkbox', async () => {
+    const wrapper = await mountWithResume()
+    const vm = wrapper.vm as any
+
+    expect(vm.allResumeSelected).toBe(false)
+    expect(vm.someResumeSelected).toBe(false)
+
+    vm.setResumeSelection('book1', true)
+    expect(vm.someResumeSelected).toBe(true)
+    expect(vm.allResumeSelected).toBe(false)
+
+    vm.toggleAllResume(true)
+    expect(vm.selectedResume.sort()).toEqual(['book1', 'book2'])
+    expect(vm.allResumeSelected).toBe(true)
+    expect(vm.someResumeSelected).toBe(false)
+
+    // Selecting the same book twice must not queue it twice.
+    vm.setResumeSelection('book1', true)
+    expect(vm.selectedResume.filter((id: string) => id === 'book1').length).toBe(1)
+
+    vm.setResumeSelection('book1', false)
+    expect(vm.selectedResume).toEqual(['book2'])
+
+    vm.toggleAllResume(false)
+    expect(vm.selectedResume).toEqual([])
+  })
+
+  it('ignores a selected id that the grid no longer holds', async () => {
+    const wrapper = await mountWithResume()
+    const vm = wrapper.vm as any
+
+    vm.setResumeSelection('book1', true)
+    vm.setResumeSelection('gone', true)
+
+    // Two ids but only one of the two books: counting ids alone would read as
+    // "all selected", and the phantom would reach the delete call.
+    expect(vm.allResumeSelected).toBe(false)
+    expect(vm.someResumeSelected).toBe(true)
+    expect(vm.selectedResumeBooks.map((b: any) => b.id)).toEqual(['book1'])
+  })
+
+  it('deletes the read progress of every selected book on one confirmation', async () => {
+    const deleteReadProgress = jest.fn().mockResolvedValue(undefined)
+    const wrapper = await mountWithResume({deleteReadProgress})
+    const vm = wrapper.vm as any
+
+    vm.setResumeSelection('book2', true)
+    vm.confirmRemoveResume(vm.selectedResumeBooks)
+    expect(vm.removeResumeDialog).toBe(true)
+    expect(deleteReadProgress).not.toHaveBeenCalled()
+
+    await vm.removeResume()
+
+    expect(deleteReadProgress.mock.calls.map((c: any[]) => c[0])).toEqual(['book2'])
+    expect(vm.selectedResume).toEqual([])
+  })
+
+  it('deletes the whole grid when Remove all is confirmed', async () => {
+    const deleteReadProgress = jest.fn().mockResolvedValue(undefined)
+    const wrapper = await mountWithResume({deleteReadProgress})
+    const vm = wrapper.vm as any
+
+    vm.confirmRemoveResume(vm.resumeBooks)
+    await vm.removeResume()
+
+    expect(deleteReadProgress.mock.calls.map((c: any[]) => c[0]).sort()).toEqual(['book1', 'book2'])
+  })
+
+  it('does not open the dialog when nothing is selected', async () => {
+    const wrapper = await mountWithResume()
+    const vm = wrapper.vm as any
+
+    vm.confirmRemoveResume(vm.selectedResumeBooks)
+
+    expect(vm.removeResumeDialog).toBe(false)
+  })
+
+  it('names the book when one is removed and counts them when several are', async () => {
+    const wrapper = await mountWithResume()
+    const vm = wrapper.vm as any
+
+    expect(vm.removeResumeBody).toBe('')
+    vm.confirmRemoveResume([resumeBook])
+    expect(vm.removeResumeBody).toBe('dialog.delete_read_progress.warning')
+    vm.confirmRemoveResume([resumeBook, otherBook])
+    expect(vm.removeResumeBody).toBe('dialog.delete_read_progress.warning_multiple')
+  })
+
+  it('draws a checkbox on every card', async () => {
+    const wrapper = await mountWithResume()
+    expect(wrapper.findAll('[data-testid="dashboard-resume-select"]').length).toBe(2)
+    expect(wrapper.find('[data-testid="dashboard-resume-select-all"]').exists()).toBe(true)
+  })
 })
+
+async function mountWithResume(services: {deleteReadProgress?: jest.Mock} = {}) {
+  const wrapper = mountDashboard({
+    getBooksList: jest.fn()
+      .mockResolvedValueOnce(pageOf([resumeBook, otherBook]))
+      .mockResolvedValue(pageOf([])),
+    deleteReadProgress: services.deleteReadProgress,
+  })
+  await flushPromises()
+  await wrapper.vm.$nextTick()
+  return wrapper
+}
 
 function mountDashboard(services: {
   getBooksList: jest.Mock,
@@ -218,6 +324,7 @@ function mountDashboard(services: {
       'multi-select-bar',
       'router-link',
       'v-btn',
+      'v-checkbox',
       'v-container',
       'v-fab-transition',
       'v-icon',

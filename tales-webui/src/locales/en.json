@@ -570,6 +570,10 @@
     "resume_reading": "Resume reading",
     "resume_progress": "Page {page} of {total}",
     "resume_remove": "Remove from Keep Reading",
+    "resume_remove_all": "Remove all",
+    "resume_remove_selected": "Remove selected ({count})",
+    "resume_select": "Select this book",
+    "resume_select_all": "Select all",
     "on_deck": "On Deck",
     "recently_added_books": "Recently Added Books",
     "recently_added_series": "Recently Added Series",
@@ -694,7 +698,8 @@
     "delete_read_progress": {
       "button_confirm": "Delete",
       "dialog_title": "Delete read progress",
-      "warning": "The read progress for \"{name}\" will be deleted and the book goes back to unread, so it leaves Keep Reading and starts from the first page next time. The file itself is not affected. Continue?"
+      "warning": "The read progress for \"{name}\" will be deleted and the book goes back to unread, so it leaves Keep Reading and starts from the first page next time. The file itself is not affected. Continue?",
+      "warning_multiple": "The read progress for {count} books will be deleted and they go back to unread, so they leave Keep Reading and start from the first page next time. The files themselves are not affected. Continue?"
     },
     "delete_series": {
       "button_confirm": "Delete",
