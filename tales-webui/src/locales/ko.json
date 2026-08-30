@@ -881,6 +881,9 @@
       },
       "title": "대상 파일"
     },
+    "library_pin": {
+      "pin_label": "비밀번호 (4자 이상)"
+    },
     "logout": {
       "body": "정말 Tales에서 로그아웃하시겠습니까?",
       "confirm": "네, 로그아웃합니다",
@@ -899,6 +902,17 @@
       "body": "라이브러리의 모든 미디어 파일에 대한 메타데이터를 새로 고칩니다. 라이브러리 크기에 따라 시간이 오래 걸릴 수 있습니다.",
       "button_confirm": "새로고침",
       "title": "라이브러리 메타데이터 새로고침"
+    },
+    "remove_library_pin": {
+      "body": "\"{name}\" 서재의 비밀번호를 해제하면 누구나 바로 들어갈 수 있습니다. 계속하시겠습니까?",
+      "button_confirm": "비밀번호 해제",
+      "title": "서재 비밀번호 해제"
+    },
+    "set_library_pin": {
+      "body": "이 서재는 비밀번호를 입력한 사람만 들어갈 수 있게 됩니다. 잠금 해제는 로그아웃할 때까지 유지됩니다.",
+      "button_confirm": "저장",
+      "failed": "비밀번호를 저장하지 못했습니다. 다시 시도해 주세요.",
+      "title": "\"{name}\" 서재 비밀번호 설정"
     },
     "series_picker": {
       "label_search_series": "시리즈 검색",
@@ -938,6 +952,13 @@
       "page_of_pages": "{page} / {pages}",
       "title": "도서 검사",
       "title_comparison": "도서 비교"
+    },
+    "unlock_library": {
+      "body": "이 서재는 비밀번호로 보호되어 있습니다. 잠금 해제는 로그아웃할 때까지 유지됩니다.",
+      "button_confirm": "잠금 해제",
+      "throttled": "시도가 너무 많았습니다. 30초 후에 다시 시도해 주세요.",
+      "title": "\"{name}\" 잠금 해제",
+      "wrong_pin": "비밀번호가 올바르지 않습니다."
     }
   },
   "duplicate_pages": {
@@ -1216,6 +1237,10 @@
     "edit": "편집",
     "edit_metadata": "메타데이터 수정",
     "empty_trash": "휴지통 비우기",
+    "library_lock_now": "서재 지금 잠그기",
+    "library_pin_change": "서재 비밀번호 변경",
+    "library_pin_remove": "서재 비밀번호 해제",
+    "library_pin_set": "서재 비밀번호 설정",
     "mark_read": "읽음으로 표시",
     "mark_unread": "읽지 않음으로 표시",
     "pin": "고정",

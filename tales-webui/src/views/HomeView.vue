@@ -10,6 +10,16 @@
       @confirm="logout"
     />
 
+    <library-pin-dialog
+      v-model="unlockDialogVisible"
+      :title="$t('dialog.unlock_library.title', {name: unlockTarget ? unlockTarget.name : ''})"
+      :body="$t('dialog.unlock_library.body')"
+      :button-confirm="$t('dialog.unlock_library.button_confirm')"
+      :error-message="unlockError"
+      @clear-error="unlockError = ''"
+      @confirm="submitUnlock"
+    />
+
     <!-- The app bar is gone (SV-1201), and with it the only way to reopen the
          drawer once it is closed. This is that way back, and the only icon the
          shell adds; it hides itself while the drawer is open. -->
@@ -78,6 +88,24 @@
             <v-list-item-action class="ma-0" v-if="isAdmin">
               <library-actions-menu :library="l"/>
             </v-list-item-action>
+          </v-list-item>
+
+          <!--   LOCKED LIBRARIES (ADR-0022)
+                 The server hides a PIN-locked library from every list until
+                 this session unlocks it, so these entries come from the lock
+                 list, show only the name, and open the PIN dialog instead of
+                 navigating. -->
+          <v-list-item v-for="lock in lockedLibraries"
+                       :key="lock.libraryId"
+                       @click="openUnlockDialog(lock)"
+                       data-testid="locked-library"
+          >
+            <v-list-item-content>
+              <v-list-item-title>
+                <v-icon small class="me-1">mdi-lock</v-icon>
+                {{ lock.name }}
+              </v-list-item-title>
+            </v-list-item-content>
           </v-list-item>
 
           <!--   UNPINNED LIBRARIES     -->
@@ -155,6 +183,7 @@
 
 <script lang="ts">
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
+import LibraryPinDialog from '@/components/dialogs/LibraryPinDialog.vue'
 import ReusableDialogs from '@/components/ReusableDialogs.vue'
 import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
 import SearchBox from '@/components/SearchBox.vue'
@@ -165,11 +194,13 @@ import ToasterNotification from '@/components/ToasterNotification.vue'
 import {LibraryDto} from '@/types/tales-libraries'
 import LibrariesActionsMenu from '@/components/menus/LibrariesActionsMenu.vue'
 import ReorderLibraries from '@/components/ReorderLibraries.vue'
+import {LIBRARY_LOCKS_CHANGED, ShelfViewLibraryLockDto} from '@/shelfview/services/shelfview-library-locks.service'
 
 export default Vue.extend({
   name: 'HomeView',
   components: {
     ConfirmationDialog,
+    LibraryPinDialog,
     ReorderLibraries,
     LibrariesActionsMenu,
     ToasterNotification,
@@ -184,6 +215,10 @@ export default Vue.extend({
       expandUnpinned: false,
       showReorder: false,
       logoutConfirmDialog: false,
+      libraryLocks: [] as ShelfViewLibraryLockDto[],
+      unlockDialogVisible: false,
+      unlockTarget: undefined as ShelfViewLibraryLockDto | undefined,
+      unlockError: '',
     }
   },
   // The four admin requests that used to run here fed the announcement and
@@ -191,12 +226,15 @@ export default Vue.extend({
   // SV-1204a). Signing in as an admin now issues none of them.
   created() {
     this.checkRoute(this.$route)
+    this.loadLibraryLocks()
+    this.$eventHub.$on(LIBRARY_LOCKS_CHANGED, this.loadLibraryLocks)
   },
   mounted() {
     document.addEventListener('keydown', this.onShellShortcut)
   },
   beforeDestroy() {
     document.removeEventListener('keydown', this.onShellShortcut)
+    this.$eventHub.$off(LIBRARY_LOCKS_CHANGED, this.loadLibraryLocks)
   },
   watch: {
     $route(to, from) {
@@ -212,6 +250,11 @@ export default Vue.extend({
     },
     librariesUnpinned(): LibraryDto[] {
       return this.$store.getters.getLibrariesUnpinned
+    },
+    // Only the still-locked ones get a placeholder entry: once unlocked, the
+    // library comes back through the normal store list and renders as usual.
+    lockedLibraries(): ShelfViewLibraryLockDto[] {
+      return this.libraryLocks.filter(it => !it.unlocked)
     },
     isAdmin(): boolean {
       return this.$store.getters.meAdmin
@@ -245,6 +288,40 @@ export default Vue.extend({
     },
     addLibrary() {
       this.$store.dispatch('dialogAddLibrary')
+    },
+    async loadLibraryLocks() {
+      try {
+        this.libraryLocks = await this.$shelfViewLibraryLocks.getLockStates()
+      } catch (_) {
+        // The sidebar still works without lock rows; the locked libraries
+        // simply stay invisible until the next successful fetch.
+        this.libraryLocks = []
+      }
+    },
+    openUnlockDialog(lock: ShelfViewLibraryLockDto) {
+      this.unlockTarget = lock
+      this.unlockError = ''
+      this.unlockDialogVisible = true
+    },
+    async submitUnlock(pin: string) {
+      const target = this.unlockTarget
+      if (!target) return
+      try {
+        await this.$shelfViewLibraryLocks.unlock(target.libraryId, pin)
+      } catch (e) {
+        this.unlockError =
+          e?.response?.status === 429
+            ? this.$t('dialog.unlock_library.throttled').toString()
+            : this.$t('dialog.unlock_library.wrong_pin').toString()
+        return
+      }
+      this.unlockDialogVisible = false
+      // The server now serves this session the library again; refresh the
+      // sidebar sources and land the user inside what they just opened.
+      await this.$store.dispatch('getLibraries')
+      await this.loadLibraryLocks()
+      this.$eventHub.$emit(LIBRARY_LOCKS_CHANGED)
+      this.$router.push({name: 'libraries', params: {libraryId: target.libraryId}})
     },
   },
 })

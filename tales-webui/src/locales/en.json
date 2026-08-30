@@ -881,6 +881,9 @@
       },
       "title": "Destination File Name"
     },
+    "library_pin": {
+      "pin_label": "Password (at least 4 characters)"
+    },
     "logout": {
       "body": "Are you sure you want to log out of Tales?",
       "confirm": "Yes, log me out",
@@ -899,6 +902,17 @@
       "body": "Refreshes metadata for all the media files in the library. Depending on your library size, this may take a long time.",
       "button_confirm": "Refresh",
       "title": "Refresh metadata for library"
+    },
+    "remove_library_pin": {
+      "body": "Removing the password of \"{name}\" lets anyone enter it right away. Continue?",
+      "button_confirm": "Remove password",
+      "title": "Remove library password"
+    },
+    "set_library_pin": {
+      "body": "Only people who enter this password will be able to open the library. An unlock lasts until logout.",
+      "button_confirm": "Save",
+      "failed": "The password could not be saved. Please try again.",
+      "title": "Set password for \"{name}\""
     },
     "series_picker": {
       "label_search_series": "Search Series",
@@ -938,6 +952,13 @@
       "page_of_pages": "{page} / {pages}",
       "title": "Inspect Book",
       "title_comparison": "Book Comparison"
+    },
+    "unlock_library": {
+      "body": "This library is protected by a password. An unlock lasts until logout.",
+      "button_confirm": "Unlock",
+      "throttled": "Too many attempts. Try again in 30 seconds.",
+      "title": "Unlock \"{name}\"",
+      "wrong_pin": "Incorrect password."
     }
   },
   "duplicate_pages": {
@@ -1216,6 +1237,10 @@
     "edit": "Edit",
     "edit_metadata": "Edit metadata",
     "empty_trash": "Empty trash",
+    "library_lock_now": "Lock library now",
+    "library_pin_change": "Change library password",
+    "library_pin_remove": "Remove library password",
+    "library_pin_set": "Set library password",
     "mark_read": "Mark as read",
     "mark_unread": "Mark as unread",
     "pin": "Pin",

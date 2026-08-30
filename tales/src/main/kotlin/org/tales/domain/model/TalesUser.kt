@@ -15,6 +15,11 @@ data class TalesUser(
   val roles: Set<UserRoles> = setOf(UserRoles.FILE_DOWNLOAD, UserRoles.PAGE_STREAMING),
   val sharedLibrariesIds: Set<String> = emptySet(),
   val sharedAllLibraries: Boolean = true,
+  // Request-scoped, never persisted: PIN-locked libraries this session has not
+  // unlocked. Only ShelfViewLibraryLockFilter sets it, always together with a
+  // materialized sharedLibrariesIds (ADR-0022). Non-empty also suspends the
+  // admin bypass below - a lock admins walk through protects nothing.
+  val lockedLibraryIds: Set<String> = emptySet(),
   val restrictions: ContentRestrictions = ContentRestrictions(),
   val id: String = TsidCreator.getTsid256().toString(),
   override val createdDate: LocalDateTime = LocalDateTime.now(),
@@ -45,7 +50,7 @@ data class TalesUser(
       else -> null
     }
 
-  fun canAccessAllLibraries(): Boolean = sharedAllLibraries || isAdmin
+  fun canAccessAllLibraries(): Boolean = (sharedAllLibraries || isAdmin) && lockedLibraryIds.isEmpty()
 
   fun canAccessLibrary(libraryId: String): Boolean = canAccessAllLibraries() || sharedLibrariesIds.any { it == libraryId }
 

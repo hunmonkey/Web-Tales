@@ -21,6 +21,7 @@ import talesLogin from './plugins/tales-login.plugin'
 import talesHistory from './plugins/tales-history.plugin'
 import talesSettings from './plugins/tales-settings.plugin'
 import talesFonts from './plugins/tales-fonts.plugin'
+import shelfViewLibraryLocks from './shelfview/plugins/shelfview-library-locks.plugin'
 import shelfViewManifest from './shelfview/plugins/shelfview-manifest.plugin'
 import shelfViewState from './shelfview/plugins/shelfview-state.plugin'
 import shelfViewText from './shelfview/plugins/shelfview-text.plugin'
@@ -55,6 +56,7 @@ Vue.use(talesOauth2, {http: Vue.prototype.$http})
 Vue.use(talesLogin, {http: Vue.prototype.$http})
 Vue.use(talesHistory, {http: Vue.prototype.$http})
 Vue.use(talesFonts, {http: Vue.prototype.$http})
+Vue.use(shelfViewLibraryLocks, {http: Vue.prototype.$http})
 Vue.use(shelfViewManifest, {http: Vue.prototype.$http})
 Vue.use(shelfViewState, {http: Vue.prototype.$http})
 Vue.use(shelfViewText, {http: Vue.prototype.$http})
