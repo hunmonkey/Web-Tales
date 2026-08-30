@@ -1745,3 +1745,53 @@ be fixed together for the prefetch to reach the screen.
 - No unit test for the route redirects: instantiating the router in Jest
   drags in the store side effects; the redirect expressions are covered by
   type-checking and the owner's click-through.
+
+## The 서재 row is still in the sidebar, reported 2026-08-30
+
+- [x] SV-1294 Remove the 서재 sidebar row entirely and relocate its menu.
+  Owner: "사이드 메뉴에서 '서재'라는 항목이 안사라지고 남아있어." SV-1293 had
+  kept the row as a non-navigating header because it was the only home of
+  `LibrariesActionsMenu`; the owner wants the row gone, so the menu's four
+  functions moved into settings and the row, the menu component, and the
+  sidebar's inline `ReorderLibraries` slide-over were all removed:
+  - Sort (서재 정렬) becomes a `v-select` on the 유저 인터페이스 tab, and
+    reorder becomes a button there that mounts `ReorderLibraries` on demand -
+    on demand because mounting that panel switches the sort to MANUAL, which
+    must not happen just by visiting settings. The panel's own close button
+    (`@dismiss`) hides it again.
+  - Scan-all, deep scan-all, and empty-trash-all (admin) become labelled
+    buttons in 서버 관리 on the 서버 tab, the deep scan and trash in warning
+    color and the trash behind the existing `dialog.empty_trash` confirmation,
+    exactly as the menu had them.
+  `LibrariesActionsMenu.vue` and its spec are deleted; the spec's coverage
+  (three sort options, save-on-select, no write for the unchanged order, and
+  now the on-demand reorder mount) moved into `PreferencesView.spec.ts`, so
+  no behavior lost its test.
+
+### Deliberately not done
+
+- `ReorderLibraries` itself is unchanged; it was already self-contained and
+  its close button works the same embedded in settings.
+- No i18n changes: every label reuses the keys the menu and the server
+  management screen already had.
+
+## Library browse header redesign, reported 2026-08-30
+
+- [x] SV-1295 Strip the library browse header down to the single toolbar row.
+  Owner: "각 서재의 메인페이지 상단 헤더 전면 재디자인" - remove the
+  alphabetical filter bar (`ALL # A ... Z`) and the top page shortcuts
+  (`< 1 2 3 4 5 >`), keeping only the toolbar row with the library name and
+  the 시리즈/책 navigation. Done on both tabs (`BrowseLibraries.vue` had both
+  elements, `BrowseBooks.vue` only the top pagination). The bottom pagination
+  stays as the way to reach other pages. `AlphabeticalNavigation.vue` and the
+  `getSeriesListByAlphabeticalGroups` service wrapper became unused and were
+  deleted; the backend `/api/v1/series/list/alphabetical-groups` endpoint is
+  untouched.
+
+### Deliberately not done
+
+- `BrowseBooks.vue` still declares an unused `seriesGroups` data field; it was
+  dead before this ticket (no alphabetical bar ever rendered there), so it was
+  left alone per the surgical-change rule.
+- No replacement navigation (infinite scroll, jump-to-letter in the filter
+  drawer): not requested; the bottom pagination covers page access.
