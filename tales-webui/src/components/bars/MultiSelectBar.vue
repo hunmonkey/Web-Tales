@@ -61,12 +61,12 @@
         </v-tooltip>
       </v-btn>
 
-      <v-btn icon @click="doDelete" v-if="isAdmin" :aria-label="$t('menu.delete')">
+      <v-btn icon @click="doDelete" v-if="isAdmin" :aria-label="$t('menu.remove_from_library')">
         <v-tooltip bottom>
           <template v-slot:activator="{ on }">
-            <v-icon v-on="on">mdi-delete-outline</v-icon>
+            <v-icon v-on="on">mdi-playlist-remove</v-icon>
           </template>
-          <span>{{ $t('menu.delete') }}</span>
+          <span>{{ $t('menu.remove_from_library') }}</span>
         </v-tooltip>
       </v-btn>
     </toolbar-sticky>

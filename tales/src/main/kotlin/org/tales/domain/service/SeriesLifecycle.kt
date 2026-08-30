@@ -11,7 +11,6 @@ import org.tales.domain.model.BookMetadata
 import org.tales.domain.model.BookMetadataAggregation
 import org.tales.domain.model.BookMetadataPatchCapability
 import org.tales.domain.model.DomainEvent
-import org.tales.domain.model.HistoricalEvent
 import org.tales.domain.model.Library
 import org.tales.domain.model.MarkSelectedPreference
 import org.tales.domain.model.Media
@@ -23,7 +22,6 @@ import org.tales.domain.model.ThumbnailSeries
 import org.tales.domain.persistence.BookMetadataAggregationRepository
 import org.tales.domain.persistence.BookMetadataRepository
 import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.HistoricalEventRepository
 import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.MediaRepository
 import org.tales.domain.persistence.ReadProgressRepository
@@ -34,12 +32,6 @@ import org.tales.domain.persistence.ThumbnailSeriesRepository
 import org.tales.language.stripAccents
 import java.io.File
 import java.time.LocalDateTime
-import kotlin.io.path.deleteIfExists
-import kotlin.io.path.exists
-import kotlin.io.path.isWritable
-import kotlin.io.path.listDirectoryEntries
-import kotlin.io.path.notExists
-import kotlin.io.path.toPath
 
 private val logger = KotlinLogging.logger {}
 private val natSortComparator: Comparator<String> = CaseInsensitiveSimpleNaturalComparator.getInstance()
@@ -60,7 +52,6 @@ class SeriesLifecycle(
   private val taskEmitter: TaskEmitter,
   private val eventPublisher: ApplicationEventPublisher,
   private val transactionTemplate: TransactionTemplate,
-  private val historicalEventRepository: HistoricalEventRepository,
 ) {
   private val whitespacePattern = """\s+""".toRegex()
 
@@ -325,28 +316,17 @@ class SeriesLifecycle(
     eventPublisher.publishEvent(DomainEvent.ThumbnailSeriesDeleted(thumbnail))
   }
 
-  fun deleteSeriesFiles(series: Series) {
-    if (series.path.notExists()) return logger.info { "Cannot delete series folder: seriesId=${series.id}, reason=NOT_FOUND" }
-    if (!series.path.isWritable()) return logger.info { "Cannot delete series folder: seriesId=${series.id}, reason=NOT_WRITABLE" }
-
-    val thumbnails =
-      thumbnailsSeriesRepository
-        .findAllBySeriesIdIdAndType(series.id, ThumbnailSeries.Type.SIDECAR)
-        .mapNotNull { it.url?.toURI()?.toPath() }
-        .filter { it.exists() && it.isWritable() }
-
+  /**
+   * Removes the series and its books from the library. Nothing on disk is
+   * touched: the original media library is read-only (SV-1298), so this only
+   * soft deletes them, which drops them out of every list the same way a series
+   * whose folder went missing does. The files stay where they are.
+   */
+  fun removeSeriesFromLibrary(series: Series) {
+    logger.info { "Remove series from library: seriesId=${series.id}" }
     bookRepository
       .findAllBySeriesId(series.id)
-      .forEach { bookLifecycle.deleteBookFiles(it) }
-    thumbnails.forEach {
-      if (it.deleteIfExists()) logger.info { "Deleted series thumbnail: seriesId=${series.id}" }
-    }
-
-    if (series.path.exists() && series.path.listDirectoryEntries().isEmpty())
-      if (series.path.deleteIfExists()) {
-        logger.info { "Deleted empty series directory: seriesId=${series.id}" }
-        historicalEventRepository.insert(HistoricalEvent.SeriesFolderDeleted(series, "Folder was deleted because it was empty"))
-      }
+      .forEach { bookLifecycle.removeBookFromLibrary(it) }
 
     softDeleteMany(listOf(series))
   }

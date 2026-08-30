@@ -278,7 +278,7 @@ class BookController(
     return bookDtoRepository.findAllDuplicates(principal.user.id, pageRequest)
   }
 
-  @Operation(summary = "Delete duplicate book files", description = "Delete selected duplicate book files immediately.", tags = [OpenApiConfiguration.TagNames.BOOKS])
+  @Operation(summary = "Remove duplicate books from library", description = "Remove the selected duplicate books from the library. Files on disk are never touched.", tags = [OpenApiConfiguration.TagNames.BOOKS])
   @PostMapping("api/v1/books/duplicates/delete")
   @PreAuthorize("hasRole('ADMIN')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -312,7 +312,7 @@ class BookController(
       }
     }
 
-    books.forEach { bookLifecycle.deleteBookFiles(it) }
+    books.forEach { bookLifecycle.removeBookFromLibrary(it) }
   }
 
   @Operation(summary = "Get book details", tags = [OpenApiConfiguration.TagNames.BOOKS])
@@ -789,7 +789,7 @@ class BookController(
     }
   }
 
-  @Operation(summary = "Delete book file", tags = [OpenApiConfiguration.TagNames.BOOKS])
+  @Operation(summary = "Remove book from library", description = "Remove the book from the library. The file on disk is never touched.", tags = [OpenApiConfiguration.TagNames.BOOKS])
   @DeleteMapping("api/v1/books/{bookId}/file")
   @PreAuthorize("hasRole('ADMIN')")
   @ResponseStatus(HttpStatus.ACCEPTED)

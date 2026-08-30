@@ -845,7 +845,7 @@ class SeriesController(
       .body(streamingResponse)
   }
 
-  @Operation(summary = "Delete series files", description = "Delete all of the series' books files on disk.", tags = [OpenApiConfiguration.TagNames.SERIES])
+  @Operation(summary = "Remove series from library", description = "Remove the series and all of its books from the library. Files on disk are never touched.", tags = [OpenApiConfiguration.TagNames.SERIES])
   @DeleteMapping("v1/series/{seriesId}/file")
   @PreAuthorize("hasRole('ADMIN')")
   @ResponseStatus(HttpStatus.ACCEPTED)

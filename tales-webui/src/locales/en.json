@@ -658,13 +658,13 @@
       "warning_html": "Any applications or scripts using this API key will no longer be able to access the Tales API. You cannot undo this action."
     },
     "delete_book": {
-      "button_confirm": "Delete",
-      "confirm_delete": "Yes, delete book \"{name}\" and its files",
-      "confirm_delete_multiple": "Yes, delete {count} books and their files",
-      "dialog_title": "Delete Book",
-      "dialog_title_multiple": "Delete Books",
-      "warning_html": "The book <b>{name}</b> will be removed from this server alongside with stored media files. This <b>cannot</b> be undone. Continue?",
-      "warning_multiple_html": "{count} books will be removed from this server alongside with stored media files. This <b>cannot</b> be undone. Continue?"
+      "button_confirm": "Remove",
+      "confirm_delete": "Yes, remove \"{name}\" from the library",
+      "confirm_delete_multiple": "Yes, remove {count} books from the library",
+      "dialog_title": "Remove from Library",
+      "dialog_title_multiple": "Remove from Library",
+      "warning_html": "The book <b>{name}</b> will be removed from the library listing. <b>No file on disk is deleted.</b> It comes back the next time the library is scanned. Continue?",
+      "warning_multiple_html": "{count} books will be removed from the library listing. <b>No file on disk is deleted.</b> They come back the next time the library is scanned. Continue?"
     },
     "delete_collection": {
       "button_confirm": "Delete",
@@ -702,12 +702,12 @@
       "warning_multiple": "The read progress for {count} books will be deleted and they go back to unread, so they leave Keep Reading and start from the first page next time. The files themselves are not affected. Continue?"
     },
     "delete_series": {
-      "button_confirm": "Delete",
-      "confirm_delete": "Yes, delete series \"{name}\" and its files",
-      "confirm_delete_multiple": "Yes, delete {count} series and their files",
-      "dialog_title": "Delete Series",
-      "warning_html": "The Series <b>{name}</b> will be removed from this server alongside with stored media files. This <b>cannot</b> be undone. Continue?",
-      "warning_multiple_html": "{count} series will be removed from this server alongside with stored media files. This <b>cannot</b> be undone. Continue?"
+      "button_confirm": "Remove",
+      "confirm_delete": "Yes, remove series \"{name}\" from the library",
+      "confirm_delete_multiple": "Yes, remove {count} series from the library",
+      "dialog_title": "Remove from Library",
+      "warning_html": "The series <b>{name}</b> will be removed from the library listing. <b>No file on disk is deleted.</b> It comes back the next time the library is scanned; to keep it out, use Directory exclusions in the library settings. Continue?",
+      "warning_multiple_html": "{count} series will be removed from the library listing. <b>No file on disk is deleted.</b> They come back the next time the library is scanned; to keep them out, use Directory exclusions in the library settings. Continue?"
     },
     "delete_user": {
       "button_confirm": "Delete",
@@ -1255,6 +1255,7 @@
     "mark_unread": "Mark as unread",
     "pin": "Pin",
     "refresh_metadata": "Refresh metadata",
+    "remove_from_library": "Remove from library",
     "scan_library_files": "Scan library files",
     "scan_library_files_deep": "Scan library files (deep)",
     "select_all": "Select all",

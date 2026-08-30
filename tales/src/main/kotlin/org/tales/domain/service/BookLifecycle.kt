@@ -10,7 +10,6 @@ import org.tales.domain.model.Book
 import org.tales.domain.model.BookAction
 import org.tales.domain.model.BookWithMedia
 import org.tales.domain.model.DomainEvent
-import org.tales.domain.model.HistoricalEvent
 import org.tales.domain.model.ImageConversionException
 import org.tales.domain.model.MarkSelectedPreference
 import org.tales.domain.model.Media
@@ -28,7 +27,6 @@ import org.tales.domain.model.ThumbnailBook
 import org.tales.domain.model.TypedBytes
 import org.tales.domain.persistence.BookMetadataRepository
 import org.tales.domain.persistence.BookRepository
-import org.tales.domain.persistence.HistoricalEventRepository
 import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.MediaRepository
 import org.tales.domain.persistence.ReadListRepository
@@ -42,12 +40,6 @@ import java.io.File
 import java.net.URLDecoder
 import java.time.LocalDateTime
 import java.time.ZoneId
-import kotlin.io.path.deleteIfExists
-import kotlin.io.path.exists
-import kotlin.io.path.isWritable
-import kotlin.io.path.listDirectoryEntries
-import kotlin.io.path.notExists
-import kotlin.io.path.toPath
 import kotlin.math.roundToInt
 
 private val logger = KotlinLogging.logger {}
@@ -66,7 +58,6 @@ class BookLifecycle(
   private val eventPublisher: ApplicationEventPublisher,
   private val transactionTemplate: TransactionTemplate,
   private val hasher: Hasher,
-  private val historicalEventRepository: HistoricalEventRepository,
   private val talesSettingsProvider: TalesSettingsProvider,
   @Qualifier("pdfImageType")
   private val pdfImageType: ImageType,
@@ -532,33 +523,14 @@ class BookLifecycle(
     eventPublisher.publishEvent(DomainEvent.ReadProgressChanged(progress))
   }
 
-  fun deleteBookFiles(book: Book) {
-    if (book.path.notExists()) return logger.info { "Cannot delete book file: bookId=${book.id}, reason=NOT_FOUND" }
-    if (!book.path.isWritable()) return logger.info { "Cannot delete book file: bookId=${book.id}, reason=NOT_WRITABLE" }
-
-    val thumbnails =
-      thumbnailBookRepository
-        .findAllByBookIdAndType(book.id, setOf(ThumbnailBook.Type.SIDECAR))
-        .mapNotNull { it.url?.toURI()?.toPath() }
-        .filter { it.exists() && it.isWritable() }
-
-    if (book.path.deleteIfExists()) {
-      logger.info { "Deleted book file: bookId=${book.id}" }
-      historicalEventRepository.insert(HistoricalEvent.BookFileDeleted(book, "File was deleted by user request"))
-    }
-    thumbnails.forEach {
-      if (it.deleteIfExists()) logger.info { "Deleted book thumbnail: bookId=${book.id}" }
-    }
-
-    if (book.path.parent
-        .listDirectoryEntries()
-        .isEmpty()
-    )
-      if (book.path.parent.deleteIfExists()) {
-        logger.info { "Deleted empty book directory: bookId=${book.id}, seriesId=${book.seriesId}" }
-        historicalEventRepository.insert(HistoricalEvent.SeriesFolderDeleted(book.seriesId, book.path.parent, "Folder was deleted because it was empty"))
-      }
-
+  /**
+   * Removes the book from the library. Nothing on disk is touched: the original
+   * media library is read-only (SV-1298), so this only soft deletes the book,
+   * which drops it out of every list the same way a book whose file went
+   * missing does. The file stays where it is.
+   */
+  fun removeBookFromLibrary(book: Book) {
+    logger.info { "Remove book from library: bookId=${book.id}" }
     softDeleteMany(listOf(book))
   }
 }

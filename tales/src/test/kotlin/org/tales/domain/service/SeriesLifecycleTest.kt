@@ -4,7 +4,6 @@ import com.google.common.jimfs.Configuration
 import com.google.common.jimfs.Jimfs
 import com.ninjasquad.springmockk.SpykBean
 import io.mockk.every
-import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
 import org.jooq.exception.DataAccessException
@@ -258,43 +257,10 @@ class SeriesLifecycleTest(
     assertThat(thrown).isInstanceOf(IllegalArgumentException::class.java)
   }
 
+  // SV-1298: removing a series from the library must never touch the media.
+  // These replace the tests that asserted the folder and its files were deleted.
   @Test
-  fun `given a series when deleting series then series directory is deleted`() {
-    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
-      // given
-      val root = fs.getPath("/root")
-      Files.createDirectory(root)
-      val seriesPath = root.resolve("series")
-      Files.createDirectory(seriesPath)
-      val book1Path = seriesPath.resolve("book1.cbz")
-      Files.createFile(book1Path)
-      val book2Path = seriesPath.resolve("book2.cbz")
-      Files.createFile(book2Path)
-      val bookSidecarPath = seriesPath.resolve("sidecar1.png")
-      Files.createFile(bookSidecarPath)
-
-      val series = makeSeries(name = "series", libraryId = library.id, url = seriesPath.toUri().toURL())
-      val books =
-        listOf(
-          makeBook("1", libraryId = library.id, url = book1Path.toUri().toURL()),
-          makeBook("2", libraryId = library.id, url = book2Path.toUri().toURL()),
-        )
-      val bookSidecar = ThumbnailBook(bookId = books[0].id, type = ThumbnailBook.Type.SIDECAR, url = bookSidecarPath.toUri().toURL(), fileSize = 0, mediaType = "", dimension = Dimension(0, 0))
-
-      seriesLifecycle.createSeries(series)
-      seriesLifecycle.addBooks(series, books)
-      thumbnailBookRepository.insert(bookSidecar)
-
-      // when
-      seriesLifecycle.deleteSeriesFiles(series)
-
-      // then
-      assertThat(Files.notExists(seriesPath))
-    }
-  }
-
-  @Test
-  fun `given a series with a series sidecar when deleting series then series directory is deleted`() {
+  fun `given a series with books and sidecars when removing series from library then nothing on disk is deleted`() {
     Jimfs.newFileSystem(Configuration.unix()).use { fs ->
       // given
       val root = fs.getPath("/root")
@@ -325,107 +291,35 @@ class SeriesLifecycleTest(
       thumbnailSeriesRepository.insert(seriesSidecar)
 
       // when
-      seriesLifecycle.deleteSeriesFiles(series)
+      seriesLifecycle.removeSeriesFromLibrary(series)
 
-      // then
-      assertThat(Files.notExists(seriesPath))
+      // then: every file is still where it was
+      assertThat(Files.exists(seriesPath)).isTrue()
+      assertThat(Files.exists(book1Path)).isTrue()
+      assertThat(Files.exists(book2Path)).isTrue()
+      assertThat(Files.exists(bookSidecarPath)).isTrue()
+      assertThat(Files.exists(seriesSidecarPath)).isTrue()
+
+      // and the series and its books left the library
+      assertThat(seriesRepository.findByIdOrNull(series.id)?.deletedDate).isNotNull()
+      assertThat(bookRepository.findAllBySeriesId(series.id))
+        .isNotEmpty
+        .allMatch { it.deletedDate != null }
     }
   }
 
   @Test
-  fun `given a series directory with unrelated files when deleting series then series directory should not be deleted`() {
-    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
-      // given
-      val root = fs.getPath("/root")
-      Files.createDirectory(root)
-      val seriesPath = root.resolve("series")
-      Files.createDirectory(seriesPath)
-      val book1Path = seriesPath.resolve("book1.cbz")
-      Files.createFile(book1Path)
-      val book2Path = seriesPath.resolve("book2.cbz")
-      Files.createFile(book2Path)
-      val filePath = seriesPath.resolve("file.txt")
-      Files.createFile(filePath)
-      val bookSidecarPath = seriesPath.resolve("sidecar1.png")
-      Files.createFile(bookSidecarPath)
-      val seriesSidecarPath = seriesPath.resolve("cover.png")
-      Files.createFile(seriesSidecarPath)
-
-      val series = makeSeries(name = "series", libraryId = library.id, url = seriesPath.toUri().toURL())
-      val books =
-        listOf(
-          makeBook("1", libraryId = library.id, url = book1Path.toUri().toURL()),
-          makeBook("2", libraryId = library.id, url = book2Path.toUri().toURL()),
-        )
-      val bookSidecar = ThumbnailBook(bookId = books[0].id, type = ThumbnailBook.Type.SIDECAR, url = bookSidecarPath.toUri().toURL(), fileSize = 0, mediaType = "", dimension = Dimension(0, 0))
-      val seriesSidecar = ThumbnailSeries(seriesId = series.id, type = ThumbnailSeries.Type.SIDECAR, url = seriesSidecarPath.toUri().toURL(), fileSize = 0, mediaType = "", dimension = Dimension(0, 0))
-
-      seriesLifecycle.createSeries(series)
-      seriesLifecycle.addBooks(series, books)
-      thumbnailBookRepository.insert(bookSidecar)
-      thumbnailSeriesRepository.insert(seriesSidecar)
-
-      // when
-      seriesLifecycle.deleteSeriesFiles(series)
-
-      // then
-      assertThat(Files.exists(seriesPath))
-      assertThat(Files.exists(filePath))
-      assertThat(Files.notExists(book1Path))
-      assertThat(Files.notExists(book2Path))
-      assertThat(Files.notExists(bookSidecarPath))
-      assertThat(Files.notExists(seriesSidecarPath))
-    }
-  }
-
-  @Test
-  fun `given a non-existent series directory when deleting series then it returns`() {
-    // given
+  fun `given a non-existent series directory when removing series from library then the series is still removed`() {
+    // given: the folder is already gone, which used to abort before the soft delete
     val seriesPath = Paths.get("/non-existent")
     val series = makeSeries(name = "series", libraryId = library.id, url = seriesPath.toUri().toURL())
 
+    seriesLifecycle.createSeries(series)
+
     // when
-    seriesLifecycle.deleteSeriesFiles(series)
+    seriesLifecycle.removeSeriesFromLibrary(series)
 
     // then
-    verify(exactly = 0) { bookLifecycle.softDeleteMany(any()) }
-  }
-
-  @Test
-  fun `given a series and a non-existent sidecar file when deleting series then series should be deleted`() {
-    Jimfs.newFileSystem(Configuration.unix()).use { fs ->
-      // given
-      val root = fs.getPath("/root")
-      Files.createDirectory(root)
-      val seriesPath = root.resolve("series")
-      Files.createDirectory(seriesPath)
-      val book1Path = seriesPath.resolve("book1.cbz")
-      Files.createFile(book1Path)
-      val book2Path = seriesPath.resolve("book2.cbz")
-      Files.createFile(book2Path)
-      val bookSidecarPath = seriesPath.resolve("sidecar1.png")
-      Files.createFile(bookSidecarPath)
-      val seriesSidecarPath = seriesPath.resolve("cover.png")
-
-      val series = makeSeries(name = "series", libraryId = library.id, url = seriesPath.toUri().toURL())
-      val books =
-        listOf(
-          makeBook("1", libraryId = library.id, url = book1Path.toUri().toURL()),
-          makeBook("2", libraryId = library.id, url = book2Path.toUri().toURL()),
-        )
-      val bookSidecar = ThumbnailBook(bookId = books[0].id, type = ThumbnailBook.Type.SIDECAR, url = bookSidecarPath.toUri().toURL(), fileSize = 0, mediaType = "", dimension = Dimension(0, 0))
-      val seriesSidecar = ThumbnailSeries(seriesId = series.id, type = ThumbnailSeries.Type.SIDECAR, url = seriesSidecarPath.toUri().toURL(), fileSize = 0, mediaType = "", dimension = Dimension(0, 0))
-
-      seriesLifecycle.createSeries(series)
-      seriesLifecycle.addBooks(series, books)
-      thumbnailBookRepository.insert(bookSidecar)
-      thumbnailSeriesRepository.insert(seriesSidecar)
-
-      // when
-      seriesLifecycle.deleteSeriesFiles(series)
-
-      // then
-      assertThat(Files.notExists(seriesPath))
-    }
+    assertThat(seriesRepository.findByIdOrNull(series.id)?.deletedDate).isNotNull()
   }
 }

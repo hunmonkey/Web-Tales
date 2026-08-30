@@ -160,15 +160,15 @@ class TaskHandler(
           is Task.DeleteBook -> {
             bookRepository.findByIdOrNull(task.bookId)?.let { book ->
               if (book.oneshot)
-                seriesLifecycle.deleteSeriesFiles(seriesRepository.findByIdOrNull(book.seriesId)!!)
+                seriesLifecycle.removeSeriesFromLibrary(seriesRepository.findByIdOrNull(book.seriesId)!!)
               else
-                bookLifecycle.deleteBookFiles(book)
+                bookLifecycle.removeBookFromLibrary(book)
             }
           }
 
           is Task.DeleteSeries -> {
             seriesRepository.findByIdOrNull(task.seriesId)?.let { series ->
-              seriesLifecycle.deleteSeriesFiles(series)
+              seriesLifecycle.removeSeriesFromLibrary(series)
             }
           }
 

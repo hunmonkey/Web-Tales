@@ -20,7 +20,7 @@
           <v-list-item-title>{{ $t('menu.mark_unread') }}</v-list-item-title>
         </v-list-item>
         <v-list-item @click="promptDeleteSeries" class="list-danger" v-if="isAdmin">
-          <v-list-item-title>{{ $t('menu.delete') }}</v-list-item-title>
+          <v-list-item-title>{{ $t('menu.remove_from_library') }}</v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
