@@ -1667,3 +1667,81 @@ be fixed together for the prefetch to reach the screen.
   upstream already does for share-restricted users; titles never leak.
 - The in-memory failure throttle is per-process. A distributed rate limiter
   is pointless on a single-container deployment.
+
+## Users entry clutters the sidebar, reported 2026-08-30
+
+- [x] SV-1291 Move the sidebar users entry into the settings screen. Owner:
+  "사이드메뉴의 사용자 항목을 설정 안으로 넣어줘."
+  `PreferencesView` gains a fourth, admin-only tab labelled with the existing
+  `users.users` key, embedding the unchanged `SettingsUsers` view (users list
+  plus authentication activity). The sidebar entry in `HomeView` is removed.
+  `/settings/users` stays a working address as a redirect to
+  `/settings?tab=users`, and `created` maps that query to the tab. The
+  add-user flow keeps its route: `settings-users-add` moved under the
+  `preferences` route as a child, rendering through the `router-view` that
+  already sits inside `UsersList` — so the dialog opens on top of the users
+  tab, and `created` also selects the tab for a direct link to the add route,
+  since the router-view only exists while that tab is active. The admin guard
+  moved onto the add route; the redirect target itself is harmless and the
+  tab is hidden for non-admins, with the server enforcing the actual APIs.
+
+### Deliberately not done
+
+- Tab changes do not rewrite the URL; none of the existing tabs do that, and
+  the query only needs to work inbound.
+- `SettingsUsers` keeps its own "사용자" heading inside the tab. Slightly
+  redundant under the tab label, but the server tab's embedded views carry
+  their own headings the same way.
+
+## No way to clear the authentication activity, reported 2026-08-30
+
+- [x] SV-1292 Clear-all button for the users screen's authentication activity.
+  Owner: "사용자 메뉴에서 접근 내역을 지울수 있는 기능을 추가해줘."
+  Backend: `DELETE /api/shelfview/v1/authentication-activity` (admin only,
+  204) in a small ShelfView controller. It reuses the retention cleanup's
+  `deleteOlderThan` with a bound one day ahead rather than adding a
+  `deleteAll` to the upstream repository — and deliberately not "now":
+  `LoginListener` stamps records with local server time while the daily
+  cleanup compares in UTC, so a plain now() in either zone could leave the
+  newest records (the very ones being cleared) behind.
+  Frontend: a labelled outlined-error button beside the 접근 내역 heading in
+  `SettingsUsers`, reusing the unused upstream key
+  `authentication_activity.clear_history` (translated in every locale) for
+  its label, behind the standard `ConfirmationDialog` (기록 삭제 is a
+  confirm-first action per `CLAUDE.md`), with new
+  `dialog.delete_authentication_activity` texts in `en`/`ko`. On success the
+  table reloads through its existing `loadData`.
+
+### Deliberately not done
+
+- No per-row or per-user deletion; the owner asked to clear the history, and
+  the month-long retention cleanup already bounds what accumulates.
+- The account tab's own-activity table gets no button. The existing
+  `DELETE me/authentication-activity` endpoint is there if that is ever
+  wanted, but it was not asked for.
+
+## The aggregate libraries page duplicates the sidebar, reported 2026-08-30
+
+- [x] SV-1293 Remove the 서재 sidebar link and the pinned-libraries aggregate
+  page it opened. Owner: "사이드메뉴에서는 '서재'라는 항목이고 메인페이지에는
+  '고정된 라이브러리'라고 나와. 이 메뉴와 페이지를 삭제해줘."
+  The link (`{name:'libraries', libraryId: all}`) is gone from `HomeView`, but
+  the row survives as a non-navigating header (`inactive`, caption style):
+  it is the only home of `LibrariesActionsMenu` - sidebar sort, reorder,
+  scan-all, empty-trash-all - and those must stay reachable.
+  Routing: `/libraries` and `/libraries/all` now redirect to the dashboard,
+  and a `noAllAggregateGuard` on `browse-libraries`/`browse-books` sends a
+  direct `/libraries/all/series|books` bookmark there too (falling through to
+  the existing `noLibraryGuard` for real library ids). Individual library
+  pages are untouched.
+
+### Deliberately not done
+
+- The `LIBRARIES_ALL` branches inside `BrowseLibraries`/`BrowseBooks` stay:
+  they are interwoven with the per-library logic and the guard already makes
+  them unreachable; ripping them out is risk without user-visible gain.
+  `DashboardView` keeps aggregating pinned libraries by design - that is what
+  이어보기 shows.
+- No unit test for the route redirects: instantiating the router in Jest
+  drags in the store side effects; the redirect expressions are covered by
+  type-checking and the owner's click-through.
