@@ -18,6 +18,7 @@ jest.mock('@/views/UISettings.vue', () => ({__esModule: true, default: {name: 'U
 jest.mock('@/views/ServerSettings.vue', () => ({__esModule: true, default: {name: 'ServerSettings', render: (h: any) => h('div')}}))
 jest.mock('@/views/ServerManagement.vue', () => ({__esModule: true, default: {name: 'ServerManagement', render: (h: any) => h('div')}}))
 jest.mock('@/views/SettingsUsers.vue', () => ({__esModule: true, default: {name: 'SettingsUsers', render: (h: any) => h('div')}}))
+jest.mock('@/components/ReorderLibraries.vue', () => ({__esModule: true, default: {name: 'ReorderLibraries', render: (h: any) => h('div')}}))
 
 describe('PreferencesView users tab', () => {
   it('lands on the users tab when the old /settings/users address redirects here', () => {
@@ -41,17 +42,63 @@ describe('PreferencesView users tab', () => {
   })
 })
 
+// The sort and reorder controls moved here from the removed 서재 sidebar row
+// (SV-1294); these tests carry over the coverage of its menu's spec.
+describe('PreferencesView library ordering', () => {
+  it('offers the manual, name and creation-date orders', () => {
+    const wrapper = mountPreferences({admin: false})
+    const values = ((wrapper.vm as any).librarySorts as any[]).map(it => it.value)
+    expect(values).toEqual(expect.arrayContaining(['MANUAL', 'NAME', 'CREATED']))
+  })
+
+  it('saves the chosen order on the account', () => {
+    const dispatch = jest.fn().mockResolvedValue(undefined)
+    const wrapper = mountPreferences({admin: false, dispatch, librarySort: 'MANUAL'})
+
+    ;(wrapper.vm as any).librarySort = 'CREATED'
+
+    expect(dispatch).toHaveBeenCalledWith('saveUserPreference', {
+      key: 'webui.libraries_sort',
+      value: 'CREATED',
+    })
+  })
+
+  it('does not write the order that is already in use', () => {
+    const dispatch = jest.fn().mockResolvedValue(undefined)
+    const wrapper = mountPreferences({admin: false, dispatch, librarySort: 'NAME'})
+
+    ;(wrapper.vm as any).librarySort = 'NAME'
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('shows the reorder panel only on demand, since opening it switches the sort to manual', async () => {
+    const wrapper = mountPreferences({admin: false})
+    expect(wrapper.findComponent({name: 'ReorderLibraries'}).exists()).toBe(false)
+
+    ;(wrapper.vm as any).showReorder = true
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findComponent({name: 'ReorderLibraries'}).exists()).toBe(true)
+  })
+})
+
 function mountPreferences(options: {
   admin: boolean,
   query?: Record<string, string>,
   routeName?: string,
+  dispatch?: jest.Mock,
+  librarySort?: string,
 }) {
   return shallowMount(PreferencesView, {
     mocks: {
       $store: {
         state: {persistedState: {theme: 'system'}},
-        getters: {meAdmin: options.admin},
-        dispatch: jest.fn().mockResolvedValue(undefined),
+        getters: {
+          meAdmin: options.admin,
+          getClientSettingsLibrariesSort: options.librarySort ?? 'MANUAL',
+        },
+        dispatch: options.dispatch ?? jest.fn().mockResolvedValue(undefined),
       },
       $route: {name: options.routeName ?? 'preferences', query: options.query ?? {}},
       $t: (key: string) => key,
@@ -62,6 +109,7 @@ function mountPreferences(options: {
       },
     },
     stubs: [
+      'v-btn',
       'v-col',
       'v-container',
       'v-row',

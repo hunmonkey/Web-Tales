@@ -49,11 +49,7 @@
         class="app-shell__search"
       />
 
-      <v-slide-x-transition hide-on-leave>
-        <reorder-libraries v-if="showReorder" @dismiss="showReorder = false"/>
-      </v-slide-x-transition>
-
-      <template v-if="!showReorder">
+      <template>
         <v-list nav dense class="app-shell__nav">
           <!--   KEEP READING (이어보기)     -->
           <v-list-item :to="{name:'dashboard'}">
@@ -62,21 +58,10 @@
             </v-list-item-content>
           </v-list-item>
 
-          <!--   LIBRARIES HEADER
-                 The aggregate pinned-libraries page and its link are gone
-                 (SV-1293). This row stays only as a non-navigating header, so
-                 the list-management menu (sort, reorder, scan all, empty
-                 trash) keeps its one home above the library entries. -->
-          <v-list-item inactive :ripple="false">
-            <v-list-item-content>
-              <v-list-item-title class="text-caption text--secondary">{{ $t('navigation.libraries') }}</v-list-item-title>
-            </v-list-item-content>
-            <v-list-item-action class="ma-0">
-              <libraries-actions-menu @reorder="showReorder = true"/>
-            </v-list-item-action>
-          </v-list-item>
-
-          <!--   PINNED LIBRARIES     -->
+          <!--   PINNED LIBRARIES
+                 The 서재 header row is gone (SV-1294): sort and reorder moved
+                 to Settings > UI, scan-all and empty-trash-all to Settings >
+                 server management. -->
           <v-list-item v-for="(l, index) in librariesPinned"
                        :key="index"
                        :to="{name:'libraries', params: {libraryId: l.id}}"
@@ -189,8 +174,6 @@ import {resolveShellShortcut} from '@/functions/shell-shortcuts'
 import Vue from 'vue'
 import ToasterNotification from '@/components/ToasterNotification.vue'
 import {LibraryDto} from '@/types/tales-libraries'
-import LibrariesActionsMenu from '@/components/menus/LibrariesActionsMenu.vue'
-import ReorderLibraries from '@/components/ReorderLibraries.vue'
 import {LIBRARY_LOCKS_CHANGED, ShelfViewLibraryLockDto} from '@/shelfview/services/shelfview-library-locks.service'
 
 export default Vue.extend({
@@ -198,8 +181,6 @@ export default Vue.extend({
   components: {
     ConfirmationDialog,
     LibraryPinDialog,
-    ReorderLibraries,
-    LibrariesActionsMenu,
     ToasterNotification,
     LibraryActionsMenu,
     SearchBox,
@@ -209,7 +190,6 @@ export default Vue.extend({
     return {
       drawerVisible: this.$vuetify.breakpoint.lgAndUp,
       expandUnpinned: false,
-      showReorder: false,
       logoutConfirmDialog: false,
       libraryLocks: [] as ShelfViewLibraryLockDto[],
       unlockDialogVisible: false,

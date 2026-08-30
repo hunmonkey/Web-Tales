@@ -104,9 +104,7 @@ function mountHome(services: {
     stubs: [
       'confirmation-dialog',
       'library-pin-dialog',
-      'libraries-actions-menu',
       'library-actions-menu',
-      'reorder-libraries',
       'reusable-dialogs',
       'router-view',
       'search-box',

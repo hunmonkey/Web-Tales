@@ -27,6 +27,23 @@
                 :items="locales"
                 :label="$t('home.translation')"
               />
+
+              <!-- Moved here from the removed 서재 sidebar row (SV-1294). -->
+              <v-select
+                v-model="librarySort"
+                :items="librarySorts"
+                :label="$t('libraries_sort.title')"
+              />
+
+              <v-btn v-if="!showReorder"
+                     outlined
+                     data-testid="reorder-libraries"
+                     @click="showReorder = true"
+              >{{ $t('common.reorder') }}
+              </v-btn>
+              <!-- Only mounted on demand: opening the panel switches the sort
+                   to MANUAL, which must not happen just by visiting settings. -->
+              <reorder-libraries v-if="showReorder" @dismiss="showReorder = false"/>
             </v-col>
           </v-row>
         </v-container>
@@ -58,15 +75,17 @@ import UiSettings from '@/views/UISettings.vue'
 import ServerSettings from '@/views/ServerSettings.vue'
 import ServerManagement from '@/views/ServerManagement.vue'
 import SettingsUsers from '@/views/SettingsUsers.vue'
+import ReorderLibraries from '@/components/ReorderLibraries.vue'
 import {Theme} from '@/types/themes'
-import {CLIENT_SETTING} from '@/types/tales-clientsettings'
+import {CLIENT_SETTING, LIBRARY_SORTS, LibrarySort} from '@/types/tales-clientsettings'
 
 export default Vue.extend({
   name: 'PreferencesView',
-  components: {AccountSettings, UiSettings, ServerSettings, ServerManagement, SettingsUsers},
+  components: {AccountSettings, UiSettings, ServerSettings, ServerManagement, SettingsUsers, ReorderLibraries},
   data: function () {
     return {
       tab: 0,
+      showReorder: false,
       locales: ['ko', 'en', 'ja', 'zh-Hans']
         .filter((x: string) => this.$i18n.availableLocales.includes(x))
         .map((x: string) => ({text: this.$i18n.t('common.locale_name', x), value: x})),
@@ -110,6 +129,21 @@ export default Vue.extend({
           this.$store.commit('setLocale', locale)
           this.saveUserPreference(CLIENT_SETTING.WEBUI_LOCALE, locale)
         }
+      },
+    },
+    librarySorts(): object[] {
+      return LIBRARY_SORTS.map(value => ({
+        value,
+        text: this.$t(`libraries_sort.${value.toLowerCase()}`) as string,
+      }))
+    },
+    librarySort: {
+      get: function (): LibrarySort {
+        return this.$store.getters.getClientSettingsLibrariesSort
+      },
+      set: function (sort: LibrarySort): void {
+        if (sort === this.librarySort) return
+        this.saveUserPreference(CLIENT_SETTING.WEBUI_LIBRARIES_SORT, sort)
       },
     },
   },

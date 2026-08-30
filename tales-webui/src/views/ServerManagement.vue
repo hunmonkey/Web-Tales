@@ -10,6 +10,27 @@
         </v-btn>
       </v-col>
     </v-row>
+    <!-- Moved here from the removed 서재 sidebar row's menu (SV-1294). -->
+    <v-row>
+      <v-col cols="auto">
+        <v-btn @click="scanAllLibraries(false)"
+        >{{ $t('server.server_management.button_scan_libraries') }}
+        </v-btn>
+      </v-col>
+      <v-col cols="auto">
+        <v-btn @click="scanAllLibraries(true)"
+               color="warning"
+        >{{ $t('server.server_management.button_scan_libraries_deep') }}
+        </v-btn>
+      </v-col>
+      <v-col cols="auto">
+        <v-btn @click="modalEmptyTrash = true"
+               color="warning"
+        >{{ $t('server.server_management.button_empty_trash') }}
+        </v-btn>
+      </v-col>
+    </v-row>
+
     <v-row>
       <v-col cols="auto">
         <v-btn @click="cancelAllTasks"
@@ -36,6 +57,14 @@
       @confirm="stopServer"
     />
 
+    <confirmation-dialog
+      v-model="modalEmptyTrash"
+      :title="$t('dialog.empty_trash.title')"
+      :body="$t('dialog.empty_trash.body')"
+      :button-confirm="$t('dialog.empty_trash.button_confirm')"
+      @confirm="emptyTrashAllLibraries"
+    />
+
   </v-container>
 </template>
 
@@ -51,8 +80,19 @@ export default Vue.extend({
   components: {ConfirmationDialog},
   data: () => ({
     modalStopServer: false,
+    modalEmptyTrash: false,
   }),
   methods: {
+    scanAllLibraries(scanDeep: boolean) {
+      this.$store.state.talesLibraries.libraries.forEach(library => {
+        this.$talesLibraries.scanLibrary(library, scanDeep)
+      })
+    },
+    emptyTrashAllLibraries() {
+      this.$store.state.talesLibraries.libraries.forEach(library => {
+        this.$talesLibraries.emptyTrash(library)
+      })
+    },
     async cancelAllTasks() {
       const count = await this.$talesTasks.deleteAllTasks()
       this.$eventHub.$emit(NOTIFICATION, {
