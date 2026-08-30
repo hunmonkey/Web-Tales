@@ -40,67 +40,60 @@
       </header>
 
       <!-- Puts the books that are actually in progress on the first screen, so
-           coming back to Tales does not start with scrolling. A row of compact
-           cards rather than the single large banner it replaces (SV-1286): that
-           banner spent a whole screenful on one book and hid every other book
-           being read. Cover opens the reader, title opens the book, and the
-           cross drops the book out of the row. -->
+           coming back to Tales does not start with scrolling. A wrapping grid of
+           compact cards laid straight on the page, rather than the boxed
+           horizontal row it replaces (SV-1289): the row hid everything past the
+           first screenful behind a sideways scroll. Cover opens the reader,
+           title opens the book, and the cross drops the book out of the grid. -->
       <section
         v-if="resumeBooks.length > 0"
-        class="dashboard-section mb-8"
+        class="mb-8"
         data-testid="dashboard-resume"
       >
-        <horizontal-scroller
-          :tick="loaderKeepReadingBooks ? loaderKeepReadingBooks.tick : 0"
-          @scroll-changed="(percent) => scrollChanged(loaderKeepReadingBooks, percent)"
-        >
-          <template v-slot:prepend>
-            <div class="dashboard-section__title">{{ $t('dashboard.keep_reading') }}</div>
-          </template>
-          <template v-slot:content>
-            <article
-              v-for="book in resumeBooks"
-              :key="book.id"
-              class="resume-card mx-2 my-2"
-              :style="{width: resumeCardWidth + 'px'}"
-              data-testid="dashboard-resume-card"
-            >
-              <div class="resume-card__cover">
-                <router-link
-                  :to="resumeReadTo(book)"
-                  class="link-none"
-                  :aria-label="$t('dashboard.resume_reading')"
-                >
-                  <img :src="resumeThumbnailUrl(book)" alt=""/>
-                </router-link>
-                <v-progress-linear
-                  :value="resumePercentage(book)"
-                  color="secondary"
-                  height="4"
-                  class="resume-card__progress"
-                />
-                <v-btn
-                  icon
-                  x-small
-                  class="resume-card__remove"
-                  :aria-label="$t('dashboard.resume_remove')"
-                  :title="$t('dashboard.resume_remove')"
-                  data-testid="dashboard-resume-remove"
-                  @click="confirmRemoveResume(book)"
-                >
-                  <v-icon small>mdi-close</v-icon>
-                </v-btn>
-              </div>
+        <div class="dashboard-section__title">{{ $t('dashboard.keep_reading') }}</div>
+        <div class="resume-grid">
+          <article
+            v-for="book in resumeBooks"
+            :key="book.id"
+            class="resume-card mx-2 my-2"
+            :style="{width: resumeCardWidth + 'px'}"
+            data-testid="dashboard-resume-card"
+          >
+            <div class="resume-card__cover">
               <router-link
-                :to="resumeDetailTo(book)"
-                class="resume-card__title link-none"
-                :title="resumeTitle(book)"
-                data-testid="dashboard-resume-title"
-              >{{ resumeTitle(book) }}</router-link>
-              <p class="resume-card__meta">{{ resumeProgressLabel(book) }}</p>
-            </article>
-          </template>
-        </horizontal-scroller>
+                :to="resumeReadTo(book)"
+                class="link-none"
+                :aria-label="$t('dashboard.resume_reading')"
+              >
+                <img :src="resumeThumbnailUrl(book)" alt=""/>
+              </router-link>
+              <v-progress-linear
+                :value="resumePercentage(book)"
+                color="secondary"
+                height="4"
+                class="resume-card__progress"
+              />
+              <v-btn
+                icon
+                x-small
+                class="resume-card__remove"
+                :aria-label="$t('dashboard.resume_remove')"
+                :title="$t('dashboard.resume_remove')"
+                data-testid="dashboard-resume-remove"
+                @click="confirmRemoveResume(book)"
+              >
+                <v-icon small>mdi-close</v-icon>
+              </v-btn>
+            </div>
+            <router-link
+              :to="resumeDetailTo(book)"
+              class="resume-card__title link-none"
+              :title="resumeTitle(book)"
+              data-testid="dashboard-resume-title"
+            >{{ resumeTitle(book) }}</router-link>
+            <p class="resume-card__meta">{{ resumeProgressLabel(book) }}</p>
+          </article>
+        </div>
       </section>
 
       <empty-state v-if="allEmpty && !loading"
@@ -292,7 +285,7 @@ export default Vue.extend({
       selectedBooks: [] as BookDto[],
       // Keep Reading posters are cached for a day like every other image, so a
       // replaced cover only reaches them through a new URL. ItemCard does the
-      // same for the cards. Keyed by book id: the row holds several covers.
+      // same for the cards. Keyed by book id: the grid holds several covers.
       resumeThumbnailCacheBust: {} as Record<string, string>,
       removeResumeDialog: false,
       resumeToRemove: undefined as BookDto | undefined,
@@ -414,13 +407,13 @@ export default Vue.extend({
     // starts with its shelves as before.
     //
     // Deliberately not gated on `loading`. A reload keeps the previous items
-    // until the new page replaces them, so gating here would unmount the row
+    // until the new page replaces them, so gating here would unmount the grid
     // on every read-progress event and shift the page up and back down - the
     // exact movement SV-1060 exists to remove.
     resumeBooks(): BookDto[] {
       return this.loaderKeepReadingBooks?.items ?? []
     },
-    // Deliberately smaller than `fixedCardWidth`: this row is a reminder of
+    // Deliberately smaller than `fixedCardWidth`: this grid is a reminder of
     // what is open, not a shelf to browse.
     resumeCardWidth(): number {
       if (this.$vuetify.breakpoint.xs) return 96
@@ -526,7 +519,7 @@ export default Vue.extend({
       if (this.loaderRecentlyUpdatedSeries?.items.some(s => s.id === event.seriesId)) this.reload()
       else if (this.loaderRecentlyAddedSeries?.items.some(s => s.id === event.seriesId)) this.reload()
     },
-    // Only the Keep Reading row needs this. The cards below it are ItemCard
+    // Only the Keep Reading grid needs this. The cards below it are ItemCard
     // instances, which already bust their own poster cache on the same event.
     thumbnailBookChanged(event: ThumbnailBookSseDto) {
       if (event.selected && this.resumeBooks.some(b => b.id === event.bookId)) {
@@ -572,7 +565,7 @@ export default Vue.extend({
       if (!book) return
       this.resumeToRemove = undefined
       await this.$talesBooks.deleteReadProgress(book.id)
-      // The SSE event that follows shares the 5s reload throttle; the row the
+      // The SSE event that follows shares the 5s reload throttle; the grid the
       // user just acted on should not wait for it.
       await this.loaderKeepReadingBooks?.reload()
     },
@@ -649,8 +642,15 @@ export default Vue.extend({
       Promise.all(loaders.map(loader => {
         const request = reload ? loader?.reload() : loader?.loadNext()
         return request?.catch(() => undefined)
-      })).then(() => {
+      })).then(async () => {
         this.loading = false
+        // The resume grid has no sideways scroll to page more books in, so the
+        // remaining pages are fetched up front. Bounded by how many books are
+        // actually in progress; reload() keeps every page already loaded.
+        try {
+          while (this.loaderKeepReadingBooks?.hasNextPage) await this.loaderKeepReadingBooks.loadNext()
+        } catch (_) {
+        }
       })
     },
     async singleEditSeries(series: SeriesDto) {
@@ -740,6 +740,13 @@ export default Vue.extend({
   overflow: hidden;
 }
 
+/* Cards share one fixed width, so wrapping lines them up in columns as well
+   as rows. */
+.resume-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
 .resume-card {
   flex: 0 0 auto;
 }
@@ -765,7 +772,7 @@ export default Vue.extend({
 }
 
 /* Always visible rather than shown on hover: a touch screen has no hover, and
-   this is the only way out of the row. */
+   this is the only way out of the grid. */
 .resume-card__remove {
   background: rgba(0, 0, 0, 0.55);
   position: absolute;

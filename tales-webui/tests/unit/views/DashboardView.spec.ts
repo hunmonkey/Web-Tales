@@ -120,6 +120,26 @@ describe('DashboardView', () => {
     expect((wrapper.vm as any).resumeThumbnailUrl(resumeBook)).toBe(before)
   })
 
+  it('fetches every Keep Reading page up front, since the grid has no scroll paging', async () => {
+    const firstPage = {...pageOf([resumeBook]), last: false, totalElements: 2, totalPages: 2}
+    const secondPage = {...pageOf([otherBook]), first: false, number: 1, totalPages: 2}
+    const getBooksList = jest.fn()
+      .mockResolvedValueOnce(firstPage) // Keep Reading, page 0
+      .mockResolvedValueOnce(pageOf([])) // recently released
+      .mockResolvedValueOnce(pageOf([])) // recently added
+      .mockResolvedValueOnce(pageOf([])) // recently read
+      .mockResolvedValueOnce(secondPage) // Keep Reading, page 1, fetched by the drain
+      .mockResolvedValue(pageOf([]))
+
+    const wrapper = mountDashboard({getBooksList})
+    await flushPromises()
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect((wrapper.vm as any).resumeBooks.map((b: any) => b.id)).toEqual(['book1', 'book2'])
+    expect(wrapper.findAll('[data-testid="dashboard-resume-card"]').length).toBe(2)
+  })
+
   it('keeps every book that is still in progress, not just the most recent one', async () => {
     const wrapper = mountDashboard({
       getBooksList: jest.fn()
