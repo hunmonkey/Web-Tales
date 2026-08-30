@@ -181,6 +181,19 @@ export default class TalesUsersService {
     }
   }
 
+  // Every user's records at once, for the admin users screen (SV-1292).
+  async deleteAllAuthenticationActivity() {
+    try {
+      await this.http.delete('/api/shelfview/v1/authentication-activity')
+    } catch (e) {
+      let msg = 'An error occurred while trying to delete authentication activity'
+      if (e.response.data.message) {
+        msg += `: ${e.response.data.message}`
+      }
+      throw new Error(msg)
+    }
+  }
+
   async getLatestAuthenticationActivityForUser(userId: string, apiKeyId?: string): Promise<AuthenticationActivityDto> {
     try {
       const params = {} as any

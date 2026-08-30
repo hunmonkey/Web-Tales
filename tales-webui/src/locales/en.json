@@ -686,6 +686,11 @@
       "warning_html": "The read list <b>{name}</b> will be removed from this server. Your media files will not be affected. This <b>cannot</b> be undone. Continue?",
       "warning_multiple_html": "{count} read lists will be removed from this server. Your media files will not be affected. This <b>cannot</b> be undone. Continue?"
     },
+    "delete_authentication_activity": {
+      "body": "The authentication activity of every user will be deleted from this server. This cannot be undone. Continue?",
+      "button_confirm": "Delete",
+      "title": "Delete authentication activity"
+    },
     "delete_read_progress": {
       "button_confirm": "Delete",
       "dialog_title": "Delete read progress",
