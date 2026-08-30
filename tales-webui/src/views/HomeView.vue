@@ -62,10 +62,14 @@
             </v-list-item-content>
           </v-list-item>
 
-          <!--   LIBRARIES     -->
-          <v-list-item :to="{name:'libraries', params: {libraryId: LIBRARIES_ALL}}">
+          <!--   LIBRARIES HEADER
+                 The aggregate pinned-libraries page and its link are gone
+                 (SV-1293). This row stays only as a non-navigating header, so
+                 the list-management menu (sort, reorder, scan all, empty
+                 trash) keeps its one home above the library entries. -->
+          <v-list-item inactive :ripple="false">
             <v-list-item-content>
-              <v-list-item-title>{{ $t('navigation.libraries') }}</v-list-item-title>
+              <v-list-item-title class="text-caption text--secondary">{{ $t('navigation.libraries') }}</v-list-item-title>
             </v-list-item-content>
             <v-list-item-action class="ma-0">
               <libraries-actions-menu @reorder="showReorder = true"/>
@@ -147,14 +151,8 @@
             </v-list-item-content>
           </v-list-item>
 
-          <!--   USERS     -->
-          <v-list-item v-if="isAdmin" :to="{name: 'settings-users'}">
-            <v-list-item-content>
-              <v-list-item-title>{{ $t('users.users') }}</v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-
-          <!--   PREFERENCES     -->
+          <!--   PREFERENCES
+                 The users entry moved into this screen as a tab (SV-1291). -->
           <v-list-item :to="{name: 'preferences'}">
             <v-list-item-content>
               <v-list-item-title>{{ $t('common.settings') }}</v-list-item-title>
@@ -189,7 +187,6 @@ import LibraryActionsMenu from '@/components/menus/LibraryActionsMenu.vue'
 import SearchBox from '@/components/SearchBox.vue'
 import {resolveShellShortcut} from '@/functions/shell-shortcuts'
 import Vue from 'vue'
-import {LIBRARIES_ALL} from '@/types/library'
 import ToasterNotification from '@/components/ToasterNotification.vue'
 import {LibraryDto} from '@/types/tales-libraries'
 import LibrariesActionsMenu from '@/components/menus/LibrariesActionsMenu.vue'
@@ -210,7 +207,6 @@ export default Vue.extend({
   },
   data: function () {
     return {
-      LIBRARIES_ALL,
       drawerVisible: this.$vuetify.breakpoint.lgAndUp,
       expandUnpinned: false,
       showReorder: false,

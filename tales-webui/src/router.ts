@@ -22,6 +22,13 @@ const noLibraryGuard = (to: any, from: any, next: any) => {
   } else next()
 }
 
+// The pinned-libraries aggregate page is gone (SV-1293); its old addresses
+// land on the dashboard, the remaining cross-library screen.
+const noAllAggregateGuard = (to: any, from: any, next: any) => {
+  if (to.params.libraryId === LIBRARIES_ALL) next({name: 'dashboard'})
+  else noLibraryGuard(to, from, next)
+}
+
 const noLibraryNorPinGuard = (to: any, from: any, next: any) => {
   if (lStore.state.talesLibraries.libraries.length === 0) {
     next({name: 'welcome'})
@@ -91,22 +98,26 @@ const router = new Router({
           component: () => import(/* webpackChunkName: "dashboard" */ './views/DashboardView.vue'),
         },
         {
+          // The users screen became a tab of the preferences screen (SV-1291).
+          // The old address keeps working through the tab query.
           path: '/settings/users',
           name: 'settings-users',
-          beforeEnter: adminGuard,
-          component: () => import(/* webpackChunkName: "settings-users" */ './views/SettingsUsers.vue'),
-          children: [
-            {
-              path: '/settings/users/add',
-              name: 'settings-users-add',
-              component: () => import(/* webpackChunkName: "settings-user" */ './components/dialogs/UserAddDialog.vue'),
-            },
-          ],
+          redirect: {name: 'preferences', query: {tab: 'users'}},
         },
         {
           path: '/settings',
           name: 'preferences',
           component: () => import(/* webpackChunkName: "preferences" */ './views/PreferencesView.vue'),
+          children: [
+            {
+              // Renders through the router-view inside UsersList, so the add
+              // dialog opens on top of the users tab without leaving it.
+              path: '/settings/users/add',
+              name: 'settings-users-add',
+              beforeEnter: adminGuard,
+              component: () => import(/* webpackChunkName: "settings-user" */ './components/dialogs/UserAddDialog.vue'),
+            },
+          ],
         },
         {
           // Server settings, UI settings and account details became tabs of one
@@ -126,10 +137,15 @@ const router = new Router({
         {
           path: '/libraries/:libraryId?',
           name: 'libraries',
-          redirect: (route) => ({
-            name: getLibraryRoute(route.params.libraryId || LIBRARIES_ALL),
-            params: {libraryId: route.params.libraryId || LIBRARIES_ALL},
-          }),
+          redirect: (route) => {
+            // No aggregate page any more (SV-1293): /libraries and
+            // /libraries/all go to the dashboard instead.
+            if (!route.params.libraryId || route.params.libraryId === LIBRARIES_ALL) return {name: 'dashboard'}
+            return {
+              name: getLibraryRoute(route.params.libraryId),
+              params: {libraryId: route.params.libraryId},
+            }
+          },
         },
         {
           // The per-library Recommended view was removed. Kept as a redirect so
@@ -143,14 +159,14 @@ const router = new Router({
         {
           path: '/libraries/:libraryId/books',
           name: 'browse-books',
-          beforeEnter: noLibraryGuard,
+          beforeEnter: noAllAggregateGuard,
           component: () => import(/* webpackChunkName: "browse-books" */ './views/BrowseBooks.vue'),
           props: (route) => ({libraryId: route.params.libraryId}),
         },
         {
           path: '/libraries/:libraryId/series',
           name: 'browse-libraries',
-          beforeEnter: noLibraryGuard,
+          beforeEnter: noAllAggregateGuard,
           component: () => import(/* webpackChunkName: "browse-libraries" */ './views/BrowseLibraries.vue'),
           props: (route) => ({libraryId: route.params.libraryId}),
         },

@@ -8,6 +8,7 @@
       <v-tab>{{ $t('common.ui') }}</v-tab>
       <v-tab>{{ $t('account_settings.my_account') }}</v-tab>
       <v-tab v-if="isAdmin">{{ $t('server.tab_title') }}</v-tab>
+      <v-tab v-if="isAdmin">{{ $t('users.users') }}</v-tab>
     </v-tabs>
 
     <v-tabs-items v-model="tab">
@@ -40,6 +41,10 @@
         <server-settings/>
         <server-management/>
       </v-tab-item>
+
+      <v-tab-item v-if="isAdmin">
+        <settings-users/>
+      </v-tab-item>
     </v-tabs-items>
   </v-container>
 </template>
@@ -52,12 +57,13 @@ import AccountSettings from '@/views/AccountView.vue'
 import UiSettings from '@/views/UISettings.vue'
 import ServerSettings from '@/views/ServerSettings.vue'
 import ServerManagement from '@/views/ServerManagement.vue'
+import SettingsUsers from '@/views/SettingsUsers.vue'
 import {Theme} from '@/types/themes'
 import {CLIENT_SETTING} from '@/types/tales-clientsettings'
 
 export default Vue.extend({
   name: 'PreferencesView',
-  components: {AccountSettings, UiSettings, ServerSettings, ServerManagement},
+  components: {AccountSettings, UiSettings, ServerSettings, ServerManagement, SettingsUsers},
   data: function () {
     return {
       tab: 0,
@@ -65,6 +71,13 @@ export default Vue.extend({
         .filter((x: string) => this.$i18n.availableLocales.includes(x))
         .map((x: string) => ({text: this.$i18n.t('common.locale_name', x), value: x})),
     }
+  },
+  // The old /settings/users address redirects here with ?tab=users, so
+  // bookmarks and the add-user dialog's way back land on the users tab. The
+  // add route must select it too: its dialog renders through the router-view
+  // inside UsersList, which only exists while the users tab is active.
+  created() {
+    if ((this.$route.query.tab === 'users' || this.$route.name === 'settings-users-add') && this.isAdmin) this.tab = 3
   },
   computed: {
     isAdmin(): boolean {
