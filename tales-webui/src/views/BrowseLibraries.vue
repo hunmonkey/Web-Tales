@@ -70,14 +70,6 @@
     </filter-drawer>
 
     <v-container fluid>
-      <alphabetical-navigation
-        class="text-center"
-        :symbols="seriesGroupingKeys"
-        :selected="selectedSymbol"
-        :group-count="seriesGroups"
-        @clicked="filterByStarting"
-      />
-
       <empty-state
         v-if="totalPages === 0 && sortOrFilterActive"
         :title="$t('common.filter_no_matches')"
@@ -96,13 +88,6 @@
       />
 
       <template v-if="totalPages > 0">
-        <v-pagination class="browse-pagination--sticky"
-          v-if="totalPages > 1"
-          v-model="page"
-          :total-visible="paginationVisible"
-          :length="totalPages"
-        />
-
         <item-browser
           :items="series"
           :item-context="itemContext"
@@ -156,11 +141,10 @@ import {
   sortOrFilterActive,
   toNameValueCondition,
 } from '@/functions/filter'
-import {GroupCountDto, Oneshot, SeriesDto} from '@/types/tales-series'
+import {Oneshot, SeriesDto} from '@/types/tales-series'
 import {authorRoles} from '@/types/author-roles'
 import {LibrarySseDto, ReadProgressSeriesSseDto, SeriesSseDto} from '@/types/tales-sse'
 import {throttle} from 'lodash'
-import AlphabeticalNavigation from '@/components/AlphabeticalNavigation.vue'
 import {LibraryDto} from '@/types/tales-libraries'
 import {ItemContext} from '@/types/items'
 import {
@@ -184,11 +168,8 @@ import {
   SearchConditionSeriesStatus,
   SearchConditionSharingLabel,
   SearchConditionTag,
-  SearchConditionTitleSort,
   SearchOperatorAfter,
   SearchOperatorBefore,
-  SearchOperatorBeginsWith,
-  SearchOperatorDoesNotBeginWith,
   SearchOperatorIs,
   SearchOperatorIsFalse,
   SearchOperatorIsNot,
@@ -208,12 +189,10 @@ import {
   FiltersOptions,
   NameValue,
 } from '@/types/filter'
-import {CLIENT_SETTING, ClientSettingsSeriesGroup, SERIES_GROUP_ALPHA} from '@/types/tales-clientsettings'
 
 export default Vue.extend({
   name: 'BrowseLibraries',
   components: {
-    AlphabeticalNavigation,
     LibraryActionsMenu,
     EmptyState,
     ToolbarSticky,
@@ -229,8 +208,6 @@ export default Vue.extend({
   data: function () {
     return {
       series: [] as SeriesDto[],
-      seriesGroups: [] as GroupCountDto[],
-      selectedSymbol: 'ALL',
       selectedSeries: [] as SeriesDto[],
       page: 1,
       pageSize: 20,
@@ -297,7 +274,6 @@ export default Vue.extend({
     await this.resetParams(this.$route, this.libraryId)
     if (this.$route.query.page) this.page = Number(this.$route.query.page)
     if (this.$route.query.pageSize) this.pageSize = Number(this.$route.query.pageSize)
-    if (this.$route.query.nav) this.selectedSymbol = this.$route.query.nav.toString()
 
     this.loadLibrary(this.libraryId)
 
@@ -313,8 +289,6 @@ export default Vue.extend({
       this.totalPages = 1
       this.totalElements = null
       this.series = []
-      this.seriesGroups = []
-      this.selectedSymbol = 'ALL'
 
       this.loadLibrary(to.params.libraryId)
 
@@ -324,21 +298,6 @@ export default Vue.extend({
     next()
   },
   computed: {
-    seriesGrouping(): Record<string, string[]> {
-      let s: Record<string, string[]>
-      try {
-        s = (JSON.parse(this.$store.getters.getClientSettings[CLIENT_SETTING.WEBUI_SERIES_GROUPS].value) as ClientSettingsSeriesGroup).groups
-      } catch (_) {
-        s = SERIES_GROUP_ALPHA.groups
-      }
-      return s
-    },
-    seriesGroupingKeys(): string[] {
-      return ['ALL', '#', ...this.$_.keys(this.seriesGrouping)]
-    },
-    seriesGroupingValues(): string[] {
-      return this.$_(this.seriesGrouping).values().flatten().map(this.$_.lowerCase).toArray() as unknown as string[]
-    },
     library(): LibraryDto | undefined {
       return this.getLibraryLazy(this.libraryId)
     },
@@ -349,17 +308,6 @@ export default Vue.extend({
       if (this.library) return this.library.name
       else if (this.$store.getters.getLibrariesPinned.length > 0) return this.$t('common.pinned_libraries').toString()
       else return this.$t('common.all_libraries').toString()
-    },
-    symbolCondition(): SearchConditionSeries | undefined {
-      if (this.selectedSymbol === 'ALL') return undefined
-      if (this.selectedSymbol === '#') return new SearchConditionAllOfSeries(
-        this.seriesGroupingValues
-          .map(it => new SearchConditionTitleSort(new SearchOperatorDoesNotBeginWith(it))),
-      )
-      return new SearchConditionAnyOfSeries(
-        this.seriesGrouping[this.selectedSymbol]
-          .map(it => new SearchConditionTitleSort(new SearchOperatorBeginsWith(it))),
-      )
     },
     itemContext(): ItemContext[] {
       if (this.sortActive.key === 'booksMetadata.releaseDate') return [ItemContext.RELEASE_DATE]
@@ -554,12 +502,6 @@ export default Vue.extend({
     },
   },
   methods: {
-    filterByStarting(symbol: string) {
-      this.selectedSymbol = symbol
-      this.page = 1
-      this.updateRoute()
-      this.loadPage(this.libraryId, 1, this.sortActive, this.symbolCondition)
-    },
     resetSortAndFilters() {
       this.drawer = false
       for (const prop in this.filters) {
@@ -705,7 +647,7 @@ export default Vue.extend({
 
       this.pageUnwatch = this.$watch('page', (val) => {
         this.updateRoute()
-        this.loadPage(this.libraryId, val, this.sortActive, this.symbolCondition)
+        this.loadPage(this.libraryId, val, this.sortActive)
       })
     },
     unsetWatches() {
@@ -721,7 +663,7 @@ export default Vue.extend({
       this.page = 1
 
       this.updateRoute()
-      this.loadPage(this.libraryId, this.page, this.sortActive, this.symbolCondition)
+      this.loadPage(this.libraryId, this.page, this.sortActive)
 
       this.setWatches()
     },
@@ -741,7 +683,7 @@ export default Vue.extend({
     async loadLibrary(libraryId: string) {
       if (this.library != undefined) document.title = `Tales - ${this.library.name}`
 
-      await this.loadPage(libraryId, this.page, this.sortActive, this.symbolCondition)
+      await this.loadPage(libraryId, this.page, this.sortActive)
     },
     updateRoute() {
       const loc = {
@@ -751,7 +693,6 @@ export default Vue.extend({
           page: `${this.page}`,
           pageSize: `${this.pageSize}`,
           sort: `${this.sortActive.key},${this.sortActive.order}`,
-          nav: this.selectedSymbol,
         },
       } as Location
       mergeFilterParams(this.filters, loc.query)
@@ -760,9 +701,9 @@ export default Vue.extend({
       })
     },
     reloadPage: throttle(function (this: any) {
-      this.loadPage(this.libraryId, this.page, this.sortActive, this.symbolCondition)
+      this.loadPage(this.libraryId, this.page, this.sortActive)
     }, 1000),
-    async loadPage(libraryId: string, page: number, sort: SortActive, symbolCondition?: SearchConditionSeries) {
+    async loadPage(libraryId: string, page: number, sort: SortActive) {
       this.selectedSeries = []
 
       const pageRequest = {
@@ -814,9 +755,6 @@ export default Vue.extend({
         }
       })
 
-      const groupConditions = this.$_.cloneDeep(conditions)
-      if (symbolCondition) conditions.push(symbolCondition)
-
       let seriesPage: Page<SeriesDto>
       try {
         seriesPage = await this.$talesSeries.getSeriesList({
@@ -826,9 +764,7 @@ export default Vue.extend({
         // A null `totalElements` is what draws the loading skeletons, so a failed
         // page has to leave that state or the grid keeps them with nothing left
         // to clear them. Falling back to what is on screen means a first load
-        // shows the empty slot and a failed refresh keeps the series it had. The
-        // alphabetical group request below is skipped, since it would only fail
-        // the same way.
+        // shows the empty slot and a failed refresh keeps the series it had.
         this.totalElements = this.series.length
         return
       }
@@ -836,19 +772,6 @@ export default Vue.extend({
       this.totalPages = seriesPage.totalPages
       this.totalElements = seriesPage.totalElements
       this.series = seriesPage.content
-
-      const seriesGroups = await this.$talesSeries.getSeriesListByAlphabeticalGroups({
-        condition: new SearchConditionAllOfSeries(groupConditions),
-      } as SeriesSearch)
-      const nonAlpha = seriesGroups
-        .filter((g) => !this.seriesGroupingValues.includes(g.group))
-        .reduce((a, b) => a + b.count, 0)
-      const all = seriesGroups.reduce((a, b) => a + b.count, 0)
-      this.seriesGroups = [
-        ...seriesGroups.filter((g) => this.seriesGroupingValues.includes(g.group)),
-        {group: '#', count: nonAlpha} as GroupCountDto,
-        {group: 'ALL', count: all} as GroupCountDto,
-      ]
     },
     getLibraryLazy(libraryId: string): LibraryDto | undefined {
       if (libraryId !== LIBRARIES_ALL) {

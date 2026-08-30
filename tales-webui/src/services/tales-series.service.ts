@@ -1,5 +1,5 @@
 import {AxiosInstance} from 'axios'
-import {GroupCountDto, SeriesDto, SeriesMetadataUpdateDto, SeriesThumbnailDto} from '@/types/tales-series'
+import {SeriesDto, SeriesMetadataUpdateDto, SeriesThumbnailDto} from '@/types/tales-series'
 import {SeriesSearch} from '@/types/tales-search'
 
 const qs = require('qs')
@@ -21,18 +21,6 @@ export default class TalesSeriesService {
       })).data
     } catch (e) {
       let msg = 'An error occurred while trying to retrieve series'
-      if (e.response.data.message) {
-        msg += `: ${e.response.data.message}`
-      }
-      throw new Error(msg)
-    }
-  }
-
-  async getSeriesListByAlphabeticalGroups(search: SeriesSearch): Promise<GroupCountDto[]>{
-    try {
-      return (await this.http.post(`${API_SERIES}/list/alphabetical-groups`, search)).data
-    } catch (e) {
-      let msg = 'An error occurred while trying to retrieve series alphabetical groups'
       if (e.response.data.message) {
         msg += `: ${e.response.data.message}`
       }

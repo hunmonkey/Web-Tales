@@ -88,13 +88,6 @@
       />
 
       <template v-if="totalPages > 0">
-        <v-pagination class="browse-pagination--sticky"
-          v-if="totalPages > 1"
-          v-model="page"
-          :total-visible="paginationVisible"
-          :length="totalPages"
-        />
-
         <item-browser
           :items="books"
           :item-context="itemContext"
