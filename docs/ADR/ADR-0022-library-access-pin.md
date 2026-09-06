@@ -58,9 +58,12 @@ unlocked library ids in the HTTP session, and enforce by swapping the request's
   session; `DELETE {id}` (admin) removes the lock. Unlock returns 404 for a
   library the base user cannot access, so lock rows reveal nothing sharing
   rules would hide.
-- Brute force: BCrypt verification (~100ms) plus a per-library failure
-  throttle — after 5 consecutive failures, further attempts are rejected for
-  30 seconds. In-memory, reset on success.
+- Brute force: BCrypt verification (~100ms) plus a failure throttle keyed per
+  user and library (amended by SV-1300; it was per library, which let one
+  guesser lock everyone out and handed out 5 fresh tries every 30 seconds).
+  After 5 consecutive failures the user waits 30 seconds, and every further
+  failure doubles the wait up to one hour. In-memory, reset only on a correct
+  PIN or a PIN change.
 
 ## Consequences
 

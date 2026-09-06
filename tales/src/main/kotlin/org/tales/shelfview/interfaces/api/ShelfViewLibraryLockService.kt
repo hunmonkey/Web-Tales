@@ -24,7 +24,9 @@ class ShelfViewLibraryLockService(
     val lastAt: Long,
   )
 
-  private val failuresByLibrary = ConcurrentHashMap<String, Failures>()
+  // Keyed per user and library (SV-1300): one person's wrong guesses must not
+  // lock everyone else out, and a fresh session must not buy fresh attempts.
+  private val failuresByUserAndLibrary = ConcurrentHashMap<Pair<String, String>, Failures>()
 
   fun unlockedIds(session: HttpSession?): Set<String> {
     @Suppress("UNCHECKED_CAST")
@@ -64,17 +66,18 @@ class ShelfViewLibraryLockService(
     libraryId: String,
     pin: String,
     session: HttpSession,
+    userId: String,
   ): Boolean {
     val hash = accessRepository.findPinHashOrNull(libraryId) ?: return false
 
     if (!passwordEncoder.matches(pin, hash)) {
-      failuresByLibrary.compute(libraryId) { _, previous ->
+      failuresByUserAndLibrary.compute(userId to libraryId) { _, previous ->
         Failures((previous?.count ?: 0) + 1, System.currentTimeMillis())
       }
       return false
     }
 
-    failuresByLibrary.remove(libraryId)
+    failuresByUserAndLibrary.remove(userId to libraryId)
     session.setAttribute(SESSION_ATTRIBUTE, unlockedIds(session) + libraryId)
     return true
   }
@@ -92,7 +95,7 @@ class ShelfViewLibraryLockService(
     session: HttpSession,
   ) {
     accessRepository.savePinHash(libraryId, passwordEncoder.encode(pin))
-    failuresByLibrary.remove(libraryId)
+    forgetFailures(libraryId)
     // The setter obviously knows the PIN; do not lock them out mid-session.
     session.setAttribute(SESSION_ATTRIBUTE, unlockedIds(session) + libraryId)
   }
@@ -102,23 +105,35 @@ class ShelfViewLibraryLockService(
     session: HttpSession?,
   ) {
     accessRepository.deletePin(libraryId)
-    failuresByLibrary.remove(libraryId)
+    forgetFailures(libraryId)
     relock(libraryId, session)
   }
 
-  fun isThrottled(libraryId: String): Boolean {
-    val failures = failuresByLibrary[libraryId] ?: return false
+  /**
+   * After [THROTTLE_AFTER_FAILURES] wrong guesses the user waits
+   * [THROTTLE_BASE_MS], and every further wrong guess doubles the wait up to
+   * [THROTTLE_MAX_MS]. The count only resets on a correct PIN or a PIN change,
+   * so waiting out the window never buys a fresh batch of attempts.
+   */
+  fun isThrottled(
+    libraryId: String,
+    userId: String,
+  ): Boolean {
+    val failures = failuresByUserAndLibrary[userId to libraryId] ?: return false
     if (failures.count < THROTTLE_AFTER_FAILURES) return false
-    if (System.currentTimeMillis() - failures.lastAt >= THROTTLE_WINDOW_MS) {
-      failuresByLibrary.remove(libraryId)
-      return false
-    }
-    return true
+    return System.currentTimeMillis() - failures.lastAt < lockoutMs(failures.count)
+  }
+
+  private fun lockoutMs(count: Int): Long = (THROTTLE_BASE_MS shl minOf(count - THROTTLE_AFTER_FAILURES, 7)).coerceAtMost(THROTTLE_MAX_MS)
+
+  private fun forgetFailures(libraryId: String) {
+    failuresByUserAndLibrary.keys.removeIf { it.second == libraryId }
   }
 
   companion object {
     const val SESSION_ATTRIBUTE = "SHELFVIEW_UNLOCKED_LIBRARY_IDS"
     const val THROTTLE_AFTER_FAILURES = 5
-    const val THROTTLE_WINDOW_MS = 30_000L
+    const val THROTTLE_BASE_MS = 30_000L
+    const val THROTTLE_MAX_MS = 3_600_000L
   }
 }

@@ -71,8 +71,8 @@ class ShelfViewLibraryLockController(
     if (!baseUser(principal).canAccessLibrary(libraryId)) throw ResponseStatusException(HttpStatus.NOT_FOUND)
     if (accessRepository.findPinHashOrNull(libraryId) == null) throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
-    if (lockService.isThrottled(libraryId)) throw ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "SHELFVIEW_LOCK_THROTTLED")
-    if (!lockService.unlock(libraryId, pinDto.pin, session)) throw ResponseStatusException(HttpStatus.FORBIDDEN, "SHELFVIEW_LOCK_PIN_MISMATCH")
+    if (lockService.isThrottled(libraryId, principal.user.id)) throw ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "SHELFVIEW_LOCK_THROTTLED")
+    if (!lockService.unlock(libraryId, pinDto.pin, session, principal.user.id)) throw ResponseStatusException(HttpStatus.FORBIDDEN, "SHELFVIEW_LOCK_PIN_MISMATCH")
   }
 
   @Operation(summary = "Relock a library for this session")

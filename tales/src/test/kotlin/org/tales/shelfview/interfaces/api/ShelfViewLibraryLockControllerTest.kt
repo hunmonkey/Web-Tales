@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
@@ -19,11 +21,13 @@ import org.tales.domain.model.makeLibrary
 import org.tales.domain.persistence.LibraryRepository
 import org.tales.domain.persistence.TalesUserRepository
 import org.tales.domain.service.LibraryLifecycle
+import org.tales.infrastructure.security.TalesPrincipal
 import org.tales.interfaces.api.rest.WithMockCustomUser
 import org.tales.shelfview.domain.persistence.ShelfViewLibraryAccessRepository
 
 private const val ADMIN_ID = "shelfview-lock-admin"
 private const val LIMITED_ID = "shelfview-lock-limited"
+private const val OTHER_ADMIN_ID = "shelfview-lock-other"
 
 @SpringBootTest
 @AutoConfigureMockMvc(printOnlyOnFailure = false)
@@ -38,6 +42,7 @@ class ShelfViewLibraryLockControllerTest(
   private val libraryLocked = makeLibrary(name = "Locked", id = "shelfview-lock-locked")
   private val libraryThrottled = makeLibrary(name = "Throttled", id = "shelfview-lock-throttled")
   private val admin = TalesUser("shelfview-lock-admin@example.org", "", roles = setOf(UserRoles.ADMIN), id = ADMIN_ID)
+  private val otherAdmin = TalesUser("shelfview-lock-other@example.org", "", roles = setOf(UserRoles.ADMIN), id = OTHER_ADMIN_ID)
   private val limitedUser =
     TalesUser(
       "shelfview-lock-limited@example.org",
@@ -53,6 +58,7 @@ class ShelfViewLibraryLockControllerTest(
     libraryRepository.insert(libraryLocked)
     libraryRepository.insert(libraryThrottled)
     userRepository.insert(admin)
+    userRepository.insert(otherAdmin)
     userRepository.insert(limitedUser)
   }
 
@@ -61,11 +67,19 @@ class ShelfViewLibraryLockControllerTest(
     accessRepository.deletePin(libraryLocked.id)
     accessRepository.deletePin(libraryThrottled.id)
     userRepository.delete(ADMIN_ID)
+    userRepository.delete(OTHER_ADMIN_ID)
     userRepository.delete(LIMITED_ID)
     libraryRepository.findAll().forEach { libraryLifecycle.deleteLibrary(it) }
   }
 
   private fun pinJson(pin: String) = """{"pin":"$pin"}"""
+
+  // The second admin as a request-level authentication, for the per-user
+  // throttle check inside a test that runs as the first admin.
+  private fun otherAdminAuthentication(): UsernamePasswordAuthenticationToken {
+    val principal = TalesPrincipal(otherAdmin)
+    return UsernamePasswordAuthenticationToken(principal, "", principal.authorities)
+  }
 
   // Sessions are Spring Session entries keyed by the TALES-SESSION cookie, so
   // "the same browser session" in these tests means replaying that cookie.
@@ -246,6 +260,15 @@ class ShelfViewLibraryLockControllerTest(
           contentType = MediaType.APPLICATION_JSON
           content = pinJson("1234")
         }.andExpect { status { isTooManyRequests() } }
+
+      // The throttle is per user (SV-1300): another account still gets its
+      // own attempts, so a guesser cannot lock everyone else out.
+      mockMvc
+        .post("/api/shelfview/v1/library-locks/${libraryThrottled.id}/unlock") {
+          contentType = MediaType.APPLICATION_JSON
+          content = pinJson("wrong-pin")
+          with(authentication(otherAdminAuthentication()))
+        }.andExpect { status { isForbidden() } }
     } finally {
       accessRepository.deletePin(libraryThrottled.id)
     }
