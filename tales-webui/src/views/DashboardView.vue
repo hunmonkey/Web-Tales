@@ -632,7 +632,9 @@ export default Vue.extend({
       const books = this.resumeToRemove
       if (books.length === 0) return
       this.resumeToRemove = []
-      await Promise.all(books.map(b => this.$talesBooks.deleteReadProgress(b.id)))
+      // One failed request must not skip the reload: the others already went
+      // through and the grid would otherwise keep showing them (SV-1302).
+      await Promise.all(books.map(b => this.$talesBooks.deleteReadProgress(b.id).catch(() => undefined)))
       this.selectedResume = []
       // The SSE event that follows shares the 5s reload throttle; the grid the
       // user just acted on should not wait for it.
