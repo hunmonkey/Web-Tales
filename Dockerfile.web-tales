@@ -24,7 +24,10 @@ RUN chmod +x ./gradlew \
  && ./gradlew :tales:bootJar -x test --no-daemon \
  && cp tales/build/libs/*.jar /workspace/application.jar
 
-FROM eclipse-temurin:23-jre
+# 25 is the current LTS. The runtime must stay at 22 or newer: the NightMonkeys
+# JXL/HEIF/WebP decoders use the Foreign Function & Memory API, which is
+# preview-only on 21 and would silently disable those formats (SV-1301).
+FROM eclipse-temurin:25-jre
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=dev
 LABEL org.opencontainers.image.title="Tales" \

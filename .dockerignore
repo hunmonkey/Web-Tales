@@ -1,0 +1,11 @@
+# Keeps the build context to what the two build stages read (SV-1301):
+# no Git history, no local build output, no dependencies, no credentials.
+.git
+.gradle
+build
+tales/build
+tales-tray/build
+tales-webui/node_modules
+tales-webui/dist
+Rule_PW.txt
+*.log
