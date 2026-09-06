@@ -1818,8 +1818,10 @@ clean before the sweep; every shelfview endpoint had its authorization check.
   Now `25-jre` (LTS). Not 21: the NightMonkeys JXL/HEIF/WebP decoders need the
   FFM API, final only since 22, and would silently drop those formats. The jar
   was started under Temurin 25.0.4.1 locally (health UP, `/` 200). A new
-  `.dockerignore` keeps `.git` (94 MB), build output, `node_modules` and
-  `Rule_PW.txt` out of the build context.
+  `.dockerignore` keeps build output, `node_modules` and `Rule_PW.txt` out of
+  the build context. `.git` must stay in: the first deploy attempt excluded it
+  and `:tales:generateGitProperties` failed the image build (the old container
+  kept running; `set -e` stopped the script before `compose up`).
 - [x] SV-1302 이어보기 bulk removal used `Promise.all` without a catch, so one
   failed request skipped the reload and left the already-removed cards on
   screen. Each request now swallows its own failure and the reload always runs.

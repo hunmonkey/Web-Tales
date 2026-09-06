@@ -1,6 +1,6 @@
 # Keeps the build context to what the two build stages read (SV-1301):
-# no Git history, no local build output, no dependencies, no credentials.
-.git
+# no local build output, no dependencies, no credentials. `.git` stays in:
+# the Gradle git-properties task reads it and fails the build without it.
 .gradle
 build
 tales/build
