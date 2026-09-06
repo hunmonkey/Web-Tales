@@ -48,6 +48,7 @@ import org.tales.domain.persistence.ThumbnailBookRepository
 import org.tales.infrastructure.hash.Hasher
 import org.tales.interfaces.api.persistence.SeriesDtoRepository
 import org.tales.language.toIndexedMap
+import org.tales.shelfview.domain.persistence.ShelfViewRemovedEntryRepository
 import org.tales.toScanResult
 import java.net.URL
 import java.nio.file.Path
@@ -75,6 +76,7 @@ class LibraryContentLifecycleTest(
   @Autowired private val userLifecycle: TalesUserLifecycle,
   @Autowired private val seriesDtoRepository: SeriesDtoRepository,
   @Autowired private val thumbnailBookRepository: ThumbnailBookRepository,
+  @Autowired private val removedEntryRepository: ShelfViewRemovedEntryRepository,
 ) {
   @MockkBean
   private lateinit var mockScanner: FileSystemScanner
@@ -312,6 +314,71 @@ class LibraryContentLifecycleTest(
       assertThat(media.status)
         .isNotEqualTo(Media.Status.OUTDATED)
         .isEqualTo(Media.Status.READY)
+    }
+
+    // ADR-0023: fresh Book/Series objects on every scan, the way the real
+    // scanner returns them, so a restored entry is inserted under a new id.
+    private fun scanOfTwoBooks() = mapOf(makeSeries(name = "series") to listOf(makeBook("book1"), makeBook("book2"))).toScanResult()
+
+    private fun visibleBookNames() = bookRepository.findAll().filter { it.deletedDate == null }.map { it.name }
+
+    @Test
+    fun `given a book removed from the library when rescanning then it stays out until restored`() {
+      // given
+      val library = makeLibrary()
+      libraryRepository.insert(library)
+      every { mockScanner.scanRootFolder(any()) } answers { scanOfTwoBooks() }
+      libraryContentLifecycle.scanRootFolder(library)
+      bookLifecycle.removeBookFromLibrary(bookRepository.findAll().first { it.name == "book1" })
+
+      // when
+      libraryContentLifecycle.scanRootFolder(library)
+
+      // then
+      assertThat(visibleBookNames()).containsExactly("book2")
+      assertThat(seriesRepository.findAll().single().deletedDate).isNull()
+
+      // when restored
+      removedEntryRepository.deleteAll(library.id)
+      libraryContentLifecycle.scanRootFolder(library)
+
+      // then
+      assertThat(visibleBookNames()).containsExactlyInAnyOrder("book1", "book2")
+    }
+
+    @Test
+    fun `given a series removed from the library when rescanning then it and its books stay out`() {
+      // given
+      val library = makeLibrary()
+      libraryRepository.insert(library)
+      every { mockScanner.scanRootFolder(any()) } answers { scanOfTwoBooks() }
+      libraryContentLifecycle.scanRootFolder(library)
+      seriesLifecycle.removeSeriesFromLibrary(seriesRepository.findAll().single())
+
+      // when
+      libraryContentLifecycle.scanRootFolder(library)
+
+      // then
+      assertThat(visibleBookNames()).isEmpty()
+      assertThat(seriesRepository.findAll().map { it.deletedDate }).doesNotContainNull()
+      assertThat(removedEntryRepository.findUrls(library.id)).hasSize(3)
+    }
+
+    @Test
+    fun `given every book of a series removed one by one when rescanning then the series is out too`() {
+      // given
+      val library = makeLibrary()
+      libraryRepository.insert(library)
+      every { mockScanner.scanRootFolder(any()) } answers { scanOfTwoBooks() }
+      libraryContentLifecycle.scanRootFolder(library)
+      bookRepository.findAll().forEach { bookLifecycle.removeBookFromLibrary(it) }
+
+      // when
+      libraryContentLifecycle.scanRootFolder(library)
+
+      // then
+      assertThat(visibleBookNames()).isEmpty()
+      assertThat(seriesRepository.findAll().map { it.deletedDate }).doesNotContainNull()
     }
 
     @Test

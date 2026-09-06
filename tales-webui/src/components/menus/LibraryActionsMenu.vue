@@ -22,6 +22,9 @@
         <v-list-item @click="confirmEmptyTrash = true" v-if="isAdmin">
           <v-list-item-title>{{ $t('menu.empty_trash') }}</v-list-item-title>
         </v-list-item>
+        <v-list-item @click="confirmRestoreRemoved = true" v-if="isAdmin">
+          <v-list-item-title>{{ $t('menu.restore_removed') }}</v-list-item-title>
+        </v-list-item>
         <v-list-item @click="edit" v-if="isAdmin">
           <v-list-item-title>{{ $t('menu.edit') }}</v-list-item-title>
         </v-list-item>
@@ -72,6 +75,14 @@
       @confirm="emptyTrash"
     />
 
+    <confirmation-dialog
+      v-model="confirmRestoreRemoved"
+      :title="$t('dialog.restore_removed.title')"
+      :body="$t('dialog.restore_removed.body', {name: library.name})"
+      :button-confirm="$t('dialog.restore_removed.button_confirm')"
+      @confirm="restoreRemoved"
+    />
+
     <library-pin-dialog
       v-model="pinDialogVisible"
       :title="$t('dialog.set_library_pin.title', {name: library.name})"
@@ -114,6 +125,7 @@ export default Vue.extend({
       confirmAnalyzeModal: false,
       confirmRefreshMetadataModal: false,
       confirmEmptyTrash: false,
+      confirmRestoreRemoved: false,
       confirmRemovePin: false,
       pinDialogVisible: false,
       pinError: '',
@@ -148,6 +160,9 @@ export default Vue.extend({
     },
     emptyTrash() {
       this.$talesLibraries.emptyTrash(this.library)
+    },
+    restoreRemoved() {
+      this.$talesLibraries.restoreRemovedEntries(this.library)
     },
     edit() {
       this.$store.dispatch('dialogEditLibrary', this.library)

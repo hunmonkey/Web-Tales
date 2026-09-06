@@ -663,8 +663,8 @@
       "confirm_delete_multiple": "Yes, remove {count} books from the library",
       "dialog_title": "Remove from Library",
       "dialog_title_multiple": "Remove from Library",
-      "warning_html": "The book <b>{name}</b> will be removed from the library listing. <b>No file on disk is deleted.</b> It comes back the next time the library is scanned. Continue?",
-      "warning_multiple_html": "{count} books will be removed from the library listing. <b>No file on disk is deleted.</b> They come back the next time the library is scanned. Continue?"
+      "warning_html": "The book <b>{name}</b> will be removed from the library listing. <b>No file on disk is deleted.</b> It stays out of the library until you use \"Restore removed items\" in the library menu. Continue?",
+      "warning_multiple_html": "{count} books will be removed from the library listing. <b>No file on disk is deleted.</b> They stay out of the library until you use \"Restore removed items\" in the library menu. Continue?"
     },
     "delete_collection": {
       "button_confirm": "Delete",
@@ -706,8 +706,8 @@
       "confirm_delete": "Yes, remove series \"{name}\" from the library",
       "confirm_delete_multiple": "Yes, remove {count} series from the library",
       "dialog_title": "Remove from Library",
-      "warning_html": "The series <b>{name}</b> will be removed from the library listing. <b>No file on disk is deleted.</b> It comes back the next time the library is scanned; to keep it out, use Directory exclusions in the library settings. Continue?",
-      "warning_multiple_html": "{count} series will be removed from the library listing. <b>No file on disk is deleted.</b> They come back the next time the library is scanned; to keep them out, use Directory exclusions in the library settings. Continue?"
+      "warning_html": "The series <b>{name}</b> will be removed from the library listing. <b>No file on disk is deleted.</b> It stays out of the library until you use \"Restore removed items\" in the library menu. Continue?",
+      "warning_multiple_html": "{count} series will be removed from the library listing. <b>No file on disk is deleted.</b> They stay out of the library until you use \"Restore removed items\" in the library menu. Continue?"
     },
     "delete_user": {
       "button_confirm": "Delete",
@@ -917,6 +917,11 @@
       "body": "Removing the password of \"{name}\" lets anyone enter it right away. Continue?",
       "button_confirm": "Remove password",
       "title": "Remove library password"
+    },
+    "restore_removed": {
+      "body": "Every book and series removed from \"{name}\" comes back to the library. A scan starts right away. No file on disk is touched.",
+      "button_confirm": "Restore",
+      "title": "Restore removed items"
     },
     "set_library_pin": {
       "body": "Only people who enter this password will be able to open the library. An unlock lasts until logout.",
@@ -1256,6 +1261,7 @@
     "pin": "Pin",
     "refresh_metadata": "Refresh metadata",
     "remove_from_library": "Remove from library",
+    "restore_removed": "Restore removed items",
     "scan_library_files": "Scan library files",
     "scan_library_files_deep": "Scan library files (deep)",
     "select_all": "Select all",

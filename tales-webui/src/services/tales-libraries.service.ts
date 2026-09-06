@@ -119,4 +119,18 @@ export default class TalesLibrariesService {
       throw new Error(msg)
     }
   }
+
+  // Undo for "remove from library" (ADR-0023): forgets every removal in the
+  // library and queues a scan that brings the entries back.
+  async restoreRemovedEntries(library: LibraryDto) {
+    try {
+      await this.http.delete(`/api/shelfview/v1/libraries/${library.id}/removed-entries`)
+    } catch (e) {
+      let msg = `An error occurred while trying to restore removed entries for library '${library.name}'`
+      if (e.response.data.message) {
+        msg += `: ${e.response.data.message}`
+      }
+      throw new Error(msg)
+    }
+  }
 }

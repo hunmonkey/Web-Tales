@@ -30,6 +30,7 @@ import org.tales.domain.persistence.SeriesMetadataRepository
 import org.tales.domain.persistence.SeriesRepository
 import org.tales.domain.persistence.ThumbnailSeriesRepository
 import org.tales.language.stripAccents
+import org.tales.shelfview.domain.persistence.ShelfViewRemovedEntryRepository
 import java.io.File
 import java.time.LocalDateTime
 
@@ -52,6 +53,7 @@ class SeriesLifecycle(
   private val taskEmitter: TaskEmitter,
   private val eventPublisher: ApplicationEventPublisher,
   private val transactionTemplate: TransactionTemplate,
+  private val removedEntryRepository: ShelfViewRemovedEntryRepository,
 ) {
   private val whitespacePattern = """\s+""".toRegex()
 
@@ -320,10 +322,13 @@ class SeriesLifecycle(
    * Removes the series and its books from the library. Nothing on disk is
    * touched: the original media library is read-only (SV-1298), so this only
    * soft deletes them, which drops them out of every list the same way a series
-   * whose folder went missing does. The files stay where they are.
+   * whose folder went missing does. The files stay where they are. The URL is
+   * recorded so the scanner leaves the series out until an admin restores it
+   * (ADR-0023).
    */
   fun removeSeriesFromLibrary(series: Series) {
     logger.info { "Remove series from library: seriesId=${series.id}" }
+    removedEntryRepository.add(series.libraryId, series.url.toString())
     bookRepository
       .findAllBySeriesId(series.id)
       .forEach { bookLifecycle.removeBookFromLibrary(it) }

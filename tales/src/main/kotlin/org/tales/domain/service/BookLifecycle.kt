@@ -36,6 +36,7 @@ import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.tales.infrastructure.hash.Hasher
 import org.tales.infrastructure.image.ImageConverter
 import org.tales.infrastructure.image.ImageType
+import org.tales.shelfview.domain.persistence.ShelfViewRemovedEntryRepository
 import java.io.File
 import java.net.URLDecoder
 import java.time.LocalDateTime
@@ -61,6 +62,7 @@ class BookLifecycle(
   private val talesSettingsProvider: TalesSettingsProvider,
   @Qualifier("pdfImageType")
   private val pdfImageType: ImageType,
+  private val removedEntryRepository: ShelfViewRemovedEntryRepository,
 ) {
   private val resizeTargetFormat = ImageType.JPEG
 
@@ -527,10 +529,12 @@ class BookLifecycle(
    * Removes the book from the library. Nothing on disk is touched: the original
    * media library is read-only (SV-1298), so this only soft deletes the book,
    * which drops it out of every list the same way a book whose file went
-   * missing does. The file stays where it is.
+   * missing does. The file stays where it is. The URL is recorded so the
+   * scanner leaves the book out until an admin restores it (ADR-0023).
    */
   fun removeBookFromLibrary(book: Book) {
     logger.info { "Remove book from library: bookId=${book.id}" }
+    removedEntryRepository.add(book.libraryId, book.url.toString())
     softDeleteMany(listOf(book))
   }
 }

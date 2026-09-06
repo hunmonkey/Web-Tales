@@ -35,6 +35,7 @@ import org.tales.infrastructure.configuration.TalesSettingsProvider
 import org.tales.infrastructure.hash.Hasher
 import org.tales.language.notEquals
 import org.tales.language.toIndexedMap
+import org.tales.shelfview.domain.persistence.ShelfViewRemovedEntryRepository
 import java.nio.file.Paths
 import java.time.LocalDateTime
 import kotlin.time.measureTime
@@ -65,6 +66,7 @@ class LibraryContentLifecycle(
   private val thumbnailBookRepository: ThumbnailBookRepository,
   private val eventPublisher: ApplicationEventPublisher,
   private val thumbnailSeriesRepository: ThumbnailSeriesRepository,
+  private val removedEntryRepository: ShelfViewRemovedEntryRepository,
 ) {
   fun scanRootFolder(
     library: Library,
@@ -100,11 +102,18 @@ class LibraryContentLifecycle(
         }
       }
 
+      // Entries an admin removed from the library are dropped from the scan
+      // result up front (ADR-0023), so they are never re-added or restored. A
+      // series whose books were all removed one by one goes with them.
+      val removedUrls = removedEntryRepository.findUrls(library.id)
       val scannedSeries =
         scanResult
           .series
-          .map { (series, books) ->
-            series.copy(libraryId = library.id) to books.map { it.copy(libraryId = library.id) }
+          .mapNotNull { (series, books) ->
+            if (series.url.toString() in removedUrls) return@mapNotNull null
+            val keptBooks = books.filter { it.url.toString() !in removedUrls }
+            if (keptBooks.isEmpty() && books.isNotEmpty()) return@mapNotNull null
+            series.copy(libraryId = library.id) to keptBooks.map { it.copy(libraryId = library.id) }
           }.toMap()
 
       // delete series that don't exist anymore
