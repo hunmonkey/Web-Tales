@@ -158,7 +158,7 @@ class ShelfViewPositionController(
         ?.intValue()
         ?.plus(1)
         ?: return
-    if (page !in 1..media.pageCount) return
+    if (page !in 1..shelfViewPageCount(media)) return
 
     val domainBook = bookRepository.findByIdOrNull(book.id) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
     bookLifecycle.markReadProgress(domainBook, principal.user, page)
