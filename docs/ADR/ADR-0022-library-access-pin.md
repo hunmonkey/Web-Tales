@@ -63,7 +63,9 @@ unlocked library ids in the HTTP session, and enforce by swapping the request's
   guesser lock everyone out and handed out 5 fresh tries every 30 seconds).
   After 5 consecutive failures the user waits 30 seconds, and every further
   failure doubles the wait up to one hour. In-memory, reset only on a correct
-  PIN or a PIN change.
+  PIN or a PIN change. Each attempt is counted before the PIN is compared, in
+  the same atomic step as the wait check (SV-1313), so parallel requests cannot
+  all pass the check while the first BCrypt comparison is still running.
 
 ## Consequences
 
