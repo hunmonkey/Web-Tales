@@ -160,6 +160,52 @@ describe('MixedContentAdapter', () => {
   })
 })
 
+describe('MixedContentAdapter item loading', () => {
+  // image, text, image: the text item in the middle is the one that downloads.
+  const threeItems: ShelfViewManifest = {
+    ...manifest,
+    items: [
+      {...manifest.items![0], itemId: 'image-a', index: 0},
+      {...manifest.items![1], itemId: 'text-item', index: 1},
+      {...manifest.items![0], itemId: 'image-b', index: 2},
+    ],
+  }
+
+  it('moves one item when the page is turned again while the next item is still loading', async () => {
+    const pending: Array<() => void> = []
+    const adapter = new MixedContentAdapter(
+      textManifest => new Promise(resolve => pending.push(() => resolve(textContent(textManifest.contentFingerprint)))),
+      (itemManifest, pageIndex) => `page-${itemManifest.title}-${pageIndex}`,
+      url => ({url, cancel: jest.fn()}),
+    )
+    await adapter.open(threeItems)
+
+    const first = adapter.next()
+    const second = adapter.next()
+    pending.forEach(resolve => resolve())
+    await Promise.all([first, second])
+
+    expect(adapter.getCurrentLocator().itemId).toBe('text-item')
+    expect(adapter.isCurrentText()).toBe(true)
+  })
+
+  it('keeps the current item readable when the next item fails to load', async () => {
+    const adapter = new MixedContentAdapter(
+      async () => {
+        throw new Error('offline')
+      },
+      (itemManifest, pageIndex) => `page-${itemManifest.title}-${pageIndex}`,
+      url => ({url, cancel: jest.fn()}),
+    )
+    await adapter.open(threeItems)
+
+    await expect(adapter.next()).rejects.toThrow('offline')
+
+    expect(adapter.getCurrentLocator().itemId).toBe('image-a')
+    expect(adapter.canGoNext()).toBe(true)
+  })
+})
+
 function createAdapter(): MixedContentAdapter {
   return new MixedContentAdapter(
     async textManifest => textContent(textManifest.contentFingerprint),

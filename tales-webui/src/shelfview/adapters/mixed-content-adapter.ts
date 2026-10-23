@@ -26,6 +26,7 @@ export class MixedContentAdapter implements ReaderAdapter {
   private currentItemIndex = 0
   private currentAdapter: MixedItemAdapter | undefined
   private charsPerPage = 0
+  private openRequestId = 0
 
   constructor(
     private readonly loadTextContent: ShelfViewTextContentLoader,
@@ -90,8 +91,7 @@ export class MixedContentAdapter implements ReaderAdapter {
       await adapter.previous()
       return
     }
-    if (this.currentItemIndex > 0) {
-      await this.openItem(this.currentItemIndex - 1)
+    if (this.currentItemIndex > 0 && await this.openItem(this.currentItemIndex - 1)) {
       await this.goToLastLocationInCurrentItem()
     }
   }
@@ -114,8 +114,7 @@ export class MixedContentAdapter implements ReaderAdapter {
       throw new Error('The mixed locator item type is invalid.')
     }
 
-    await this.openItem(locator.itemIndex)
-    await this.requireCurrentAdapter().goTo(locator.itemLocator)
+    if (await this.openItem(locator.itemIndex)) await this.requireCurrentAdapter().goTo(locator.itemLocator)
   }
 
   async goToCurrentItemContentIndex(contentIndex: number): Promise<void> {
@@ -225,6 +224,7 @@ export class MixedContentAdapter implements ReaderAdapter {
   }
 
   destroy(): void {
+    this.openRequestId += 1
     this.currentAdapter?.destroy()
     this.currentAdapter = undefined
     this.manifest = undefined
@@ -232,25 +232,37 @@ export class MixedContentAdapter implements ReaderAdapter {
     this.currentItemIndex = 0
   }
 
-  private async openItem(itemIndex: number): Promise<void> {
+  /**
+   * The current item stays open until the next one has loaded, so a page turn
+   * made while a text item is still downloading moves from the item on screen,
+   * and a failed load leaves that item readable. Resolves false when a newer
+   * open or destroy() superseded this one, and the item never became current.
+   */
+  private async openItem(itemIndex: number): Promise<boolean> {
     const manifest = this.requireManifest()
     const item = this.items[itemIndex]
     if (!item) throw new Error('The mixed manifest item is unavailable.')
 
-    this.currentAdapter?.destroy()
-    this.currentItemIndex = itemIndex
-
-    if (item.kind === 'FIXED_PAGE_SEQUENCE') {
-      const adapter = new FixedPageAdapter(this.resolvePageUrl, this.preloadPage)
+    const requestId = ++this.openRequestId
+    const adapter = item.kind === 'FIXED_PAGE_SEQUENCE'
+      ? new FixedPageAdapter(this.resolvePageUrl, this.preloadPage)
+      : new TextReflowAdapter(this.loadTextContent)
+    try {
       await adapter.open(toItemManifest(manifest, item))
-      this.currentAdapter = adapter
-      return
+    } catch (e) {
+      adapter.destroy()
+      throw e
+    }
+    if (requestId !== this.openRequestId) {
+      adapter.destroy()
+      return false
     }
 
-    const adapter = new TextReflowAdapter(this.loadTextContent)
-    await adapter.open(toItemManifest(manifest, item))
-    adapter.setPagination(this.charsPerPage)
+    if (adapter instanceof TextReflowAdapter) adapter.setPagination(this.charsPerPage)
+    this.currentAdapter?.destroy()
     this.currentAdapter = adapter
+    this.currentItemIndex = itemIndex
+    return true
   }
 
   /**
