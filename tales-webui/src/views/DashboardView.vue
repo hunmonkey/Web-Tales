@@ -719,8 +719,14 @@ export default Vue.extend({
         // The resume grid has no sideways scroll to page more books in, so the
         // remaining pages are fetched up front. Bounded by how many books are
         // actually in progress; reload() keeps every page already loaded.
+        // loadNext() answers false at once while an overlapping load is already
+        // fetching the next page; retrying it would starve that response and
+        // freeze the tab, so the drain stops and leaves the rest to that load.
         try {
-          while (this.loaderKeepReadingBooks?.hasNextPage) await this.loaderKeepReadingBooks.loadNext()
+          const loader = this.loaderKeepReadingBooks
+          while (loader && loader === this.loaderKeepReadingBooks && loader.hasNextPage && await loader.loadNext()) {
+            // each pass fetches one page
+          }
         } catch (_) {
         }
       })

@@ -140,6 +140,31 @@ describe('DashboardView', () => {
     expect(wrapper.findAll('[data-testid="dashboard-resume-card"]').length).toBe(2)
   })
 
+  it('stops draining Keep Reading when an overlapping load already has the next page in flight', async () => {
+    const wrapper = await mountWithResume()
+    const vm = wrapper.vm as any
+
+    // What a second, overlapping drain meets: a next page exists, but the first
+    // drain is already fetching it, so loadNext() declines at once. The cap only
+    // keeps a regression from hanging the test run instead of failing it.
+    let attempts = 0
+    const loader = {
+      hasNextPage: true,
+      items: [],
+      reload: jest.fn().mockResolvedValue(undefined),
+      loadNext: jest.fn(async () => {
+        attempts += 1
+        if (attempts > 100) loader.hasNextPage = false
+        return false
+      }),
+    }
+    vm.loaderKeepReadingBooks = loader
+    vm.loadAll(true)
+    await flushPromises()
+
+    expect(attempts).toBe(1)
+  })
+
   it('keeps every book that is still in progress, not just the most recent one', async () => {
     const wrapper = mountDashboard({
       getBooksList: jest.fn()
