@@ -110,10 +110,6 @@ class ZipExtractor(
   ): MediaContainerEntry =
     try {
       ensureEntryCanBeRead(zip, entry)
-      // Only the header is read here. TXT, PDF and nested archive entries are
-      // not pages: the mixed-content path holds each to its own limit when it
-      // serves it, so the image ceiling must not fail the whole book.
-      if (!isMixedContentEntry(entry.name) && !isNestedArchiveEntry(entry.name)) ensureEntryWithinImageLimits(entry)
       zip
         .getInputStream(entry)
         .withArchiveByteLimit(archiveProperties.maxImageBytes, "SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE")
@@ -121,8 +117,13 @@ class ZipExtractor(
         .buffered()
         .use { stream ->
           val mediaType = contentDetector.detectMediaType(stream)
+          // Only images become pages, and only the header is read here. A video,
+          // TXT, PDF or nested archive in the same ZIP is not a page, so the image
+          // ceiling must not fail the whole book because of it.
+          val image = contentDetector.isImage(mediaType)
+          if (image) ensureEntryWithinImageLimits(entry)
           val dimension =
-            if (analyzeDimensions && contentDetector.isImage(mediaType))
+            if (analyzeDimensions && image)
               imageAnalyzer.getDimension(stream)
             else
               null
@@ -180,25 +181,33 @@ class ZipExtractor(
   ): MediaContainerEntry? {
     if (innerEntry.name.contains(ZIP_NESTED_ENTRY_SEPARATOR)) return null
     ensureEntryCanBeRead(nestedZip, innerEntry)
-    ensureEntryWithinImageLimits(innerEntry)
 
-    val bytes = nestedZip.readEntryBytes(innerEntry, archiveProperties.maxImageBytes, "SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE", budget)
-    val mediaType = contentDetector.detectMediaType(bytes.inputStream())
-    if (!contentDetector.isImage(mediaType)) return null
+    return nestedZip
+      .getInputStream(innerEntry)
+      .withArchiveByteLimit(archiveProperties.maxImageBytes, "SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE")
+      .withArchiveBudget(budget)
+      .buffered()
+      .use { stream ->
+        // The same rule as a top-level entry: a video or other non-image beside
+        // the pages is skipped, not held to the image ceiling.
+        val mediaType = contentDetector.detectMediaType(stream)
+        if (!contentDetector.isImage(mediaType)) return null
+        ensureEntryWithinImageLimits(innerEntry)
 
-    val dimension =
-      if (analyzeDimensions)
-        imageAnalyzer.getDimension(bytes.inputStream())
-      else
-        null
-    ensureArchiveImageDimension(dimension, archiveProperties)
+        val dimension =
+          if (analyzeDimensions)
+            imageAnalyzer.getDimension(stream)
+          else
+            null
+        ensureArchiveImageDimension(dimension, archiveProperties)
 
-    return MediaContainerEntry(
-      name = compositeEntryName(outerEntry.name, innerEntry.name),
-      mediaType = mediaType,
-      dimension = dimension,
-      fileSize = innerEntry.knownSizeOrNull() ?: bytes.size.toLong(),
-    )
+        MediaContainerEntry(
+          name = compositeEntryName(outerEntry.name, innerEntry.name),
+          mediaType = mediaType,
+          dimension = dimension,
+          fileSize = innerEntry.knownSizeOrNull(),
+        )
+      }
   }
 
   private fun getNestedEntryBytes(

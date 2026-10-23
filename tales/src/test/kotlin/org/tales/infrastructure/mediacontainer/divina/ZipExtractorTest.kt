@@ -154,6 +154,28 @@ class ZipExtractorTest {
   }
 
   @Test
+  fun `given pages beside a video over the image byte limit when parsing for entries then the pages are kept and the video is not a page`(
+    @TempDir directory: Path,
+  ) {
+    // Above what content detection reads from an entry's header, below the video.
+    archiveProperties.maxImageBytes = 100_000
+    val video = mp4Bytes(150_000)
+    val page = pngBytes(10, 12)
+    val flat = directory.resolve("pages-and-video.zip")
+    writeZip(flat, "001.png" to page, "clip.mp4" to video)
+    val nested = directory.resolve("nested-pages-and-video.zip")
+    writeZip(nested, "ch01.cbz" to zipBytes("001.png" to page, "clip.mp4" to video))
+
+    val flatEntries = zipExtractor.getEntries(flat, true)
+    val nestedEntries = zipExtractor.getEntries(nested, true)
+
+    assertThat(flatEntries.map { it.name }).containsExactlyInAnyOrder("001.png", "clip.mp4")
+    assertThat(flatEntries.filter { contentDetector.isImage(it.mediaType.orEmpty()) }.map { it.name }).containsExactly("001.png")
+    assertThat(nestedEntries.map { it.name }).containsExactly("ch01.cbz${ZIP_NESTED_ENTRY_SEPARATOR}001.png")
+    assertThat(nestedEntries.single().dimension).isEqualTo(Dimension(10, 12))
+  }
+
+  @Test
   fun `given zip entry over image byte limit when reading page then rejects before allocation`(
     @TempDir directory: Path,
   ) {
@@ -236,6 +258,13 @@ class ZipExtractorTest {
         }
       }
       output.toByteArray()
+    }
+
+  /** An MP4 `ftyp` box followed by filler, enough for content detection to call it video/mp4. */
+  private fun mp4Bytes(size: Int): ByteArray =
+    ByteArray(size).also { bytes ->
+      val header = byteArrayOf(0, 0, 0, 0x20) + "ftypisom".toByteArray() + byteArrayOf(0, 0, 2, 0) + "isomiso2avc1mp41".toByteArray()
+      header.copyInto(bytes)
     }
 
   private fun pngBytes(
