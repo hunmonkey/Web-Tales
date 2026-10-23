@@ -4,7 +4,10 @@ import com.ninjasquad.springmockk.SpykBean
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.verify
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -23,6 +26,7 @@ import org.tales.domain.model.Dimension
 import org.tales.domain.model.Media
 import org.tales.domain.model.MediaExtensionEpub
 import org.tales.domain.model.MediaType
+import org.tales.domain.model.NoThumbnailFoundException
 import org.tales.domain.model.makeBook
 import org.tales.infrastructure.configuration.TalesProperties
 import org.tales.infrastructure.mediacontainer.ContentDetector
@@ -179,6 +183,31 @@ class BookAnalyzerTest(
       assertThat(media.pages.map { it.dimension }).containsExactly(Dimension(10, 12), Dimension(11, 13), Dimension(12, 14))
       assertThat(media.files).isEmpty()
       assertThat(bookAnalyzer.getPageContent(BookWithMedia(book, media), 2)).isEqualTo(secondPage)
+    }
+
+    @Test
+    fun `given zip with only text and pdf entries when analyzing then it is READY as a mixed-content book without pages`(
+      @TempDir directory: Path,
+    ) {
+      val pdf =
+        ByteArrayOutputStream().use { output ->
+          PDDocument().use { document ->
+            document.addPage(PDPage())
+            document.save(output)
+          }
+          output.toByteArray()
+        }
+      val archive = directory.resolve("mixed.zip")
+      writeZip(archive, "01.txt" to "hello".toByteArray(), "02.pdf" to pdf)
+      val book = Book("book", archive.toUri().toURL(), LocalDateTime.now())
+
+      val media = bookAnalyzer.analyze(book, false)
+
+      assertThat(media.status).isEqualTo(Media.Status.READY)
+      assertThat(media.pageCount).isZero
+      assertThat(media.pages).isEmpty()
+      assertThat(media.files.map { it.fileName }).containsExactlyInAnyOrder("01.txt", "02.pdf")
+      assertThatThrownBy { bookAnalyzer.generateThumbnail(BookWithMedia(book, media)) }.isInstanceOf(NoThumbnailFoundException::class.java)
     }
 
     @Test

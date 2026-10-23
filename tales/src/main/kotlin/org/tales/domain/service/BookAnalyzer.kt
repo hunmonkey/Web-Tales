@@ -2,6 +2,7 @@ package org.tales.domain.service
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
+import org.apache.commons.io.FilenameUtils
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -26,6 +27,7 @@ import org.tales.infrastructure.image.ImageConverter
 import org.tales.infrastructure.image.ImageType
 import org.tales.infrastructure.mediacontainer.ContentDetector
 import org.tales.infrastructure.mediacontainer.divina.DivinaExtractor
+import org.tales.infrastructure.mediacontainer.divina.ZIP_MIXED_CONTENT_EXTENSIONS
 import org.tales.infrastructure.mediacontainer.epub.EpubExtractor
 import org.tales.infrastructure.mediacontainer.epub.epub
 import org.tales.infrastructure.mediacontainer.pdf.PdfExtractor
@@ -204,13 +206,19 @@ class BookAnalyzer(
         .ifEmpty { null }
         ?.joinToString(prefix = "ERR_1007 [", postfix = "]") { it }
 
+    val files = others.map { MediaFile(fileName = it.name, mediaType = it.mediaType, fileSize = it.fileSize) }
+
     if (pages.isEmpty()) {
+      // A ZIP of TXT or PDF entries is a mixed-content book (ADR-0003): the
+      // ShelfView manifest reads those entries itself, so having no image pages
+      // does not make it unreadable.
+      if (mediaType == MediaType.ZIP && others.any { FilenameUtils.getExtension(it.name).lowercase() in ZIP_MIXED_CONTENT_EXTENSIONS }) {
+        return Media(status = Media.Status.READY, pageCount = 0, files = files, comment = entriesErrorSummary)
+      }
       logger.warn { "Book does not contain any pages: bookId=${book.id}" }
       return Media(status = Media.Status.ERROR, comment = "ERR_1006")
     }
     logger.info { "Book has ${pages.size} pages" }
-
-    val files = others.map { MediaFile(fileName = it.name, mediaType = it.mediaType, fileSize = it.fileSize) }
 
     return Media(status = Media.Status.READY, pages = pages, pageCount = pages.size, files = files, comment = entriesErrorSummary)
   }
@@ -346,21 +354,11 @@ class BookAnalyzer(
       null -> null
     }
 
-  private fun DivinaExtractor.getPoster(book: BookWithMedia): TypedBytes =
-    this
-      .getEntryStream(
-        book.book.path,
-        book.media.pages
-          .first()
-          .fileName,
-      ).let {
-        TypedBytes(
-          it,
-          book.media.pages
-            .first()
-            .mediaType,
-        )
-      }
+  private fun DivinaExtractor.getPoster(book: BookWithMedia): TypedBytes? {
+    // A mixed-content ZIP of only TXT or PDF entries has no image to show.
+    val firstPage = book.media.pages.firstOrNull() ?: return null
+    return TypedBytes(getEntryStream(book.book.path, firstPage.fileName), firstPage.mediaType)
+  }
 
   @Throws(
     MediaNotReadyException::class,

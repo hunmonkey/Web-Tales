@@ -139,6 +139,21 @@ class ZipExtractorTest {
   }
 
   @Test
+  fun `given mixed content entries over the image byte limit when parsing for entries then the archive is still listed`(
+    @TempDir directory: Path,
+  ) {
+    // Above what content detection reads from an entry's header, below the entries.
+    archiveProperties.maxImageBytes = 100_000
+    val large = ByteArray(150_000) { 'a'.code.toByte() }
+    val archive = directory.resolve("mixed-large.zip")
+    writeZip(archive, "01.txt" to large, "02.pdf" to large, "03.cbz" to zipBytes("001.png" to large))
+
+    val entries = zipExtractor.getEntries(archive, false)
+
+    assertThat(entries.map { it.name }).containsExactlyInAnyOrder("01.txt", "02.pdf", "03.cbz")
+  }
+
+  @Test
   fun `given zip entry over image byte limit when reading page then rejects before allocation`(
     @TempDir directory: Path,
   ) {

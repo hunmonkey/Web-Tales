@@ -32,6 +32,9 @@ private val logger = KotlinLogging.logger {}
 
 internal const val ZIP_NESTED_ENTRY_SEPARATOR = "\u001F"
 
+/** Entries that make a ZIP a mixed-content book, read by ShelfView rather than as pages (ADR-0003). */
+internal val ZIP_MIXED_CONTENT_EXTENSIONS = setOf("txt", "pdf")
+
 @Service
 class ZipExtractor(
   private val contentDetector: ContentDetector,
@@ -107,7 +110,10 @@ class ZipExtractor(
   ): MediaContainerEntry =
     try {
       ensureEntryCanBeRead(zip, entry)
-      ensureEntryWithinImageLimits(entry)
+      // Only the header is read here. TXT, PDF and nested archive entries are
+      // not pages: the mixed-content path holds each to its own limit when it
+      // serves it, so the image ceiling must not fail the whole book.
+      if (!isMixedContentEntry(entry.name) && !isNestedArchiveEntry(entry.name)) ensureEntryWithinImageLimits(entry)
       zip
         .getInputStream(entry)
         .withArchiveByteLimit(archiveProperties.maxImageBytes, "SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE")
@@ -336,7 +342,7 @@ class ZipExtractor(
     block: (ZipFile) -> T,
   ): T = withPreflightedZip(path, archiveProperties, block = block)
 
-  private fun isMixedContentEntry(name: String): Boolean = entryExtension(name) in MIXED_CONTENT_EXTENSIONS
+  private fun isMixedContentEntry(name: String): Boolean = entryExtension(name) in ZIP_MIXED_CONTENT_EXTENSIONS
 
   private fun isNestedArchiveEntry(name: String): Boolean = entryExtension(name) in NESTED_ARCHIVE_EXTENSIONS
 
@@ -403,7 +409,6 @@ class ZipExtractor(
   private fun ZipArchiveEntry.knownCompressedSizeOrNull(): Long? = compressedSize.takeIf { it != ArchiveEntry.SIZE_UNKNOWN }
 
   private companion object {
-    val MIXED_CONTENT_EXTENSIONS = setOf("txt", "pdf")
     val NESTED_ARCHIVE_EXTENSIONS = setOf("zip", "cbz")
   }
 }
