@@ -71,12 +71,12 @@ class ShelfViewZipMixedContentProvider(
       .maximumSize(64)
       .expireAfterAccess(30, TimeUnit.MINUTES)
       .executor { command -> command.run() }
-      .removalListener<String, Path> { _, path, _ ->
-        path?.let {
-          pdfExtractor.evictCachedDocument(it)
-          pdfCacheFiles.delete(it)
+      .removalListener<String, CachedPdf> { _, cached, _ ->
+        cached?.let {
+          pdfExtractor.evictCachedDocument(it.path)
+          pdfCacheFiles.delete(it.path)
         }
-      }.build<String, Path>()
+      }.build<String, CachedPdf>()
 
   @PreDestroy
   fun closePdfCache() {
@@ -479,14 +479,7 @@ class ShelfViewZipMixedContentProvider(
     bookContentFingerprint: String,
     itemId: String,
     budget: ArchiveReadBudget,
-  ): Int {
-    val pdfPath = cachedPdfPath(zip, entry, bookContentFingerprint, itemId, budget)
-    val pageCount = pdfPageCount(pdfPath)
-    if (pageCount > archiveProperties.maxPdfPages) {
-      throw ArchiveLimitExceededException("SHELFVIEW_PDF_TOO_MANY_PAGES")
-    }
-    return pageCount
-  }
+  ): Int = cachedPdf(zip, entry, bookContentFingerprint, itemId, budget).pageCount
 
   private fun readPdfPage(
     zip: ZipFile,
@@ -497,11 +490,7 @@ class ShelfViewZipMixedContentProvider(
     pageNumber: Int,
     budget: ArchiveReadBudget,
   ): ShelfViewZipPageContent {
-    val pdfPath = cachedPdfPath(zip, entry, bookContentFingerprint, itemId, budget)
-    val pageCount = pdfPageCount(pdfPath)
-    if (pageCount > archiveProperties.maxPdfPages) {
-      throw ArchiveLimitExceededException("SHELFVIEW_PDF_TOO_MANY_PAGES")
-    }
+    val (pdfPath, pageCount) = cachedPdf(zip, entry, bookContentFingerprint, itemId, budget)
     if (pageNumber > pageCount) {
       throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PAGE_NUMBER_INVALID")
     }
@@ -524,31 +513,32 @@ class ShelfViewZipMixedContentProvider(
     )
   }
 
-  private fun cachedPdfPath(
+  private fun cachedPdf(
     zip: ZipFile,
     entry: ZipArchiveEntry,
     bookContentFingerprint: String,
     itemId: String,
     budget: ArchiveReadBudget,
-  ): Path {
+  ): CachedPdf {
     val cacheKey = ShelfViewZipMixedItemIds.itemContentFingerprint(bookContentFingerprint, itemId)
-    pdfCache.getIfPresent(cacheKey)?.let { cachedPath ->
-      if (cachedPath.exists()) return cachedPath
+    pdfCache.getIfPresent(cacheKey)?.let { cached ->
+      if (cached.path.exists()) return cached
       pdfCache.invalidate(cacheKey)
     }
 
     return requireNotNull(
       pdfCache.get(cacheKey) {
-        createCachedPdfPath(zip, entry, budget)
+        createCachedPdf(zip, entry, budget)
       },
     )
   }
 
-  private fun createCachedPdfPath(
+  /** The page count is taken once here, so serving a page does not parse the PDF again just to bound it. */
+  private fun createCachedPdf(
     zip: ZipFile,
     entry: ZipArchiveEntry,
     budget: ArchiveReadBudget,
-  ): Path {
+  ): CachedPdf {
     ensureEntrySizeWithinLimit(entry, archiveProperties.maxPdfBytes, "SHELFVIEW_PDF_TOO_LARGE")
     ensureEntryCanBeRead(zip, entry)
     ensureEntryCompressionRatioWithinLimit(entry)
@@ -559,7 +549,11 @@ class ShelfViewZipMixedContentProvider(
       if (contentDetector.detectMediaType(tempPath) != PDF_MEDIA_TYPE) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "SHELFVIEW_PDF_MIME_MISMATCH")
       }
-      return tempPath
+      val pageCount = pdfPageCount(tempPath)
+      if (pageCount > archiveProperties.maxPdfPages) {
+        throw ArchiveLimitExceededException("SHELFVIEW_PDF_TOO_MANY_PAGES")
+      }
+      return CachedPdf(tempPath, pageCount)
     } catch (ex: ArchiveLimitExceededException) {
       pdfCacheFiles.delete(tempPath)
       throw ex
@@ -692,6 +686,11 @@ class ShelfViewZipMixedContentProvider(
   private data class NestedImagePage(
     val bytes: ByteArray,
     val mediaType: String,
+  )
+
+  private data class CachedPdf(
+    val path: Path,
+    val pageCount: Int,
   )
 
   private companion object {

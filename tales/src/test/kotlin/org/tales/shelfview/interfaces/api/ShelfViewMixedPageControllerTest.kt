@@ -1,5 +1,9 @@
 package org.tales.shelfview.interfaces.api
 
+import io.mockk.every
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.assertj.core.api.Assertions.assertThat
@@ -33,6 +37,7 @@ import org.tales.shelfview.infrastructure.archive.ShelfViewArchiveProperties
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -175,6 +180,35 @@ class ShelfViewMixedPageControllerTest(
         }.andReturn()
 
     assertThat(response.response.contentAsByteArray).isNotEmpty
+  }
+
+  @Test
+  @WithMockCustomUser
+  fun `given a served mixed zip pdf page when getting the next page then the pdf is not parsed again`(
+    @TempDir dir: Path,
+  ) {
+    val pdfBytes = pdfBytes(pageCount = 2)
+    val zip = dir.resolve("mixed-pdf-pages.zip")
+    writeZip(zip, mapOf("two-pages.pdf" to pdfBytes))
+    val book = createBookWithMedia(zip)
+    val itemId = mixedItemId("two-pages.pdf", pdfBytes.size.toLong())
+
+    mockkStatic(Loader::class)
+    try {
+      var loads = 0
+      every { Loader.loadPDF(any<File>()) } answers {
+        loads += 1
+        callOriginal()
+      }
+
+      mockMvc.get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/1").andExpect { status { isOk() } }
+      val loadsAfterFirstPage = loads
+      mockMvc.get("/api/shelfview/v1/books/${book.id}/mixed/$itemId/pages/2").andExpect { status { isOk() } }
+
+      assertThat(loads).isEqualTo(loadsAfterFirstPage)
+    } finally {
+      unmockkStatic(Loader::class)
+    }
   }
 
   @Test
