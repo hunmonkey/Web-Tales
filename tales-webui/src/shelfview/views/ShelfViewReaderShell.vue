@@ -2141,6 +2141,7 @@ const SHELFVIEW_TEXT_FORMAT: ShelfViewPreferenceFormat = 'TEXT_REFLOW'
 const SHELFVIEW_GLOBAL_SCOPE_ID = 'GLOBAL'
 const POSITION_SAVE_DEBOUNCE_MS = 2000
 const TEXT_SEARCH_DEBOUNCE_MS = 250
+const TEXT_SCROLL_SETTLE_MS = 150
 const PREFERENCE_SAVE_DEBOUNCE_MS = 600
 const SLIDESHOW_INTERVAL_MS = 5000
 const FIXED_PAGE_WHEEL_SCALE_STEP = 10
@@ -2264,6 +2265,7 @@ export default Vue.extend({
     selectionRect: undefined as {top: number, left: number} | undefined,
     appliedCharsPerPage: undefined as number | undefined,
     scrollFrameHandle: undefined as number | undefined,
+    textScrollTimer: undefined as number | undefined,
     viewportFrameHandle: undefined as number | undefined,
     readerPointerTapStart: undefined as ShelfViewPointerTapStart | undefined,
     fixedPagePanStart: undefined as ShelfViewPanStart | undefined,
@@ -2637,7 +2639,7 @@ export default Vue.extend({
           ? this.textAdapter.canGoPreviousPage()
           : this.textAdapter.canGoPrevious()
       }
-      return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle)
+      return !!this.adapter && shelfViewCanGoPrevious(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle, this.widePageIndexSet)
     },
     canGoNext(): boolean {
       if (this.mixedContentAdapter) return this.mixedContentAdapter.canGoNext()
@@ -2646,7 +2648,10 @@ export default Vue.extend({
           ? this.textAdapter.canGoNextPage()
           : this.textAdapter.canGoNext()
       }
-      return !!this.adapter && shelfViewCanGoNext(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle)
+      return !!this.adapter && shelfViewCanGoNext(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle, this.widePageIndexSet)
+    },
+    widePageIndexSet(): ReadonlySet<number> {
+      return new Set(this.widePageIndexes)
     },
     rtlAvailable(): boolean {
       return !!this.manifest?.capabilities.rtl
@@ -2660,7 +2665,7 @@ export default Vue.extend({
         this.readerLayout,
         this.readingDirection,
         this.fixedPageCoverSingle,
-        new Set(this.widePageIndexes),
+        this.widePageIndexSet,
       )
         .map(pageIndex => ({
           pageIndex,
@@ -3489,7 +3494,7 @@ export default Vue.extend({
         return
       }
 
-      await this.goToPageIndex(shelfViewPreviousPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle))
+      await this.goToPageIndex(shelfViewPreviousPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle, this.widePageIndexSet))
     },
     async nextPage() {
       if (!this.adapter) return
@@ -3522,7 +3527,7 @@ export default Vue.extend({
         return
       }
 
-      await this.goToPageIndex(shelfViewNextPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle))
+      await this.goToPageIndex(shelfViewNextPageIndex(this.currentPageIndex, this.pagesCount, this.readerLayout, this.fixedPageCoverSingle, this.widePageIndexSet))
     },
     async goToPageIndex(pageIndex: number) {
       if (!this.adapter) return
@@ -3913,7 +3918,7 @@ export default Vue.extend({
       return undefined
     },
     schedulePositionSave() {
-      if (!this.adapter || !this.currentLocator || this.bookFinished) return
+      if (!this.adapter || !this.currentLocator || this.bookFinished || this.readerIncognito) return
 
       if (this.positionSaveTimer !== undefined) window.clearTimeout(this.positionSaveTimer)
       this.setReaderStateStatus('PENDING', this.$t('shelfview_reader.status_saving') as string)
@@ -3946,7 +3951,7 @@ export default Vue.extend({
         window.clearTimeout(this.positionSaveTimer)
         this.positionSaveTimer = undefined
       }
-      if (!this.adapter || !this.currentLocator || this.bookFinished || this.browserOffline()) return false
+      if (!this.adapter || !this.currentLocator || this.bookFinished || this.readerIncognito || this.browserOffline()) return false
 
       return this.$shelfViewState.savePositionOnUnload(this.bookId, {
         locator: this.currentLocator,
@@ -3960,8 +3965,9 @@ export default Vue.extend({
       }
       // A finished book must not be given a position again: the save mirrors
       // into Tales read progress as unfinished, which would put the book back
-      // into keep reading right after it was finished (SV-1282).
-      if (!this.adapter || !this.currentLocator || this.bookFinished) return
+      // into keep reading right after it was finished (SV-1282). Incognito
+      // reading records no progress at all, for the same reason.
+      if (!this.adapter || !this.currentLocator || this.bookFinished || this.readerIncognito) return
       if (this.browserOffline()) {
         this.setReaderStateStatus('OFFLINE', this.$t('shelfview_reader.status_offline') as string)
         return
@@ -4028,6 +4034,10 @@ export default Vue.extend({
       if (this.textSearchTimer !== undefined) {
         window.clearTimeout(this.textSearchTimer)
         this.textSearchTimer = undefined
+      }
+      if (this.textScrollTimer !== undefined) {
+        window.clearTimeout(this.textScrollTimer)
+        this.textScrollTimer = undefined
       }
       if (typeof window.cancelAnimationFrame === 'function') {
         if (this.scrollFrameHandle !== undefined) window.cancelAnimationFrame(this.scrollFrameHandle)
@@ -5536,10 +5546,21 @@ export default Vue.extend({
     /**
      * Scroll fires far faster than the screen repaints, and the work behind it
      * measures every paragraph or page element in the document. Collapsing the
-     * bursts into one frame keeps a long TXT and a long comic scrolling smoothly
-     * without changing what the reader ends up looking at.
+     * bursts into one frame keeps a long comic scrolling smoothly without
+     * changing what the reader ends up looking at. Text waits until the
+     * scrolling pauses instead: continuous text renders the whole book, and the
+     * character offset changes on nearly every frame, so following it frame by
+     * frame re-rendered every paragraph many times a second.
      */
     onReaderStageScroll() {
+      if (this.textAdapter || this.mixedContentAdapter?.isCurrentText()) {
+        if (this.textScrollTimer !== undefined) window.clearTimeout(this.textScrollTimer)
+        this.textScrollTimer = window.setTimeout(() => {
+          this.textScrollTimer = undefined
+          this.applyReaderStageScroll()
+        }, TEXT_SCROLL_SETTLE_MS)
+        return
+      }
       if (this.scrollFrameHandle !== undefined) return
       if (typeof window.requestAnimationFrame !== 'function') {
         this.applyReaderStageScroll()

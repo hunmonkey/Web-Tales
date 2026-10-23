@@ -104,17 +104,10 @@ export function shelfViewVisiblePageIndexes(
   }
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
-  if (layout === 'SINGLE_PAGE') return [current]
-  if (layout === 'DOUBLE_PAGE' && coverSingle && current === 0) return [0]
+  if (layout !== 'DOUBLE_PAGE') return [current]
 
-  const candidate = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
-  const spreadStart = widePageIndexes.has(current) || (candidate !== current && widePageIndexes.has(candidate))
-    ? current
-    : candidate
-  if (widePageIndexes.has(spreadStart)) return [spreadStart]
-
-  const spread = [spreadStart]
-  if (spreadStart + 1 < normalizedPageCount && !widePageIndexes.has(spreadStart + 1)) spread.push(spreadStart + 1)
+  const {start, end} = doublePageSpread(current, normalizedPageCount, coverSingle, widePageIndexes)
+  const spread = end > start ? [start, end] : [start]
 
   return readingDirection === 'RTL' ? spread.reverse() : spread
 }
@@ -124,16 +117,15 @@ export function shelfViewSpreadStartPageIndex(
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
   coverSingle = false,
+  widePageIndexes: ReadonlySet<number> = new Set(),
 ): number {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return 0
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
   if (layout !== 'DOUBLE_PAGE') return current
-  if (coverSingle && current === 0) return 0
-  if (coverSingle) return current - ((current - 1) % 2)
 
-  return current - (current % 2)
+  return doublePageSpread(current, normalizedPageCount, coverSingle, widePageIndexes).start
 }
 
 export function shelfViewNextPageIndex(
@@ -141,15 +133,16 @@ export function shelfViewNextPageIndex(
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
   coverSingle = false,
+  widePageIndexes: ReadonlySet<number> = new Set(),
 ): number {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return 0
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
-  const step = layout === 'DOUBLE_PAGE' ? 2 : 1
-  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
-  const target = layout === 'DOUBLE_PAGE' && coverSingle && spreadStart === 0 ? 1 : spreadStart + step
-  return target < normalizedPageCount ? target : spreadStart
+  if (layout !== 'DOUBLE_PAGE') return current + 1 < normalizedPageCount ? current + 1 : current
+
+  const {start, end} = doublePageSpread(current, normalizedPageCount, coverSingle, widePageIndexes)
+  return end + 1 < normalizedPageCount ? end + 1 : start
 }
 
 export function shelfViewPreviousPageIndex(
@@ -157,15 +150,16 @@ export function shelfViewPreviousPageIndex(
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
   coverSingle = false,
+  widePageIndexes: ReadonlySet<number> = new Set(),
 ): number {
   const normalizedPageCount = normalizePageCount(pageCount)
   if (normalizedPageCount < 1) return 0
 
   const current = clampPageIndex(currentPageIndex, normalizedPageCount)
-  const step = layout === 'DOUBLE_PAGE' ? 2 : 1
-  const spreadStart = shelfViewSpreadStartPageIndex(current, normalizedPageCount, layout, coverSingle)
-  const target = layout === 'DOUBLE_PAGE' && coverSingle && spreadStart <= 1 ? 0 : spreadStart - step
-  return target >= 0 ? target : spreadStart
+  if (layout !== 'DOUBLE_PAGE') return current > 0 ? current - 1 : current
+
+  const {previousStart, start} = doublePageSpread(current, normalizedPageCount, coverSingle, widePageIndexes)
+  return previousStart ?? start
 }
 
 export function shelfViewCanGoNext(
@@ -173,8 +167,10 @@ export function shelfViewCanGoNext(
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
   coverSingle = false,
+  widePageIndexes: ReadonlySet<number> = new Set(),
 ): boolean {
-  return shelfViewNextPageIndex(currentPageIndex, pageCount, layout, coverSingle) > shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout, coverSingle)
+  return shelfViewNextPageIndex(currentPageIndex, pageCount, layout, coverSingle, widePageIndexes) >
+    shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout, coverSingle, widePageIndexes)
 }
 
 export function shelfViewCanGoPrevious(
@@ -182,8 +178,35 @@ export function shelfViewCanGoPrevious(
   pageCount: number,
   layout: ShelfViewFixedPageLayout,
   coverSingle = false,
+  widePageIndexes: ReadonlySet<number> = new Set(),
 ): boolean {
-  return shelfViewPreviousPageIndex(currentPageIndex, pageCount, layout, coverSingle) < shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout, coverSingle)
+  return shelfViewPreviousPageIndex(currentPageIndex, pageCount, layout, coverSingle, widePageIndexes) <
+    shelfViewSpreadStartPageIndex(currentPageIndex, pageCount, layout, coverSingle, widePageIndexes)
+}
+
+/**
+ * Spreads are laid out from the first page onwards, so a wide page shifts the
+ * pairing of every spread after it, and every page belongs to exactly one
+ * spread. Pairing by parity instead would skip or repeat the page next to it.
+ */
+function doublePageSpread(
+  current: number,
+  pageCount: number,
+  coverSingle: boolean,
+  widePageIndexes: ReadonlySet<number>,
+): {previousStart?: number, start: number, end: number} {
+  let previousStart: number | undefined
+  let start = 0
+  for (;;) {
+    const alone = (coverSingle && start === 0) ||
+      widePageIndexes.has(start) ||
+      start + 1 >= pageCount ||
+      widePageIndexes.has(start + 1)
+    const end = alone ? start : start + 1
+    if (current <= end) return {previousStart, start, end}
+    previousStart = start
+    start = end + 1
+  }
 }
 
 function normalizePageCount(pageCount: number): number {

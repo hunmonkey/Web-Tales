@@ -24,6 +24,26 @@ describe('ShelfView wide page spreads', () => {
     // Without the hint the pairing is unchanged.
     expect(shelfViewVisiblePageIndexes(2, 6, 'DOUBLE_PAGE', 'LTR')).toEqual([2, 3])
   })
+
+  it.each([
+    {wide: [2], pageCount: 6, coverSingle: false, spreads: [[0, 1], [2], [3, 4], [5]]},
+    {wide: [3], pageCount: 6, coverSingle: false, spreads: [[0, 1], [2], [3], [4, 5]]},
+    {wide: [4], pageCount: 7, coverSingle: true, spreads: [[0], [1, 2], [3], [4], [5, 6]]},
+  ])('turns through every page exactly once across wide pages $wide', ({wide, pageCount, coverSingle, spreads}) => {
+    const wideSet = new Set(wide)
+    const walk = (start: number, turn: typeof shelfViewNextPageIndex, canTurn: typeof shelfViewCanGoNext) => {
+      const seen = [shelfViewVisiblePageIndexes(start, pageCount, 'DOUBLE_PAGE', 'LTR', coverSingle, wideSet)]
+      let current = start
+      while (canTurn(current, pageCount, 'DOUBLE_PAGE', coverSingle, wideSet) && seen.length <= pageCount) {
+        current = turn(current, pageCount, 'DOUBLE_PAGE', coverSingle, wideSet)
+        seen.push(shelfViewVisiblePageIndexes(current, pageCount, 'DOUBLE_PAGE', 'LTR', coverSingle, wideSet))
+      }
+      return seen
+    }
+
+    expect(walk(0, shelfViewNextPageIndex, shelfViewCanGoNext)).toEqual(spreads)
+    expect(walk(pageCount - 1, shelfViewPreviousPageIndex, shelfViewCanGoPrevious)).toEqual([...spreads].reverse())
+  })
 })
 
 describe('ShelfView fixed page view helpers', () => {

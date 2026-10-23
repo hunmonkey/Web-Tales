@@ -277,6 +277,13 @@ async function flushAnimationFrame() {
   await Vue.nextTick()
 }
 
+/** Text takes its scroll position once the scrolling pauses (150 ms). */
+async function flushTextScrollSettle() {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  await flushPromises()
+  await Vue.nextTick()
+}
+
 function setReaderStageRect(wrapper: Wrapper<Vue>) {
   const stage = wrapper.find('[data-testid="shelfview-reader-stage"]')
   Object.defineProperty(stage.element, 'getBoundingClientRect', {
@@ -1221,7 +1228,7 @@ describe('ShelfViewReaderShell', () => {
     paragraphs[2].element.getBoundingClientRect = jest.fn(() => ({top: 120, bottom: 220, left: 0, right: 320, width: 320, height: 100} as DOMRect))
 
     await (wrapper.vm as any).onReaderStageScroll()
-    await flushAnimationFrame()
+    await flushTextScrollSettle()
 
     expect((wrapper.vm as any).currentLocator).toMatchObject({
       kind: 'TEXT',
@@ -1229,6 +1236,30 @@ describe('ShelfViewReaderShell', () => {
       characterOffset: Math.floor(textContent.paragraphs[1].length / 2),
     })
     expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('shelfview_reader.status_saving')
+  })
+
+  it('measures the text position once the scrolling pauses, not on every scroll event', async () => {
+    const wrapper = mountShell({getManifest: jest.fn().mockResolvedValue(textManifest)})
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await chooseControlOption(wrapper, 'shelfview-reader-layout-toggle', 'shelfview-reader-layout-option-CONTINUOUS_SCROLL')
+    await flushPromises()
+    await Vue.nextTick()
+
+    const stage = wrapper.find('[data-testid="shelfview-reader-stage"]').element as HTMLElement
+    stage.getBoundingClientRect = jest.fn(() => ({top: 0, bottom: 480, left: 0, right: 320, width: 320, height: 480} as DOMRect))
+    const firstParagraph = wrapper.find('[data-testid="shelfview-reader-text-paragraph"]').element as HTMLElement
+    const firstParagraphRect = jest.fn(() => ({top: -220, bottom: -120, left: 0, right: 320, width: 320, height: 100} as DOMRect))
+    firstParagraph.getBoundingClientRect = firstParagraphRect
+
+    for (let event = 0; event < 5; event++) (wrapper.vm as any).onReaderStageScroll()
+    await flushAnimationFrame()
+    expect(firstParagraphRect).not.toHaveBeenCalled()
+
+    await flushTextScrollSettle()
+    expect(firstParagraphRect).toHaveBeenCalledTimes(1)
   })
 
   it('uses the saved character offset when restoring text scroll position after display changes', async () => {
@@ -3190,6 +3221,28 @@ describe('ShelfViewReaderShell', () => {
       progression: 1,
     })
     expect(wrapper.find('[data-testid="shelfview-reader-sync-status"]').text()).toBe('shelfview_reader.status_saved')
+  })
+
+  it('saves no position while reading incognito, on page turns or on the way out', async () => {
+    const savePosition = jest.fn().mockResolvedValue({})
+    const savePositionOnUnload = jest.fn().mockReturnValue(true)
+    const wrapper = mountShell({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+      shelfViewState: {savePosition, savePositionOnUnload},
+      routeQuery: {incognito: 'true'},
+    })
+
+    await flushPromises()
+    await Vue.nextTick()
+
+    await wrapper.find('[data-testid="shelfview-reader-next"]').trigger('click')
+    await flushPromises()
+    await (wrapper.vm as any).flushPositionSave()
+    expect((wrapper.vm as any).flushPositionSaveOnUnload()).toBe(false)
+
+    expect((wrapper.vm as any).positionSaveTimer).toBeUndefined()
+    expect(savePosition).not.toHaveBeenCalled()
+    expect(savePositionOnUnload).not.toHaveBeenCalled()
   })
 
   it('renders double page spreads and keeps the current location in the spread', async () => {
