@@ -1941,3 +1941,37 @@ Group 3 - wasted work:
 - Comments that narrate history or no longer match the code, and unused code
   (`talesHistory` plugin, `ZipFileUtils.getZipEntryBytes`, six repository
   delete methods), are listed in the audit report rather than removed.
+
+## ZIP books that fail analysis, 2026-10-23
+
+Owner report after the SV-1304..SV-1316 deploy: archives holding pictures and
+videos seem to fail. A read-only census of the 136 live ZIP books in ERROR on
+production (entry extensions and sizes from the central directory, no paths
+printed) and probes of three copied samples against the current analyzer
+found these groups:
+
+- [x] SV-1317 Pictures beside videos (5 books, ERR_1008; videos of
+  24 MB-1.7 GB). Analysis held every entry to the 50 MB image ceiling, so one
+  video failed the whole book; the nested-archive path did the same and read
+  each inner entry fully before checking it was an image. Both now detect the
+  type from the header first and apply the image limits only to images. A real
+  95-entry sample went from `SHELFVIEW_ARCHIVE_ENTRY_TOO_LARGE` to 84 pages.
+  This replaces SV-1310's extension list (TXT/PDF/nested archives are simply
+  not images).
+- ZIPs of ZIPs (115 books, ERR_1006, analyzed 2026-08-24). The current
+  analyzer reads a real sample fine (158 pages), so these need a re-analysis
+  only.
+- TXT/PDF combinations (5 books, ERR_1006): SV-1309 covers them once
+  re-analyzed.
+- [ ] One book fails the 100x compression-ratio guard on a single 62 KB
+  picture that compresses to 611 bytes (a blank page). The guard has no
+  minimum size, so a harmless tiny entry fails the book. Candidate: skip the
+  ratio check below a grace size (Apache POI uses 100 KB). Needs an owner
+  decision because it loosens an archive-bomb control.
+- [ ] One book is high-resolution scans of about 134 megapixels per page
+  (10019 x 13360), over `maxImagePixels` (100 M). Raising it costs roughly
+  0.5 GB of heap per decoded page; an owner decision, not a defect.
+- Three files begin with a ZIP local header but have no end-of-central-
+  directory record: truncated copies or downloads. Not fixable in code;
+  re-copy the files.
+- Unsupported formats: 7z inside ZIP (4 books), EGG (1 book).
