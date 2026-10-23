@@ -1837,3 +1837,107 @@ clean before the sweep; every shelfview endpoint had its authorization check.
 - `ShelfViewReaderShell.vue` is 7,406 lines. Splitting it is a real
   improvement but not a defect; it needs its own ticket and a plan.
 - `relock` and `removePin` answer 204 for an unknown library id. Harmless.
+
+## Error, comment and performance audit, 2026-10-23
+
+Owner asked for a sweep of errors, needless comments and wasted work, then to
+fix groups 1, 2 and 3 of the findings in order. Before any change `tsc`, the
+shelfview ESLint run and a grep for leftover `console.log`/`TODO`/commented-out
+code were clean. Seven parallel reviews covered the fork's own code (shelfview
+backend and frontend, and the fork's changes inside upstream files); the
+findings below were re-read against the code before being fixed.
+
+Group 1 - defects users hit directly:
+
+- [x] SV-1304 A PDF whose outline links an item back into a list already
+  walked (A -> B -> C -> B) spun the manifest request forever: PDFBox's outline
+  iterator only stops on returning to the first sibling, and the 500-item cap
+  never stopped the top-level loop. Every outline item is now visited once.
+- [x] SV-1305 The Keep Reading drain (`while (hasNextPage) await loadNext()`)
+  froze the tab when two dashboard loads overlapped: `loadNext()` answers
+  false at once while the other load fetches the page, and retrying it starved
+  that response. The drain stops when `loadNext()` declines or the loader is
+  replaced.
+- [x] SV-1306 Incognito reading still saved positions, and the server mirrors a
+  page position into read progress, so the book showed up in Keep Reading. All
+  three position-save paths now skip incognito.
+- [x] SV-1307 Double-page next/previous paired pages by parity while the
+  visible spread honoured wide pages, so the page beside a wide page was
+  skipped (or repeated further on). Spreads are now laid out from the first
+  page, and visible, next, previous and spread start all use that layout.
+- [x] SV-1308 Authentication activity was stored in local server time but read
+  as UTC, so with `TZ=Asia/Seoul` every login showed nine hours late. It is
+  stored in UTC. Rows written before the fix keep the old offset until the
+  30-day retention cleanup or a clear-all removes them.
+
+Group 2 - mixed ZIP, reader and server correctness:
+
+- [x] SV-1309 A ZIP holding only TXT and/or PDF entries was analyzed as
+  ERR_1006 ("no pages") and could never open. It is now READY with zero image
+  pages and the ShelfView mixed manifest reads it; the poster lookup returns
+  "no thumbnail" instead of failing on `pages.first()`. Books already marked
+  ERR_1006 need a re-analysis.
+- [x] SV-1310 ZIP analysis applied the 50 MB image ceiling to TXT, PDF and
+  nested archive entries, so one 60 MB PDF failed the whole book (ERR_1008)
+  even though the mixed path accepts PDFs up to 100 MB. Those entries are now
+  exempt at analysis (only their header is read) and keep their own limits
+  when served. Affected books need a re-analysis.
+- [x] SV-1311 The "WebGL sharpen" filter drew pages upside down: the texture
+  coordinates already map the image's first row to the top, and
+  `UNPACK_FLIP_Y_WEBGL` flipped it again.
+- [x] SV-1312 `MixedContentAdapter` destroyed the current item before the next
+  one loaded, so a second page turn during a TXT download skipped an item and
+  a failed load left a dead adapter. The next item now opens first, and a
+  superseded or failed open leaves the current item in place.
+- [x] SV-1313 The PIN throttle checked "is this user waiting" and recorded the
+  failure in separate steps around a ~100 ms BCrypt comparison, so parallel
+  requests all passed the check (20 of 20 in a probe). The attempt is now
+  counted atomically with the check before the comparison. ADR-0022 amended.
+- [x] SV-1314 The day-long image Cache-Control was set before the handler ran
+  and stayed on error responses, so a passing 404 on a page or thumbnail stuck
+  in the browser for a day. Every exception-resolved response now gets
+  `no-store`; served images keep the day-long policy. The BookController 304
+  test had asserted the image policy on what was in fact a 404 and now asserts
+  `no-store`.
+
+Group 3 - wasted work:
+
+- [x] SV-1315 Every mixed-ZIP PDF page request parsed the whole PDF again just
+  to count its pages, undoing the SV-1287 document cache. The count is taken
+  once when the PDF is extracted and cached with it.
+- [x] SV-1316 Continuous TXT measured every paragraph and re-rendered the whole
+  book on almost every scroll frame, because the character offset changes per
+  frame. Text now takes its scroll position once scrolling pauses (150 ms);
+  fixed pages still follow frame by frame.
+
+### Found and not fixed in this pass
+
+- `ShelfViewLibraryLockFilter` matches `requestURI`, which includes the
+  servlet context path; with `server.servlet.context-path` set, PIN locks
+  stop applying. Production runs at `/`. Use `servletPath`.
+- Bookmark and highlight locators are stored as the client sent them (unknown
+  fields included) and bookmark label/note have no length cap.
+- `EpubExtractor.readEntryBytes` reads EPUB resources with an unbounded
+  `readBytes()`; the SV-1272 byte and ratio limits do not cover it.
+- Reader: a portrait phone's forced single page is saved as the book's layout
+  (contradicting the `doublePageFitsScreen` comment); canvas filters skip wide
+  page detection and reuse a canvas across WebGL/2D modes; the selection
+  toolbar overflows the right edge above phone width; continuous scroll puts
+  pages past the twelfth back into the pending style; ArrowRight on the end
+  prompt means "next book" even in RTL; position and preference flushes send
+  requests when nothing changed (four PUTs on close); dictionary lookups are
+  not debounced; overlapping `setup` calls can apply an older book's state.
+- Server: `ErrorHandlingControllerAdvice` turns type-mismatch 400s into 500s;
+  image-directory book names are cut at the last dot (`Ch 1.1` -> `Ch 1`);
+  `BookAnalyzer` and `Hasher` follow symlinks where the scanner does not; the
+  service worker cache never drops old hashed chunks and can store an OPDS or
+  redirect response as the offline shell.
+- Performance: the mixed-ZIP manifest decompresses every nested CBZ image to
+  count pages and churns the 8-slot nested cache; `PdfExtractor` parses the
+  same PDF once per concurrent cold request; RAR5 pages walk the archive
+  twice; the lock filter queries locked libraries on every API request; a
+  continuous TXT re-render still scans all highlights and bookmarks per
+  paragraph (now once per pause rather than per frame).
+- Comments that narrate history or no longer match the code, and unused code
+  (`talesHistory` plugin, `ZipFileUtils.getZipEntryBytes`, six repository
+  delete methods), are listed in the audit report rather than removed.
