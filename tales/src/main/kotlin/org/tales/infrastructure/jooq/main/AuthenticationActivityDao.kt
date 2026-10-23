@@ -18,6 +18,7 @@ import org.tales.infrastructure.jooq.toOrderBy
 import org.tales.jooq.main.Tables
 import org.tales.jooq.main.tables.records.AuthenticationActivityRecord
 import org.tales.language.toCurrentTimeZone
+import org.tales.language.toUTC
 import java.time.LocalDateTime
 
 @Component
@@ -118,7 +119,7 @@ class AuthenticationActivityDao(
         activity.success,
         activity.error,
         activity.source,
-        activity.dateTime,
+        activity.dateTime.toUTC(),
       ).execute()
   }
 

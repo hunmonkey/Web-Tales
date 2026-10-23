@@ -24,10 +24,9 @@ class ShelfViewAuthenticationActivityController(
   @ResponseStatus(HttpStatus.NO_CONTENT)
   fun deleteAll() {
     // Reuses the retention cleanup's repository method instead of adding a
-    // deleteAll to the upstream repository. The bound is a day ahead, not
-    // "now": LoginListener stamps records with local server time while the
-    // daily cleanup compares in UTC, so a plain now() in either zone could
-    // leave the newest records - the very ones being cleared - behind.
+    // deleteAll to the upstream repository. Records are stored in UTC, but
+    // rows written before SV-1308 carry local server time, so the bound is a
+    // day ahead of either zone rather than "now".
     authenticationActivityRepository.deleteOlderThan(LocalDateTime.now().plusDays(1))
   }
 }
