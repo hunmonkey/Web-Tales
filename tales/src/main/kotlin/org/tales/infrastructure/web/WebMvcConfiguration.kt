@@ -2,7 +2,9 @@ package org.tales.infrastructure.web
 
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.CacheControl
+import org.springframework.http.HttpHeaders
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
+import org.springframework.web.servlet.HandlerExceptionResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
@@ -115,6 +117,17 @@ class WebMvcConfiguration : WebMvcConfigurer {
           addCacheMapping(cacheImageContent, "/**")
         },
       ).addPathPatterns(imageResources)
+  }
+
+  // The interceptors above set Cache-Control before the handler runs, so an
+  // error response would keep the day-long image policy and a passing 404 (a
+  // NAS hiccup, a re-analysis) would stay broken in the browser for a day.
+  // Runs ahead of the real resolvers and leaves the resolving to them.
+  override fun extendHandlerExceptionResolvers(resolvers: MutableList<HandlerExceptionResolver>) {
+    resolvers.add(0) { _, response, _, _ ->
+      response.setHeader(HttpHeaders.CACHE_CONTROL, CacheControl.noStore().headerValue)
+      null
+    }
   }
 
   override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {

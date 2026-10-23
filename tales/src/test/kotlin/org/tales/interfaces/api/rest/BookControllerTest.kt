@@ -922,9 +922,11 @@ class BookControllerTest(
         mockMvc
           .get(url)
           .andExpect {
-            // Page images carry the longer image cache, so a page already fetched is reused
-            // instead of revalidated on every turn.
-            header { string(HttpHeaders.CACHE_CONTROL, "max-age=86400, private") }
+            // The fixture book was never analyzed, so the page itself fails. That failure must
+            // not inherit the day-long image cache, or it would stick after a re-analysis. A page
+            // that is served does carry it: see the ShelfView image-directory and mixed page tests.
+            status { isNotFound() }
+            header { string(HttpHeaders.CACHE_CONTROL, "no-store") }
           }.andReturn()
           .response
           .getHeader(HttpHeaders.LAST_MODIFIED)
