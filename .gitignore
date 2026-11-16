@@ -113,3 +113,9 @@ secret/
 
 ### Web-Hanji local secrets
 Rule_PW.txt
+
+# 공개 저장소 제외: AI 지침·작업 메모 (로컬 전용)
+CLAUDE.md
+AGENTS.md
+Rule_*.txt
+docs/AI_PROGRESS.md
